@@ -1,0 +1,6 @@
+<nav class="app-topnav material-panel" aria-label="Application">
+  <div class="app-topnav__inner">
+    <a href="{{ url_for('bos.home') }}" class="app-topnav__link{% if active_app_nav == 'bos' %} is-active{% endif %}">Business OS</a>
+    <a href="{{ url_for('my_stores') }}" class="app-topnav__link{% if active_app_nav == 'qr' %} is-active{% endif %}">QR Workspace</a>
+  </div>
+</nav>

@@ -1,0 +1,190 @@
+/* Business OS — design tokens (never hardcode in components) */
+
+:root {
+  /* ── Material surfaces ── */
+  --canvas-bg: #F7F6F2;
+  --sheet-bg: #FFFFFF;
+  --sheet-border: #E2E2DD;
+  --panel-bg: #F0EFEA;
+  --panel-border: #E2E2DD;
+  --module-bg: #FFFFFF;
+  --module-border: #E2E2DD;
+  --module-radius: 18px;
+  --overlay-bg: #FFFFFF;
+  --overlay-border: #E2E2DD;
+
+  /* ── Color language (meaning only, not hierarchy) ── */
+  --color-text-primary: #111111;
+  --color-text-secondary: #5F6368;
+  --color-text-muted: #9AA0A6;
+  --color-border: #E2E2DD;
+  --color-border-strong: #C8C8C3;
+
+  --color-accent-orange: #FF6B35;
+  --color-accent-orange-hover: #E85A28;
+  --color-accent-lime: #B7F200;
+  --color-accent-blue: #3A86FF;
+
+  --color-success: #18A957;
+  --color-success-soft: #E8F8EF;
+  --color-warning: #F4B400;
+  --color-warning-soft: #FEF7E0;
+  --color-danger: #E5484D;
+  --color-danger-soft: #FDECEC;
+  --color-info: #3A86FF;
+  --color-info-soft: #EBF3FF;
+
+  /* ── Typography (Geist primary) ── */
+  --font-family: "Geist Sans", "Geist", "Inter", "IBM Plex Sans", system-ui, sans-serif;
+  --font-display: 64px;
+  --font-h1: 48px;
+  --font-h2: 36px;
+  --font-h3: 28px;
+  --font-h4: 22px;
+  --font-body-lg: 18px;
+  --font-body: 16px;
+  --font-small: 14px;
+  --font-caption: 12px;
+
+  --weight-regular: 400;
+  --weight-medium: 500;
+  --weight-semibold: 600;
+  --weight-bold: 700;
+
+  /* ── 8pt grid ── */
+  --space-1: 8px;
+  --space-2: 16px;
+  --space-3: 24px;
+  --space-4: 32px;
+  --space-5: 40px;
+  --space-6: 48px;
+  --space-7: 56px;
+  --space-8: 64px;
+
+  /* ── Layout ── */
+  --container-max: 1600px;
+  --sidebar-w: 248px;
+  --sidebar-w-collapsed: 72px;
+  --header-h: 72px;
+  --drawer-w: 480px;
+  --tool-h: 44px;
+
+  /* ── Elevation (subtle, stacked — not floating) ── */
+  --elevation-none: none;
+  --elevation-sheet: 0 1px 0 var(--sheet-border);
+  --elevation-panel: inset -1px 0 0 var(--panel-border);
+  --elevation-module: 0 1px 2px rgba(17, 17, 17, 0.04);
+  --elevation-overlay: 0 8px 24px rgba(17, 17, 17, 0.08);
+
+  /* ── Motion ── */
+  --motion-hover: 120ms cubic-bezier(0.2, 0.8, 0.2, 1);
+  --motion-normal: 220ms cubic-bezier(0.2, 0.8, 0.2, 1);
+  --motion-drawer: 260ms cubic-bezier(0.2, 0.8, 0.2, 1);
+
+  /* ── Semantic overlays & focus ── */
+  --color-on-primary: #FFFFFF;
+  --color-scrim: rgba(17, 17, 17, 0.45);
+  --color-scrim-light: rgba(17, 17, 17, 0.35);
+  --color-shadow-subtle: rgba(17, 17, 17, 0.04);
+  --focus-ring-color: var(--color-accent-orange);
+  --focus-ring: 0 0 0 2px var(--module-bg), 0 0 0 4px var(--focus-ring-color);
+
+  /* ── Component sizing ── */
+  --icon-size-sm: 20px;
+  --icon-size-md: 24px;
+  --table-cell-y: var(--space-1);
+  --table-cell-x: var(--space-2);
+  --table-row-min: 44px;
+  --card-min: 240px;
+  --fab-size: 52px;
+
+  /* ── Legacy aliases (map old vars → materials) ── */
+  --mq-bg: var(--canvas-bg);
+  --mq-surface: var(--module-bg);
+  --mq-surface-solid: var(--module-bg);
+  --mq-surface-raised: var(--sheet-bg);
+  --mq-border: var(--color-border);
+  --mq-border-strong: var(--color-border-strong);
+  --mq-ink: var(--color-text-primary);
+  --mq-text: var(--color-text-primary);
+  --mq-text-secondary: var(--color-text-secondary);
+  --mq-text-muted: var(--color-text-muted);
+  --mq-brand: var(--color-accent-orange);
+  --mq-brand-hover: var(--color-accent-orange-hover);
+  --mq-brand-soft: #FFF0EA;
+  --mq-brand-muted: var(--color-accent-orange);
+  --mq-success: var(--color-success);
+  --mq-success-soft: var(--color-success-soft);
+  --mq-warning: var(--color-warning);
+  --mq-warning-soft: var(--color-warning-soft);
+  --mq-danger: var(--color-danger);
+  --mq-danger-soft: var(--color-danger-soft);
+  --mq-font: var(--font-family);
+  --mq-radius-sm: 10px;
+  --mq-radius: var(--module-radius);
+  --mq-radius-lg: var(--module-radius);
+  --mq-radius-pill: 999px;
+  --mq-shadow-sm: var(--elevation-module);
+  --mq-shadow: var(--elevation-overlay);
+  --mq-shadow-hover: var(--elevation-overlay);
+  --mq-ease: cubic-bezier(0.2, 0.8, 0.2, 1);
+  --mq-duration: var(--motion-normal);
+  --mq-duration-slow: var(--motion-drawer);
+  --mq-accent: var(--color-accent-orange);
+  --mq-accent-hover: var(--color-accent-orange-hover);
+  --mq-accent-soft: var(--color-info-soft);
+  --mq-space-1: 4px;
+  --mq-space-2: var(--space-1);
+  --mq-space-3: 12px;
+  --mq-space-4: var(--space-2);
+  --mq-space-5: var(--space-3);
+  --mq-space-6: var(--space-3);
+  --mq-space-8: var(--space-4);
+  --mq-text-base: var(--font-body);
+  --mq-text-lg: var(--font-body-lg);
+  --mq-text-xl: var(--font-h4);
+  --mq-text-2xl: var(--font-h3);
+  --mq-text-hero: clamp(40px, 5vw, var(--font-h1));
+  --mq-card-pad: var(--space-3);
+  --mq-image-h: 160px;
+  --mq-content-max: var(--container-max);
+
+  --os-bg: var(--canvas-bg);
+  --os-surface: var(--module-bg);
+  --os-surface-2: var(--panel-bg);
+  --os-border: var(--color-border);
+  --os-border-strong: var(--color-border-strong);
+  --os-text: var(--color-text-primary);
+  --os-text-secondary: var(--color-text-secondary);
+  --os-text-muted: var(--color-text-muted);
+  --os-accent: var(--color-accent-orange);
+  --os-accent-hover: var(--color-accent-orange-hover);
+  --os-accent-soft: var(--color-info-soft);
+  --os-success: var(--color-success);
+  --os-success-soft: var(--color-success-soft);
+  --os-warning: var(--color-warning);
+  --os-warning-soft: var(--color-warning-soft);
+  --os-danger: var(--color-danger);
+  --os-danger-soft: var(--color-danger-soft);
+  --os-sidebar-w: var(--sidebar-w);
+  --os-topbar-h: var(--header-h);
+  --os-radius: var(--module-radius);
+  --os-radius-sm: var(--mq-radius-sm);
+  --os-shadow-sm: var(--elevation-module);
+  --os-shadow: var(--elevation-overlay);
+  --os-font: var(--font-family);
+  --os-transition: var(--motion-normal);
+}
+
+.mq-density-owner {
+  --mq-text-base: var(--font-small);
+  --mq-card-pad: var(--space-2);
+  --mq-image-h: 120px;
+  --mq-text-hero: var(--font-h3);
+}
+
+.mq-density-customer {
+  --mq-text-base: var(--font-body);
+  --mq-card-pad: var(--space-3);
+  --mq-image-h: 200px;
+}

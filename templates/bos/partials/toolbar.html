@@ -1,0 +1,24 @@
+<header class="material-panel bos-toolbar" id="bos-toolbar">
+  <button type="button" class="bos-toolbar__menu" id="bos-menu-btn" aria-label="Open menu">☰</button>
+  <div class="bos-toolbar__main">
+    <nav class="bos-breadcrumbs hidden" id="bos-breadcrumbs" aria-label="Breadcrumb"></nav>
+    <div class="bos-header">
+      <h1 class="bos-header__title">{{ page_title }}</h1>
+      {% if page_subtitle %}<p class="bos-header__subtitle">{{ page_subtitle }}</p>{% endif %}
+    </div>
+  </div>
+  <div class="bos-toolbar__actions" id="bos-toolbar-actions">
+    <button type="button" class="bos-notifications-btn" id="bos-notifications-btn" aria-label="Notifications">
+      🔔 <span class="bos-notifications-badge hidden" id="bos-notifications-badge"></span>
+    </button>
+    <div class="bos-notifications-panel material-panel hidden" id="bos-notifications-panel"></div>
+    {% block bos_toolbar_actions %}{% endblock %}
+  </div>
+</header>
+<div class="bos-search-row material-panel">
+  <div class="bos-search-bar" id="bos-search-bar">
+    <input type="search" class="bos-search-bar__input os-input" id="bos-search-input" placeholder="Search everything… (press /)" autocomplete="off" aria-label="Search">
+    <div class="bos-global-search-results hidden" id="bos-global-search-results"></div>
+  </div>
+  <div class="bos-filter-bar" id="bos-filter-bar"></div>
+</div>
