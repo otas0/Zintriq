@@ -1547,5 +1547,8 @@ app.register_blueprint(bos_bp)
 
 
 if __name__ == "__main__":
+    import os
     init_db()
-    app.run(debug=True)
+    # Prefer 5001 — macOS AirPlay often occupies *:5000 and returns 403.
+    port = int(os.environ.get("PORT", "5001"))
+    app.run(debug=True, port=port)
