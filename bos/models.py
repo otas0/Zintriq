@@ -1,4 +1,4 @@
-"""Generic Business OS domain models — industry-agnostic."""
+"""Business OS domain models — MVP platform scope."""
 
 from __future__ import annotations
 
@@ -15,18 +15,22 @@ class BosModule:
     description: str = ""
 
 
+# Business OS module registry — MVP navigation
 BOS_MODULES: tuple[BosModule, ...] = (
-    BosModule("home", "Home", "⌂", "bos.home", "Overview and quick access"),
-    BosModule("organizations", "Organization", "◉", "bos.organizations", "Company profile and settings"),
-    BosModule("workspaces", "Workspaces", "◫", "bos.workspaces", "Business units and locations"),
-    BosModule("catalog", "Catalog", "▦", "bos.catalog", "Products and services"),
-    BosModule("transactions", "Transactions", "⇄", "bos.transactions", "Sales and payments"),
-    BosModule("customers", "Customers", "◎", "bos.customers", "Contacts and relationships"),
-    BosModule("team", "Team", "◈", "bos.team", "Members and roles"),
-    BosModule("assets", "Assets", "⬡", "bos.assets", "Files, QR codes, and resources"),
-    BosModule("operations", "Operations", "⚙", "bos.operations", "Tasks and workflows"),
-    BosModule("documents", "Documents", "▤", "bos.documents", "Files and records"),
-    BosModule("tags", "Tags", "◆", "bos.tags", "Labels and classification"),
+    BosModule("store", "Stores", "▣", "bos.store", "Storefronts, customer QR, and responses"),
+    BosModule("team", "Team", "◈", "bos.team", "Invite members and manage access"),
+    BosModule("settings", "Settings", "⚙", "bos.settings", "Workspace configuration"),
+    # Legacy module ids — redirect into Store
+    BosModule("qr", "Experiences", "⬡", "bos.qr_experiences", "Legacy — use Store"),
+    BosModule("responses", "Responses", "✎", "bos.responses", "Legacy — use Store"),
+    # Legacy / deferred modules (URL-only, not in primary nav)
+    BosModule("customers", "Responses", "✎", "bos.responses", "Legacy alias"),
+    BosModule("interactions", "Responses", "✎", "bos.responses", "Legacy alias"),
+    BosModule("feedback", "Responses", "✎", "bos.responses", "Legacy alias"),
+    BosModule("operations", "Operations", "◎", "bos.operations", "Deferred — bookings & check-ins"),
+    BosModule("checkin", "Check-in", "✓", "bos.check_in", "Deferred"),
+    BosModule("booking", "Booking", "◷", "bos.booking", "Deferred"),
+    BosModule("calendar", "Calendar", "📅", "bos.calendar", "Deferred"),
 )
 
 

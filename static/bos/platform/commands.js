@@ -4,8 +4,7 @@ import { OBJECT_TYPES } from "./object-types.js";
 /** @typedef {{ id: string, label: string, category: string, icon?: string, keywords?: string[], run: () => void | Promise<void> }} PlatformCommand */
 
 const CREATE_COLLECTIONS = [
-  "organizations", "workspaces", "catalog", "customers", "transactions",
-  "team", "operations", "documents", "assets", "tags",
+  "booking", "checkin", "feedback", "team",
 ];
 
 function dispatchClearSelection() {
@@ -79,11 +78,11 @@ export function getSettingsCommands() {
       run: () => { window.location.href = "/account"; },
     },
     {
-      id: "settings-qr",
-      label: "QR Workspace",
+      id: "settings-store",
+      label: "Store",
       category: "Settings",
-      keywords: ["storefront", "qr"],
-      run: () => { window.location.href = "/my-stores"; },
+      keywords: ["experience", "customer", "qr", "responses"],
+      run: () => { window.location.href = "/app/store"; },
     },
   ];
 }
@@ -96,7 +95,7 @@ export function buildObjectCommand(collection, id, label) {
     category: typeDef?.labelPlural || collection,
     keywords: [collection, id, label.toLowerCase()],
     run: () => {
-      const path = typeDef?.modulePath || "/app";
+      const path = typeDef?.modulePath || "/app/store";
       if (window.location.pathname === path) {
         dispatchOpenObject(collection, id);
       } else {

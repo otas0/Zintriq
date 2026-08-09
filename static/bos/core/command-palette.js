@@ -1,9 +1,8 @@
-import * as store from "../core/store.js";
 import { escapeHtml } from "../services/search.js";
 import { searchCommands } from "../platform/commands.js";
 import { getObjectRecents, getObjectFavorites } from "../platform/recents.js";
 import { closeDrawer } from "../services/api.js";
-import { closeObjectDrawer } from "../platform/object-detail.js";
+import { globalSearchGrouped } from "../services/global-search.js";
 
 let paletteOpen = false;
 /** @type {number} */
@@ -56,12 +55,28 @@ export function initCommandPalette() {
 
   /** @type {import('../platform/commands.js').PlatformCommand[]} */
   let currentCommands = [];
+  let renderSeq = 0;
 
-  const render = () => {
+  const render = async () => {
+    const seq = ++renderSeq;
     const q = input.value.trim();
-    const objectHits = q ? store.globalSearch(q) : [];
-    currentCommands = searchCommands(q, objectHits, getObjectRecents(), getObjectFavorites());
-    renderCommandList(currentCommands, results);
+    currentCommands = searchCommands(q, [], getObjectRecents(), getObjectFavorites());
+
+    if (q.length >= 2) {
+      const { api } = await globalSearchGrouped(q);
+      if (seq !== renderSeq) return;
+      api.forEach((hit) => {
+        currentCommands.unshift({
+          id: `api-${hit.type}-${hit.id}`,
+          label: hit.label,
+          category: hit.type.charAt(0).toUpperCase() + hit.type.slice(1),
+          keywords: [hit.type],
+          run: () => { window.location.href = hit.href; },
+        });
+      });
+    }
+
+    currentCommands = renderCommandList(currentCommands, results);
   };
 
   const open = () => {
@@ -75,41 +90,45 @@ export function initCommandPalette() {
   const close = () => {
     paletteOpen = false;
     overlay.classList.add("hidden");
-    activeIndex = -1;
+    closeDrawer();
   };
 
-  document.addEventListener("keydown", (e) => {
-    if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "k") {
-      e.preventDefault();
-      if (paletteOpen) close();
-      else open();
-    }
-    if (e.key === "Escape" && paletteOpen) {
-      e.preventDefault();
-      close();
-      closeObjectDrawer();
-    }
-    if (!paletteOpen) return;
+  window.addEventListener("bos:open-command-palette", open);
+
+  overlay.addEventListener("click", (e) => {
+    if (e.target === overlay) close();
+  });
+
+  input.addEventListener("input", render);
+
+  input.addEventListener("keydown", (e) => {
     const items = results.querySelectorAll(".bos-palette-item");
     if (e.key === "ArrowDown") {
       e.preventDefault();
       activeIndex = Math.min(activeIndex + 1, items.length - 1);
       highlightActive(results);
-    }
-    if (e.key === "ArrowUp") {
+    } else if (e.key === "ArrowUp") {
       e.preventDefault();
       activeIndex = Math.max(activeIndex - 1, 0);
       highlightActive(results);
-    }
-    if (e.key === "Enter" && document.activeElement === input) {
+    } else if (e.key === "Enter" && activeIndex >= 0) {
       e.preventDefault();
-      if (activeIndex >= 0 && currentCommands[activeIndex]) currentCommands[activeIndex].run();
-      else if (currentCommands[0]) currentCommands[0].run();
+      currentCommands[activeIndex]?.run();
+      close();
+    } else if (e.key === "Escape") {
+      e.preventDefault();
       close();
     }
   });
 
-  overlay.querySelector("[data-palette-close]")?.addEventListener("click", close);
-  overlay.addEventListener("click", (e) => { if (e.target === overlay) close(); });
-  input.addEventListener("input", render);
+  document.addEventListener("keydown", (e) => {
+    if ((e.metaKey || e.ctrlKey) && e.key === "k") {
+      e.preventDefault();
+      paletteOpen ? close() : open();
+    }
+  });
+
+  document.getElementById("bos-search-trigger")?.addEventListener("click", open);
 }
+
+export { paletteOpen };

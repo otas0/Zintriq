@@ -1,0 +1,9 @@
+{% extends "customer_base.html" %}
+{% block title %}QR Expired{% endblock %}
+{% block content %}
+<section class="mq-empty-state" style="text-align:center;padding:48px 24px;max-width:420px;margin:0 auto">
+  <h1 style="margin:0 0 12px;font-size:1.5rem">This QR is no longer active</h1>
+  <p class="cp-muted" style="margin:0 0 8px">{{ experience_name or "This QR Experience" }} has expired or been removed.</p>
+  <p class="cp-muted" style="margin:0;font-size:14px">If you believe this is a mistake, please contact the business.</p>
+</section>
+{% endblock %}

@@ -35,9 +35,10 @@ export function mountInteractiveModule(root, moduleId, config) {
   let lastClickedId = null;
   let cachedItems = [];
 
+  document.getElementById("bos-filter-row")?.classList.remove("hidden");
   const filterBar = document.getElementById("bos-filter-bar");
   const searchInput = document.getElementById("bos-search-input");
-  const toolbarActions = document.getElementById("bos-toolbar-actions");
+  const toolbarActions = document.getElementById("bos-page-actions-mount");
   const workspace = document.getElementById("bos-workspace");
 
   root.innerHTML = `<div class="bos-module-toolbar" id="bos-module-toolbar"></div><div class="bos-module-content" id="bos-module-content"></div>`;
@@ -181,8 +182,16 @@ export function mountInteractiveModule(root, moduleId, config) {
 
   const renderToolbar = () => {
     if (toolbarActions) {
-      toolbarActions.innerHTML = `<button type="button" class="os-btn os-btn-primary os-btn-sm" id="bos-create-btn">${escapeHtml(config.createLabel || "Create")}</button>`;
-      document.getElementById("bos-create-btn")?.addEventListener("click", () => openCreateObject(config.collection, refreshOpts));
+      let createBtn = document.getElementById("bos-create-btn");
+      if (!createBtn) {
+        createBtn = document.createElement("button");
+        createBtn.type = "button";
+        createBtn.id = "bos-create-btn";
+        createBtn.className = "os-btn os-btn-primary os-btn-sm";
+        toolbarActions.appendChild(createBtn);
+      }
+      createBtn.textContent = config.createLabel || "Create";
+      createBtn.onclick = () => openCreateObject(config.collection, refreshOpts);
     }
     if (moduleToolbar) {
       const sortOptions = [
@@ -400,11 +409,11 @@ export function mountInteractiveModule(root, moduleId, config) {
     renderToolbar();
 
     if (!cachedItems.length) {
-      content.innerHTML = emptyState(
-        `No ${config.labelPlural || "items"} yet`,
-        "Create your first record or adjust filters.",
-        `<button type="button" class="os-btn os-btn-primary os-btn-sm" id="bos-empty-create">${escapeHtml(config.createLabel || "Create")}</button>`
-      );
+      content.innerHTML = emptyState({
+        title: `No ${config.labelPlural || "items"} yet`,
+        text: "Create your first record or adjust filters.",
+        actionHtml: `<button type="button" class="bos-btn bos-btn-primary bos-btn-sm" id="bos-empty-create">${escapeHtml(config.createLabel || "Create")}</button>`,
+      });
       document.getElementById("bos-empty-create")?.addEventListener("click", () => openCreateObject(config.collection, refreshOpts));
       renderActionBar(0, [], () => {});
       setActionMode(false);

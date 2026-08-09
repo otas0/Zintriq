@@ -1,0 +1,142 @@
+{% extends 'owner_base.html' %}
+{% set active_tab = 'overview' %}
+{% block title %}Manage {{ store.name }} — MarketQR{% endblock %}
+{% block os_head %}
+<link rel="stylesheet" href="{{ url_for('static', filename='storefront.css') }}">
+{% endblock %}
+{% block os_header %}
+<h1 class="os-page-title">{{ store.name }}</h1>
+<p class="os-page-subtitle">Manage items, inventory, and what customers see after scanning.</p>
+{% endblock %}
+{% block os_actions %}
+<span class="os-tag os-tag-{{ store.status }}">{{ store.status }}</span>
+<a class="os-btn os-btn-ghost" href="{{ url_for('store_preview', slug=store.slug) }}" target="_blank" rel="noopener">Preview ↗</a>
+{% endblock %}
+{% block owner_content %}
+<div class="sf-owner-split">
+<div class="sf-owner-split__main">
+<div class="dashboard">
+  <section class="panel add-item os-card">
+    <h2 class="os-card-title">Add item</h2>
+    <form method="post" enctype="multipart/form-data" class="os-form">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <div class="os-field">
+        <label class="os-label">Item name *</label>
+        <input class="os-input" name="name" required placeholder="e.g. Sourdough loaf">
+      </div>
+      <div class="os-grid-2">
+        <div class="os-field"><label class="os-label">Price *</label><input class="os-input" name="price" required type="number" min="0" step="0.01" placeholder="0.00"></div>
+        <div class="os-field"><label class="os-label">SKU</label><input class="os-input" name="sku" placeholder="Optional"></div>
+      </div>
+      <div class="os-grid-2">
+        <div class="os-field"><label class="os-label">Inventory</label><input class="os-input" name="inventory" type="number" min="0" placeholder="Optional"></div>
+        <div class="os-field"><label class="os-label">Group</label>
+          <select class="os-select" name="group_id">
+            <option value="">Default</option>
+            {% for group in item_groups %}<option value="{{ group.id }}">{{ group.name }}</option>{% endfor %}
+          </select>
+        </div>
+      </div>
+      <div class="os-field"><label class="os-label">Status</label>
+        <select class="os-select" name="status">
+          <option value="published">Published</option>
+          <option value="draft">Draft</option>
+          <option value="hidden">Hidden</option>
+        </select>
+      </div>
+      <div class="os-image-block">
+        <div class="os-field"><label class="os-label">Photo URL <span class="os-label-hint">(optional if uploading)</span></label><input class="os-input" name="image_url" id="add-item-image-url" type="text" placeholder="https://..."></div>
+        <div class="os-field"><label class="os-label">Or upload image</label><input name="image_file" type="file" accept="image/jpeg,image/png,image/webp,image/gif" data-preview="add-item-image-preview"></div>
+        <div class="os-image-preview" id="add-item-image-preview"><span>No image selected</span></div>
+      </div>
+      <div class="os-field"><label class="os-label">Description</label><textarea class="os-textarea" name="description" placeholder="A short, helpful description"></textarea></div>
+      <button class="os-btn os-btn-primary" type="submit">Add item</button>
+    </form>
+  </section>
+  <aside class="owner-side-stack">
+    <section class="panel compact-panel os-card os-card-padded">
+      <h2 class="os-card-title">Quick links</h2>
+      <div class="os-stack" style="gap:8px">
+        <a class="os-btn os-btn-ghost" href="{{ url_for('store_settings', slug=store.slug) }}">Store settings</a>
+        <a class="os-btn os-btn-ghost" href="{{ url_for('manage_qr_codes', slug=store.slug) }}">QR codes ({{ qr_codes|length }})</a>
+        <a class="os-btn os-btn-ghost" href="{{ url_for('manage_event_passes', slug=store.slug) }}">Event Passes</a>
+        <a class="os-btn os-btn-ghost" href="{{ url_for('manage_business_cards', slug=store.slug) }}">Business Cards</a>
+        <a class="os-btn os-btn-ghost" href="{{ url_for('manage_product_qr', slug=store.slug) }}">Product QR</a>
+        <a class="os-btn os-btn-ghost" href="{{ url_for('manage_check_in', slug=store.slug) }}">Check-in</a>
+        <a class="os-btn os-btn-ghost" href="{{ url_for('manage_feedback_overview', slug=store.slug) }}">Feedback</a>
+        <a class="os-btn os-btn-ghost" href="{{ url_for('item_groups_manage', slug=store.slug) }}">Item groups</a>
+      </div>
+    </section>
+    {% if primary_qr %}
+    <section class="qr-panel">
+      <p class="eyebrow">PRIMARY QR</p>
+      <img src="{{ primary_qr_image }}" alt="QR code">
+      <p class="qr-name">{{ primary_qr.name or 'Default' }}</p>
+      <a class="download" href="{{ url_for('manage_qr_codes', slug=store.slug) }}">Manage QR codes →</a>
+    </section>
+    {% endif %}
+  </aside>
+</div>
+
+<section class="items">
+  <div class="section-title"><h2>Your items{% if active_group_name %} — {{ active_group_name }}{% endif %}</h2>
+    <div class="section-tools">
+      {% if show_group_nav %}
+      <form class="inline-filter" method="get">
+        <select class="os-select" name="group" onchange="this.form.submit()" style="width:auto">
+          {% for group in group_nav %}
+          <option value="{{ group.id if group.id != 'default' else 'default' }}"{% if active_group == group.id %} selected{% endif %}>{{ group.name }}</option>
+          {% endfor %}
+        </select>
+      </form>
+      {% endif %}
+      <span class="os-tag">{{ items|length }} listed</span>
+    </div>
+  </div>
+  {% if items %}
+  <form method="post" action="{{ url_for('reorder_items', slug=store.slug) }}" id="reorder-form">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <input type="hidden" name="order" id="item-order">
+  </form>
+  <div class="manage-list sortable-list" data-reorder-input="item-order" data-reorder-form="reorder-form">
+    {% for item in items %}
+    <article class="sortable-row material-module" draggable="true" data-id="{{ item.id }}">
+      <div class="drag-handle" aria-hidden="true" title="Drag to reorder">⋮⋮</div>
+      <div class="item-thumb">
+        {% if item.image_url %}
+        <img src="{{ item.image_url }}" alt="">
+        {% else %}
+        {{ item.name[0]|upper }}
+        {% endif %}
+      </div>
+      <div class="manage-item-main">
+        <h3><a href="{{ url_for('owner_item_detail', slug=store.slug, item_id=item.id) }}">{{ item.name }}</a></h3>
+        <p>{{ item.description or 'No description' }}</p>
+        <div class="meta-row">
+          {% if item.group_name %}<span class="tag">{{ item.group_name }}</span>{% endif %}
+          <span class="tag tag-{{ item.status }}">{{ item.status }}</span>
+          {% if item.sku %}<span class="tag">SKU {{ item.sku }}</span>{% endif %}
+          {% if item.inventory is not none %}<span class="tag">Stock {{ item.inventory }}</span>{% endif %}
+        </div>
+      </div>
+      <strong class="manage-item-price">${{ '%.2f'|format(item.price) }}</strong>
+      <div class="row-actions">
+        <a class="os-btn os-btn-ghost os-btn-sm" href="{{ url_for('edit_item', slug=store.slug, item_id=item.id) }}">Edit</a>
+        <a class="os-btn os-btn-ghost os-btn-sm" href="{{ url_for('item_preview', slug=store.slug, item_id=item.id) }}" target="_blank" rel="noopener">Preview</a>
+      </div>
+    </article>
+    {% endfor %}
+  </div>
+  <p class="manage-list-hint">Drag rows to reorder how items appear to customers.</p>
+  {% else %}
+  <div class="os-empty">
+    <p class="os-empty-title">{% if show_group_nav %}No items in this group{% else %}No items yet{% endif %}</p>
+    <p>{% if show_group_nav %}Try another group or add an item to this group.{% else %}Add your first product using the form above.{% endif %}</p>
+  </div>
+  {% endif %}
+</section>
+<script src="{{ url_for('static', filename='owner.js') }}"></script>
+</div>
+{% include 'owner/_storefront_preview.html' %}
+</div>
+{% endblock %}

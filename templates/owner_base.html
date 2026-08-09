@@ -1,0 +1,24 @@
+{% extends 'os_base.html' %}
+{% set os_nav = 'stores' %}
+{% block os_sidebar_extra %}
+{% if store %}
+<section class="os-store-context">
+  <p class="os-context-label">Current store</p>
+  <p class="os-context-name">{{ store.name }}</p>
+</section>
+{% endif %}
+{% endblock %}
+{% block os_tabs %}
+{% if store %}
+<nav class="os-tabs" aria-label="Store sections">
+  <a href="{{ url_for('manage_store', slug=store.slug) }}" class="os-tab{% if active_tab == 'overview' %} is-active{% endif %}">Overview</a>
+  <a href="{{ url_for('manage_store_deals', slug=store.slug) }}" class="os-tab{% if active_tab == 'deals' %} is-active{% endif %}">Deals</a>
+  <a href="{{ url_for('store_settings', slug=store.slug) }}" class="os-tab{% if active_tab == 'settings' %} is-active{% endif %}">Settings</a>
+  <a href="{{ url_for('item_groups_manage', slug=store.slug) }}" class="os-tab{% if active_tab == 'groups' %} is-active{% endif %}">Groups</a>
+  <a href="{{ url_for('manage_qr_codes', slug=store.slug) }}" class="os-tab{% if active_tab == 'qr' %} is-active{% endif %}">QR codes</a>
+  <a href="{{ url_for('manage_feedback_overview', slug=store.slug) }}" class="os-tab{% if active_tab == 'feedback' %} is-active{% endif %}">Feedback</a>
+  <a href="{{ url_for('store_preview', slug=store.slug) }}" class="os-tab os-tab-preview" target="_blank" rel="noopener">Preview ↗</a>
+</nav>
+{% endif %}
+{% endblock %}
+{% block os_content %}{% block owner_content %}{% endblock %}{% endblock %}

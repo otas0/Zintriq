@@ -36,6 +36,8 @@ export function formatActivityAction(action) {
   const map = {
     created: "Created",
     updated: "Updated",
+    renamed: "Renamed",
+    status_changed: "Status changed",
     archived: "Archived",
     restored: "Restored",
     deleted: "Deleted",

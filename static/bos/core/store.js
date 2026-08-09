@@ -6,7 +6,7 @@ import { OBJECT_TYPES, getObjectTitle, getObjectType } from "../platform/object-
 
 /** @typedef {Record<string, unknown> & { id: string }} BosRecord */
 
-const STORAGE_KEY = "bos-store-state";
+const STORAGE_KEY = "bos-ui-prefs-v2";
 const ID_COUNTER_KEY = "bos-id-counter";
 
 let idCounter = loadIdCounter();
@@ -22,22 +22,7 @@ function loadIdCounter() {
 }
 
 function loadPersistedState() {
-  try {
-    const raw = localStorage.getItem(STORAGE_KEY);
-    if (raw) return JSON.parse(raw);
-  } catch {
-    /* ignore corrupt snapshot */
-  }
   return structuredClone(SEED_DATA);
-}
-
-function persistState() {
-  try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
-    localStorage.setItem(ID_COUNTER_KEY, String(idCounter));
-  } catch {
-    /* ignore quota errors */
-  }
 }
 
 /** @type {Record<string, BosRecord[]>} */
@@ -68,7 +53,6 @@ function saveModuleFavorites() {
 
 function notify(collection = null) {
   listeners.forEach((fn) => fn(collection));
-  persistState();
 }
 
 function logActivity(action, entityType, entityId, message, actor = "You") {
@@ -79,6 +63,17 @@ function logActivity(action, entityType, entityId, message, actor = "You") {
   state.activities.unshift(entry);
   if (state.activities.length > 100) state.activities.length = 100;
   listeners.forEach((fn) => fn("activities"));
+
+  window.dispatchEvent(new CustomEvent("bos:domain-event", {
+    detail: {
+      event_type: `${entityType}.${action}`,
+      object_type: entityType,
+      object_id: entityId,
+      title: message,
+      actor,
+      created_at: entry.at,
+    },
+  }));
 }
 
 function cloneState() {
@@ -145,12 +140,14 @@ export function create(collection, data, opts = {}) {
   if (!state[collection]) state[collection] = [];
   state[collection].unshift(record);
 
-  const action = opts.action || "created";
-  const entityType = opts.entityType || collection;
-  const entityId = opts.entityId || record.id;
-  logActivity(action, entityType, entityId);
+  if (!opts.skipActivity) {
+    const action = opts.action || "created";
+    const entityType = opts.entityType || collection;
+    const entityId = opts.entityId || record.id;
+    logActivity(action, entityType, entityId);
+  }
   if (!opts.skipNotify && BUSINESS_COLLECTIONS.includes(collection)) {
-    notifyForAction(action, collection, record.id);
+    notifyForAction(opts.action || "created", collection, record.id);
   }
   notify(collection);
   return structuredClone(record);
@@ -285,42 +282,8 @@ export function getGlobalActivities(limit = 30) {
 /**
  * @param {string} query
  */
-export function globalSearch(query) {
-  const q = query.trim().toLowerCase();
-  if (!q) return [];
-  /** @type {{ collection: string, record: BosRecord, label: string, path: string }[]} */
-  const results = [];
-
-  BUSINESS_COLLECTIONS.forEach((collection) => {
-    const typeDef = getObjectType(collection);
-    const haystack = (row) =>
-      Object.values(row)
-        .flatMap((v) => (Array.isArray(v) ? v : [v]))
-        .filter((v) => typeof v === "string" || typeof v === "number")
-        .join(" ")
-        .toLowerCase();
-    searchItems(q, state[collection] || [], haystack).forEach((record) => {
-      results.push({
-        collection,
-        record,
-        label: getObjectTitle(record, typeDef),
-        path: `${typeDef?.modulePath || "/app"}#obj/${collection}/${record.id}`,
-      });
-    });
-  });
-
-  (state.tags || []).forEach((tag) => {
-    if (String(tag.name).toLowerCase().includes(q)) {
-      results.push({
-        collection: "tags",
-        record: tag,
-        label: String(tag.name),
-        path: `/app/tags#obj/tags/${tag.id}`,
-      });
-    }
-  });
-
-  return results.slice(0, 24);
+export function globalSearch(_query) {
+  return [];
 }
 
 export function query(collection, opts = {}) {

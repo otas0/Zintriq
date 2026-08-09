@@ -1,0 +1,64 @@
+{% extends 'owner_base.html' %}
+{% from 'owner/_feedback_nav.html' import feedback_nav %}
+{% set active_tab = 'feedback' %}
+{% block title %}Feedback #{{ record.id }}{% endblock %}
+{% block os_header %}
+<h1 class="os-page-title">Feedback #{{ record.id }}</h1>
+<p class="os-page-subtitle">{% if template %}{{ template.name }}{% else %}{{ record.feedback_type|capitalize }}{% endif %} · {{ record.source_type|replace('_', ' ') }}</p>
+{% endblock %}
+{% block os_actions %}
+<a class="os-btn os-btn-ghost" href="{{ url_for('manage_feedback_inbox', slug=store.slug) }}">← Inbox</a>
+{% endblock %}
+{% block owner_content %}
+{{ feedback_nav(store, fb_section) }}
+
+<div class="fb-detail-layout">
+  <section class="os-card os-card-padded fb-detail-main">
+    <div class="fb-detail-head"><span class="os-tag os-tag-{{ record.status }}">{{ record.status }}</span><span class="fb-meta">{{ record.created_at[:16] if record.created_at else '' }}</span></div>
+    {% if record.rating %}<p class="fb-stars-lg">{% for i in range(record.rating) %}★{% endfor %}{% for i in range(5 - record.rating) %}☆{% endfor %}</p>{% endif %}
+
+    {% if blocks and responses %}
+    <dl class="fb-responses">
+      {% for block in blocks %}
+      {% if block.type not in ['heading', 'divider', 'section', 'description'] and responses.get(block.id) %}
+      <dt>{{ block.label or block.type }}</dt>
+      <dd>{% if block.type == 'multiple_choice' %}{{ responses.get(block.id)|join(', ') }}{% else %}{{ responses.get(block.id) }}{% endif %}</dd>
+      {% elif block.type == 'heading' %}
+      <dt class="fb-resp-heading">{{ block.label }}</dt>
+      {% endif %}
+      {% endfor %}
+    </dl>
+    {% elif record.comment %}
+    <p class="fb-comment">{{ record.comment }}</p>
+    {% endif %}
+
+    {% if attachments %}
+    <div class="fb-attachments">{% for url in attachments %}<a href="{{ url }}" target="_blank"><img src="{{ url }}" alt=""></a>{% endfor %}</div>
+    {% endif %}
+
+    <p class="fb-meta">{% if record.is_anonymous %}Anonymous submission{% else %}{{ record.customer_name or '' }}{% if record.customer_email %} · {{ record.customer_email }}{% endif %}{% endif %}</p>
+
+    <div class="fb-reply-box">
+      <h3 class="fb-panel__title">Reply</h3>
+      <form method="post">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <input type="hidden" name="action" value="reply">
+        <textarea class="os-textarea" name="owner_reply" rows="3" placeholder="Write a reply…">{{ record.owner_reply or '' }}</textarea>
+        <button class="os-btn os-btn-primary" type="submit" style="margin-top:8px">Save reply</button>
+      </form>
+    </div>
+
+    <form method="post" class="os-actions-row" style="margin-top:16px">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <input type="hidden" name="action" value="status">
+      <select class="os-select" name="status">{% for s in feedback_statuses %}<option value="{{ s }}"{% if record.status == s %} selected{% endif %}>{{ s }}</option>{% endfor %}</select>
+      <button class="os-btn os-btn-ghost" type="submit">Update status</button>
+    </form>
+  </section>
+  <aside class="os-card os-card-padded">
+    <h2 class="fb-panel__title">Activity</h2>
+    <ul class="fb-timeline">{% for a in activity %}<li><strong>{{ a.action|replace('_',' ') }}</strong><span>{{ a.created_at[:16] if a.created_at else '' }}</span></li>{% endfor %}</ul>
+  </aside>
+</div>
+<link rel="stylesheet" href="{{ url_for('static', filename='feedback.css') }}">
+{% endblock %}

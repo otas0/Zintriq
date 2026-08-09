@@ -1,0 +1,32 @@
+{% macro qr_capabilities(store, active) %}
+<section class="os-card os-card-padded ep-capabilities">
+  <h2 class="os-card-title">QR capabilities</h2>
+  <div class="ep-cap-grid ep-cap-grid--wide">
+    {% if active == 'storefront' %}
+    <span class="ep-cap-card is-active"><span class="ep-cap-label">Storefront QR</span><span class="ep-cap-desc">Catalog &amp; menu</span></span>
+    {% else %}
+    <a class="ep-cap-card" href="{{ url_for('manage_qr_codes', slug=store.slug) }}"><span class="ep-cap-label">Storefront QR</span><span class="ep-cap-desc">Catalog &amp; menu</span></a>
+    {% endif %}
+    {% if active == 'event_pass' %}
+    <span class="ep-cap-card is-active"><span class="ep-cap-label">Event Pass</span><span class="ep-cap-desc">Events &amp; check-in</span></span>
+    {% else %}
+    <a class="ep-cap-card" href="{{ url_for('manage_event_passes', slug=store.slug) }}"><span class="ep-cap-label">Event Pass</span><span class="ep-cap-desc">Events &amp; check-in</span></a>
+    {% endif %}
+    {% if active == 'business_card' %}
+    <span class="ep-cap-card is-active"><span class="ep-cap-label">Business Card</span><span class="ep-cap-desc">Digital contact cards</span></span>
+    {% else %}
+    <a class="ep-cap-card" href="{{ url_for('manage_business_cards', slug=store.slug) }}"><span class="ep-cap-label">Business Card</span><span class="ep-cap-desc">Digital contact cards</span></a>
+    {% endif %}
+    {% if active == 'product_info' %}
+    <span class="ep-cap-card is-active"><span class="ep-cap-label">Product QR</span><span class="ep-cap-desc">Product information</span></span>
+    {% else %}
+    <a class="ep-cap-card" href="{{ url_for('manage_product_qr', slug=store.slug) }}"><span class="ep-cap-label">Product QR</span><span class="ep-cap-desc">Product information</span></a>
+    {% endif %}
+    {% if active == 'check_in' %}
+    <span class="ep-cap-card is-active"><span class="ep-cap-label">Check-in</span><span class="ep-cap-desc">Visitor &amp; staff check-in</span></span>
+    {% else %}
+    <a class="ep-cap-card" href="{{ url_for('manage_check_in', slug=store.slug) }}"><span class="ep-cap-label">Check-in</span><span class="ep-cap-desc">Visitor &amp; staff check-in</span></a>
+    {% endif %}
+  </div>
+</section>
+{% endmacro %}

@@ -1,53 +1,74 @@
-import { MODULE_REGISTRY } from "./features/registry.js";
-import { mountInteractiveModule } from "./features/module-page.js";
-import { mountHomePage } from "./features/home-page.js";
-import { initCommandPalette } from "./core/command-palette.js";
-import { initNavigation } from "./core/nav.js";
-import { initGlobalSearchUi, initSearchShortcut } from "./core/search-ui.js";
-import { initNotifications } from "./platform/notifications-ui.js";
-import { openObjectDetail, openCreateObject, parseObjectHash, closeObjectDrawer } from "./platform/object-detail.js";
+import { initShellKeyboard, initShellEvents, initShellContext } from "./core/shell.js";
+import { loadWorkspaceList } from "./services/workspace-context.js";
+import { initSearchShortcut } from "./core/search-ui.js";
 import { closeDrawer, showToast, initToastUndo } from "./services/api.js";
+import { clearPageActions } from "./components/index.js";
 import { selection } from "./services/selection.js";
-import * as store from "./core/store.js";
 import { initQuickActions } from "./core/quick-actions.js";
 import { isSidebarCollapsed, toggleSidebarCollapsed } from "./core/ui-state.js";
+import { initEventBus } from "./platform/event-bus.js";
+import { getActiveWorkspaceId } from "./services/workspace-context.js";
+import { initNavigation } from "./core/nav.js";
+import { initGlobalSearchUi } from "./core/search-ui.js";
+import { initMobileShell } from "./mobile-shell.js";
+
+/** Lazy-load feature modules — only fetch JS for the active page. */
+const MODULE_LOADERS = {
+  store: () => Promise.resolve(),
+  team: () => import("./features/team-page.js").then((m) => m.mountTeamPage),
+  settings: () => import("./features/workspaces-page.js").then((m) => m.mountWorkspacesPage),
+  workspaces: () => import("./features/workspaces-page.js").then((m) => m.mountWorkspacesPage),
+  customers: () => import("./features/responses-page.js").then((m) => m.mountResponsesPage),
+  interactions: () => import("./features/responses-page.js").then((m) => m.mountResponsesPage),
+  feedback: () => import("./features/responses-page.js").then((m) => m.mountResponsesPage),
+};
+
+/** @type {Promise<void>|null} */
+let commandPaletteReady = null;
+
+function ensureCommandPalette() {
+  if (!commandPaletteReady) {
+    commandPaletteReady = import("./core/command-palette.js").then((m) => m.initCommandPalette());
+  }
+  return commandPaletteReady;
+}
+
+window.addEventListener("bos:open-command-palette", (e) => {
+  if (commandPaletteReady) return;
+  e.stopImmediatePropagation();
+  ensureCommandPalette().then(() => {
+    window.dispatchEvent(new CustomEvent("bos:open-command-palette"));
+  });
+}, true);
 
 /** @param {string} moduleId @param {HTMLElement} root */
-export function mountModule(moduleId, root) {
+export async function mountModule(moduleId, root) {
   selection.clear();
-  const toolbarActions = document.getElementById("bos-toolbar-actions");
-  if (toolbarActions) {
-    const keep = toolbarActions.querySelector("#bos-notifications-btn");
-    const panel = toolbarActions.querySelector("#bos-notifications-panel");
-    toolbarActions.innerHTML = "";
-    if (keep) toolbarActions.appendChild(keep);
-    if (panel) toolbarActions.appendChild(panel);
-  }
+  clearPageActions();
+  document.getElementById("bos-filter-row")?.classList.add("hidden");
+  document.getElementById("bos-create-btn")?.remove();
 
-  if (moduleId === "home") {
-    mountHomePage(root);
+  const loader = MODULE_LOADERS[moduleId];
+  if (!loader) {
+    root.innerHTML = `<div class="bos-empty"><p class="bos-empty__title">Module not found</p><p class="bos-empty__text">This platform is not part of Business OS V1.</p></div>`;
     return;
   }
 
-  const config = MODULE_REGISTRY[moduleId];
-  if (config) {
-    mountInteractiveModule(root, moduleId, config);
-    return;
+  try {
+    const mount = await loader();
+    const result = mount(root);
+    if (result && typeof result.then === "function") {
+      await result;
+    }
+  } catch (err) {
+    console.error(err);
+    root.innerHTML = `<div class="bos-empty"><p class="bos-empty__title">Module failed to load</p><p class="bos-empty__text">${err instanceof Error ? err.message : "Unknown error"}</p></div>`;
+    showToast("Module failed to load");
   }
-
-  root.innerHTML = `<div class="bos-empty"><p class="bos-empty__title">Module not found</p></div>`;
 }
 
 export function closeDrawerFully() {
-  closeObjectDrawer();
-}
-
-function handleDeepLink() {
-  const ref = parseObjectHash();
-  if (!ref) return;
-  if (store.getById(ref.collection, ref.id)) {
-    openObjectDetail(ref.collection, ref.id);
-  }
+  document.getElementById("bos-drawer")?.classList.add("hidden");
 }
 
 export function initShell() {
@@ -76,11 +97,34 @@ export function initShell() {
     }
   });
 
-  initCommandPalette();
   initSearchShortcut();
-  initNotifications();
   initToastUndo();
   initQuickActions();
+
+  // Command palette loads after first paint (⌘K / Ctrl+K and / shortcut)
+  if (typeof requestIdleCallback === "function") {
+    requestIdleCallback(() => ensureCommandPalette(), { timeout: 2000 });
+  } else {
+    setTimeout(() => ensureCommandPalette(), 300);
+  }
+
+  const workspaceReady = loadWorkspaceList().catch(() => {});
+  initShellKeyboard();
+  initShellEvents();
+  initShellContext();
+
+  workspaceReady.then(() => {
+    initEventBus(getActiveWorkspaceId);
+  });
+
+  window.addEventListener("bos:remount-module", () => {
+    const root = document.getElementById("bos-module-root");
+    const moduleId = window.BOS_MODULE || document.body.dataset.module;
+    if (root && moduleId) {
+      mountModule(moduleId, root);
+      initNavigation(moduleId);
+    }
+  });
 
   if (isSidebarCollapsed()) {
     sidebar?.classList.add("is-collapsed");
@@ -97,16 +141,6 @@ export function initShell() {
   initNavigation(moduleId);
   initGlobalSearchUi();
 
-  window.addEventListener("bos:open-object", (e) => {
-    const { collection, id } = e.detail || {};
-    if (collection && id) openObjectDetail(collection, id);
-  });
-
-  window.addEventListener("bos:create-object", (e) => {
-    const { collection } = e.detail || {};
-    if (collection) openCreateObject(collection);
-  });
-
   const theme = localStorage.getItem("bos-theme");
   if (theme) document.documentElement.setAttribute("data-theme", theme);
 }
@@ -117,27 +151,13 @@ export function initModule() {
   const moduleId = window.BOS_MODULE || root?.dataset.module;
   if (!root || !moduleId) return;
 
-  const mount = () => {
-    try {
-      mountModule(moduleId, root);
-      loading?.remove();
-      handleDeepLink();
-    } catch (error) {
-      console.error(error);
-      root.innerHTML = `<div class="bos-empty"><p class="bos-empty__title">Module failed to load</p><p class="bos-empty__text">${error instanceof Error ? error.message : "Unknown error"}</p></div>`;
-      showToast("Module failed to load");
-      loading?.remove();
-    }
-  };
-
-  if (loading) {
-    requestAnimationFrame(() => {
-      requestAnimationFrame(mount);
-    });
-  } else {
-    mount();
-  }
+  loading?.remove();
+  mountModule(moduleId, root).catch((err) => {
+    console.error(err);
+    root.innerHTML = `<div class="bos-empty"><p class="bos-empty__title">Module failed to load</p><p class="bos-empty__text">${err instanceof Error ? err.message : "Unknown error"}</p></div>`;
+  });
 }
 
-initShell();
 initModule();
+initShell();
+initMobileShell();

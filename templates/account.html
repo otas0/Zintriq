@@ -1,0 +1,102 @@
+{% extends 'bos/shell.html' %}
+{% block bos_title %}Account — Business OS{% endblock %}
+{% block bos_content %}
+<div class="merchant-page bos-account-page">
+  <header class="merchant-page-head bos-ui-page-header">
+    <div class="merchant-page-head__text">
+      <h1 class="merchant-page-head__title">Account</h1>
+      <p class="merchant-page-head__subtitle">Security and profile settings.</p>
+    </div>
+  </header>
+
+  <div class="bos-account-stack">
+    <form class="material-panel bos-panel bos-form" method="post">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <div class="bos-panel-head"><h2 class="bos-panel-title">Profile</h2></div>
+      <div class="bos-field">
+        <label class="bos-label">Email address</label>
+        <input class="bos-input" name="email" type="email" value="{{ user.email }}" required autocomplete="email">
+      </div>
+      <button class="bos-btn bos-btn-primary" type="submit">Save changes</button>
+    </form>
+
+    <section class="material-panel bos-panel">
+      <div class="bos-panel-head bos-panel-head--split">
+        <div>
+          <h2 class="bos-panel-title">Two-factor authentication</h2>
+          <p class="bos-panel-desc">Extra sign-in protection with an authenticator app.</p>
+        </div>
+        <a class="bos-btn bos-btn-ghost bos-btn-sm" href="{{ url_for('account_two_factor') }}">Manage</a>
+      </div>
+    </section>
+
+    <section class="material-panel bos-panel">
+      <div class="bos-panel-head"><h2 class="bos-panel-title">Change password</h2></div>
+      <p class="bos-panel-desc">Enter your current password, then choose a new one.</p>
+      <form class="bos-form" method="post" action="{{ url_for('change_password') }}" id="change-password-form">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <div class="bos-field">
+          <label class="bos-label">Current password</label>
+          <input class="bos-input" type="password" name="current_password" autocomplete="current-password" required>
+        </div>
+        <div class="bos-field">
+          <label class="bos-label">New password</label>
+          <input class="bos-input" type="password" name="password" minlength="12" autocomplete="new-password" required>
+        </div>
+        <div class="bos-field">
+          <label class="bos-label">Confirm new password</label>
+          <input class="bos-input" type="password" name="confirm_password" minlength="12" autocomplete="new-password" required>
+        </div>
+        {% if two_factor_enabled %}
+        <div class="bos-field">
+          <label class="bos-label">Authenticator code</label>
+          <input class="bos-input" name="code" inputmode="numeric" autocomplete="one-time-code" pattern="[0-9]{6}" maxlength="6" placeholder="6-digit code" required>
+        </div>
+        {% endif %}
+        <button class="bos-btn bos-btn-primary" type="submit">Change password</button>
+      </form>
+    </section>
+
+    <section class="bos-danger-zone">
+      <h2>Delete account</h2>
+      <p>Permanently deletes your account, stores, and all data.</p>
+      <form method="post" action="{{ url_for('delete_account') }}" id="delete-account-form">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <div class="bos-field">
+          <label class="bos-label">Confirm with password</label>
+          <input class="bos-input" type="password" name="password" required autocomplete="current-password">
+        </div>
+        {% if two_factor_enabled %}
+        <div class="bos-field">
+          <label class="bos-label">Authenticator code</label>
+          <input class="bos-input" name="code" inputmode="numeric" autocomplete="one-time-code" pattern="[0-9]{6}" maxlength="6" placeholder="6-digit code" required>
+        </div>
+        {% endif %}
+        <button class="bos-btn bos-btn-danger" type="submit">Delete account</button>
+      </form>
+    </section>
+  </div>
+</div>
+
+<div class="bos-confirm-modal{% if show_delete_confirm %} is-open{% endif %}" id="delete-account-modal" role="dialog" aria-modal="true" aria-labelledby="delete-account-modal-title"{% if not show_delete_confirm %} hidden{% endif %}>
+  <div class="bos-confirm-modal__backdrop" data-modal-dismiss="delete-account"></div>
+  <div class="material-overlay bos-confirm-modal__panel">
+    <h2 class="bos-confirm-modal__title" id="delete-account-modal-title">Delete your account?</h2>
+    <p class="bos-confirm-modal__text">This permanently removes your account, all storefronts, items, and data. This cannot be undone.</p>
+    <div class="bos-confirm-modal__actions">
+      <form method="post" action="{{ url_for('cancel_delete_account') }}" class="bos-confirm-modal__cancel-form">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <button class="bos-btn bos-btn-ghost" type="submit">Cancel</button>
+      </form>
+      <form method="post" action="{{ url_for('delete_account') }}">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <input type="hidden" name="confirmed" value="1">
+        <button class="bos-btn bos-btn-danger" type="submit">Yes, delete my account</button>
+      </form>
+    </div>
+  </div>
+</div>
+{% endblock %}
+{% block bos_scripts %}
+<script src="{{ url_for('static', filename='account.js') }}"></script>
+{% endblock %}

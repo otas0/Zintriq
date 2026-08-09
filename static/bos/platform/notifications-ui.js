@@ -1,5 +1,5 @@
 import * as store from "../core/store.js";
-import { markAllRead, getUnreadCount } from "../platform/notifications.js";
+import { markAllRead, getUnreadCount, syncServerNotifications } from "../platform/notifications.js";
 import { escapeHtml } from "../services/search.js";
 
 export function renderNotificationBell() {
@@ -24,7 +24,7 @@ export function renderNotificationPanel() {
     </div>
     ${items.length ? `<ul class="bos-notifications__list">${items.map((n) => `
       <li class="bos-notification${n.read ? "" : " is-unread"}" data-ntf-id="${n.id}">
-        <a href="${escapeHtml(String(n.href || "/app"))}" class="bos-notification__link">
+        <a href="${escapeHtml(String(n.href || "/app/store"))}" class="bos-notification__link">
           <strong>${escapeHtml(String(n.title))}</strong>
           <span>${escapeHtml(String(n.body))}</span>
           <span class="bos-notification__meta">${escapeHtml(String(n.priority || "info"))} · ${escapeHtml(String(n.createdAt || "").slice(0, 10))}</span>
@@ -32,8 +32,9 @@ export function renderNotificationPanel() {
         <button type="button" class="os-btn os-btn-ghost os-btn-sm" data-dismiss-ntf="${n.id}">Dismiss</button>
       </li>`).join("")}</ul>` : `<p class="bos-empty__text">No notifications</p>`}`;
 
-  panel.querySelector("#bos-notifications-read-all")?.addEventListener("click", () => {
+  panel.querySelector("#bos-notifications-read-all")?.addEventListener("click", async () => {
     markAllRead();
+    await fetch("/api/notifications/read-all", { method: "POST", credentials: "same-origin" }).catch(() => {});
     renderNotificationPanel();
     renderNotificationBell();
   });
@@ -58,32 +59,52 @@ export function renderNotificationPanel() {
 }
 
 export function initNotifications() {
-  renderNotificationBell();
-  renderNotificationPanel();
-
   const btn = document.getElementById("bos-notifications-btn");
   const panel = document.getElementById("bos-notifications-panel");
-  btn?.addEventListener("click", () => {
-    panel?.classList.toggle("hidden");
-    renderNotificationPanel();
+
+  btn?.addEventListener("click", (e) => {
+    e.stopPropagation();
+    syncServerNotifications().then(() => {
+      const open = panel?.classList.toggle("hidden") === false;
+      btn.setAttribute("aria-expanded", open ? "true" : "false");
+      renderNotificationPanel();
+      renderNotificationBell();
+    });
   });
 
   document.addEventListener("click", (e) => {
     if (!(e.target instanceof Element)) return;
     if (e.target.closest("#bos-notifications-btn") || e.target.closest("#bos-notifications-panel")) return;
     panel?.classList.add("hidden");
+    btn?.setAttribute("aria-expanded", "false");
   });
 
   store.subscribe((col) => {
     if (!col || col === "notifications") {
       renderNotificationBell();
-      renderNotificationPanel();
+      if (panel && !panel.classList.contains("hidden")) renderNotificationPanel();
     }
+  });
+
+  window.addEventListener("bos:domain-event", () => {
+    renderNotificationBell();
+    if (panel && !panel.classList.contains("hidden")) renderNotificationPanel();
   });
 
   window.addEventListener("bos:mark-notifications-read", () => {
     markAllRead();
-    renderNotificationBell();
     renderNotificationPanel();
+    renderNotificationBell();
   });
+
+  const deferSync = () => {
+    syncServerNotifications().then(() => {
+      renderNotificationBell();
+    });
+  };
+  if (typeof requestIdleCallback === "function") {
+    requestIdleCallback(deferSync, { timeout: 3000 });
+  } else {
+    setTimeout(deferSync, 500);
+  }
 }

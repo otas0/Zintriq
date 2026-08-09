@@ -1,0 +1,83 @@
+<div class="material-sheet workspace" id="workspace"
+     data-csrf="{{ csrf_token() }}"
+     data-mode="{{ workspace_mode }}"
+     data-focus-group="{{ focus_group_id|default('') }}">
+  <aside class="material-panel workspace-sidebar">
+  <div class="workspace-sidebar-head">
+    <h2>Filters</h2>
+  </div>
+
+    <section class="sidebar-section">
+      <h3>Smart views</h3>
+      <nav class="sidebar-nav" id="smart-views">
+        <button type="button" class="sidebar-link active" data-view="all">All stores <span class="count" data-count="all"></span></button>
+        <button type="button" class="sidebar-link" data-view="active">Active <span class="count" data-count="active"></span></button>
+        <button type="button" class="sidebar-link" data-view="archived">Archived <span class="count" data-count="archived"></span></button>
+        <button type="button" class="sidebar-link" data-view="ungrouped">Ungrouped <span class="count" data-count="ungrouped"></span></button>
+        <button type="button" class="sidebar-link" data-view="recent">Recently updated</button>
+      </nav>
+    </section>
+
+    <section class="sidebar-section">
+      <h3>Groups</h3>
+      <nav class="sidebar-nav" id="group-list"></nav>
+    </section>
+
+    <section class="sidebar-section">
+      <h3>Labels</h3>
+      <nav class="sidebar-nav" id="label-list"></nav>
+    </section>
+  </aside>
+
+  <main class="workspace-main">
+    <header class="material-panel workspace-toolbar">
+      <div class="search-wrap">
+        <input type="search" id="workspace-search" class="os-input" placeholder="Search stores, groups, labels, QR, address…" autocomplete="off">
+      </div>
+      <div class="toolbar-actions">
+        <label class="checkbox-label"><input type="checkbox" id="workspace-select-all"> Select all</label>
+      </div>
+    </header>
+
+    <div class="workspace-active-filters" id="active-filters"></div>
+    <div class="workspace-list" id="store-list"></div>
+    <div class="workspace-empty hidden" id="workspace-empty">
+      <p>No stores match your current view.</p>
+      <a class="button" href="{{ url_for('create_store') }}">Create store <span>+</span></a>
+    </div>
+  </main>
+</div>
+
+<div class="material-panel workspace-action-bar hidden" id="action-bar">
+  <span class="action-bar-count" id="action-bar-count">0 selected</span>
+  <div class="action-bar-buttons">
+    <button type="button" class="outline small" data-batch="archive">Archive</button>
+    <button type="button" class="outline small" data-batch="activate">Activate</button>
+    <button type="button" class="outline small" data-popover="move-group">Move</button>
+    <button type="button" class="outline small" data-popover="labels">Labels</button>
+    <button type="button" class="outline small" data-batch="duplicate">Duplicate</button>
+    <button type="button" class="outline small" data-batch="export">Export</button>
+    <button type="button" class="danger-button small" data-batch="delete">Delete</button>
+  </div>
+</div>
+
+<aside class="material-overlay workspace-drawer hidden" id="store-drawer" aria-hidden="true">
+  <div class="drawer-header">
+    <h2 id="drawer-title">Store details</h2>
+    <button type="button" class="drawer-close" id="drawer-close" aria-label="Close">×</button>
+  </div>
+  <div class="drawer-body" id="drawer-body"></div>
+</aside>
+
+<div class="material-overlay workspace-popover hidden" id="workspace-popover">
+  <div class="popover-head" id="popover-title"></div>
+  <div class="popover-body" id="popover-body"></div>
+</div>
+
+<div class="workspace-context-menu hidden" id="context-menu"></div>
+<div class="material-feedback workspace-toast hidden" id="workspace-toast"></div>
+
+<script>
+  window.WORKSPACE_BOOT = {{ workspace | tojson }};
+</script>
+<script src="{{ url_for('static', filename='workspace.js') }}"></script>

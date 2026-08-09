@@ -1,0 +1,70 @@
+{% extends 'bos/shell.html' %}
+{% block bos_title %}Two-factor authentication — Business OS{% endblock %}
+{% block bos_content %}
+<div class="merchant-page bos-account-page">
+  <header class="merchant-page-head bos-ui-page-header">
+    <div class="merchant-page-head__text">
+      <h1 class="merchant-page-head__title">Two-factor authentication</h1>
+      <p class="merchant-page-head__subtitle">{% if enabled %}Your account requires a code from your authenticator app when signing in.{% else %}Add an extra layer of protection with an authenticator app.{% endif %}</p>
+    </div>
+    <div class="merchant-page-head__actions">
+      <a class="bos-btn bos-btn-ghost bos-btn-sm" href="{{ url_for('account') }}">← Back to account</a>
+    </div>
+  </header>
+
+  <div class="bos-account-stack">
+    {% if enabled %}
+    <section class="material-panel bos-panel">
+      <div class="bos-2fa-status">
+        <span class="bos-tag bos-tag--success">Enabled</span>
+        <p class="bos-2fa-status-text">You'll enter a 6-digit code from your authenticator app after your password at sign-in.</p>
+      </div>
+    </section>
+    <section class="bos-danger-zone">
+      <h2>Disable two-factor authentication</h2>
+      <p>Your account will only require a password to sign in.</p>
+      <form class="bos-form" method="post" action="{{ url_for('disable_two_factor') }}">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <div class="bos-field">
+          <label class="bos-label">Confirm with password</label>
+          <input class="bos-input" type="password" name="password" autocomplete="current-password" required>
+        </div>
+        <button class="bos-btn bos-btn-danger" type="submit">Disable 2FA</button>
+      </form>
+    </section>
+    {% else %}
+    <section class="material-panel bos-panel">
+      <ol class="bos-2fa-steps">
+        <li>
+          <h2 class="bos-panel-title">Install an authenticator app</h2>
+          <p>Use Google Authenticator, Authy, 1Password, or any compatible app.</p>
+        </li>
+        <li>
+          <h2 class="bos-panel-title">Scan this QR code</h2>
+          <p>Open your app and scan the code below.</p>
+          <div class="bos-2fa-qr-wrap">
+            <img class="bos-2fa-qr" src="{{ qr_image }}" alt="QR code to configure your authenticator app">
+          </div>
+          <div class="bos-2fa-manual">
+            <p class="bos-label">Can't scan it? Enter this key manually</p>
+            <code class="bos-2fa-secret">{{ secret }}</code>
+          </div>
+        </li>
+        <li>
+          <h2 class="bos-panel-title">Enter the 6-digit code</h2>
+          <p>Type the code your app generates to finish setup.</p>
+          <form class="bos-form bos-2fa-verify-form" method="post">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <div class="bos-field">
+              <label class="bos-label">Authentication code</label>
+              <input class="bos-input bos-input-code" name="code" inputmode="numeric" autocomplete="one-time-code" pattern="[0-9]{6}" maxlength="6" placeholder="000000" required>
+            </div>
+            <button class="bos-btn bos-btn-primary" type="submit">Enable 2FA</button>
+          </form>
+        </li>
+      </ol>
+    </section>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}

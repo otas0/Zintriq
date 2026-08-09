@@ -1,0 +1,37 @@
+{# Deals row — pink header + vertical tiles in horizontal scroll #}
+{% if deals and store_view == 'shop' %}
+<section class="sf-deals-bar" aria-label="Deals">
+  <div class="sf-deals-bar__head">
+    <h2 class="sf-deals-bar__title">Deals</h2>
+    <div class="sf-deals-bar__nav">
+      <button type="button" class="sf-deals-bar__arrow" id="sf-deals-prev" aria-label="Previous deals">‹</button>
+      <button type="button" class="sf-deals-bar__arrow" id="sf-deals-next" aria-label="Next deals">›</button>
+    </div>
+    <a class="sf-deals-bar__see-all" href="{{ url_for('store_preview' if preview_mode else 'storefront', slug=store.slug, view='deals') }}">See all</a>
+  </div>
+  <div class="sf-deals-bar__track" id="sf-deals-track">
+    {% for deal in deals %}
+    {% set item_id = deal.item_id %}
+    {% set href = url_for('item_preview' if preview_mode else 'customer_item_detail', slug=store.slug, item_id=item_id) %}
+    <a class="sf-tile sf-tile--deal" href="{{ href }}" data-search="{{ deal.item_name|lower }}">
+      <div class="sf-tile__media">
+        <span class="sf-tile__badge">{{ deal.label }}</span>
+        {% if deal.image_url %}
+        <img src="{{ deal.image_url }}" alt="">
+        {% else %}
+        <span class="sf-tile__placeholder">{{ deal.item_name[0]|upper }}</span>
+        {% endif %}
+        <span class="sf-tile__add" aria-hidden="true">+</span>
+      </div>
+      <div class="sf-tile__body">
+        <p class="sf-tile__prices">
+          <strong>${{ '%.2f'|format(deal.sale_price) }}</strong>
+          <s>${{ '%.2f'|format(deal.compare_at_price) }}</s>
+        </p>
+        <p class="sf-tile__name">{{ deal.item_name }}</p>
+      </div>
+    </a>
+    {% endfor %}
+  </div>
+</section>
+{% endif %}

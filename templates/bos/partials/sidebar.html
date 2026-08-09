@@ -1,32 +1,38 @@
-<aside class="material-panel bos-sidebar" id="bos-sidebar" aria-label="Business OS navigation">
+<aside class="material-panel bos-sidebar bos-sidebar--merchant" id="bos-sidebar" aria-label="Business OS navigation">
   <div class="bos-sidebar__top">
-    <a class="bos-brand" href="{{ url_for('bos.home') }}">
+    <a class="bos-brand" href="{{ url_for('bos.store') }}">
       <span class="bos-brand__mark">B</span>
       <span class="bos-brand__text">Business OS</span>
     </a>
     <button type="button" class="bos-sidebar__close" id="bos-sidebar-close" aria-label="Close menu">×</button>
   </div>
-  <nav class="bos-nav">
-    <div class="bos-sidebar-pinned hidden" id="bos-sidebar-pinned"></div>
-    {% for mod in bos_modules %}
-    <a href="{{ url_for('bos.' ~ mod.id) if mod.id != 'home' else url_for('bos.home') }}"
-       class="bos-nav__item{% if module_id|default('') == mod.id %} is-active{% endif %}"
-       data-module-id="{{ mod.id }}">
-      <span class="bos-nav__icon" aria-hidden="true">{{ mod.icon }}</span>
-      <span class="bos-nav__label">{{ mod.label }}</span>
+
+  <div class="bos-sidebar__workspace hidden" id="bos-workspace-switcher" aria-hidden="true"></div>
+
+  <nav class="bos-nav" aria-label="Platforms">
+    <a href="{{ url_for('bos.store') }}"
+       class="bos-nav__item{% if module_id|default('') == 'store' %} is-active{% endif %}"
+       data-module-id="store">
+      <span class="bos-nav__icon" aria-hidden="true">▣</span>
+      <span class="bos-nav__label">Stores</span>
     </a>
-    {% if mod.id == 'organizations' %}
-    <a href="{{ url_for('my_stores') }}"
-       class="bos-nav__item bos-nav__item--workspace{% if active_app_nav == 'qr' %} is-active{% endif %}">
-      <span class="bos-nav__icon" aria-hidden="true">⬡</span>
-      <span class="bos-nav__label">QR Workspace</span>
+    <a href="{{ url_for('bos.team') }}"
+       class="bos-nav__item{% if module_id|default('') == 'team' %} is-active{% endif %}"
+       data-module-id="team">
+      <span class="bos-nav__icon" aria-hidden="true">◈</span>
+      <span class="bos-nav__label">Team</span>
     </a>
-    {% endif %}
-    {% endfor %}
+    <a href="{{ url_for('bos.settings') }}"
+       class="bos-nav__item{% if module_id|default('') in ('settings', 'workspaces') %} is-active{% endif %}"
+       data-module-id="settings">
+      <span class="bos-nav__icon" aria-hidden="true">⚙</span>
+      <span class="bos-nav__label">Settings</span>
+    </a>
   </nav>
+
   <div class="bos-sidebar__foot">
     {% if current_user %}<p class="bos-user">{{ current_user.email }}</p>{% endif %}
-    <a class="bos-nav__item" href="{{ url_for('account') }}"><span class="bos-nav__icon">⚙</span> Account</a>
+    <a class="bos-nav__item{% if module_id|default('') == 'account' %} is-active{% endif %}" href="{{ url_for('account') }}"><span class="bos-nav__icon">👤</span> Account</a>
     <form method="post" action="{{ url_for('logout') }}">
       <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
       <button type="submit" class="bos-nav__item bos-nav__button">Sign out</button>

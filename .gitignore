@@ -1,0 +1,16 @@
+.env.local
+.DS_Store
+node_modules/
+mobile/node_modules/
+mobile/android/
+mobile/ios/
+mobile/capacitor.config.json
+*.apk
+*.aab
+*.ipa
+.cloudflared-tunnel.log
+.cloudflared-tunnel.pid
+marketqr.db-shm
+marketqr.db-wal
+static/uploads/*
+!static/uploads/.gitkeep

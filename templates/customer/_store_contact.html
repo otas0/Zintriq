@@ -1,0 +1,46 @@
+{# Store contact + order inquiry form #}
+<section class="sf-inquiry" id="sf-contact">
+  <div class="sf-inquiry__head">
+    <p class="sf-inquiry__eyebrow">Ready to buy?</p>
+    <h2 class="sf-inquiry__title">Contact {{ store.owner_name or store.name }}</h2>
+    {% if store.contact %}<p class="sf-inquiry__direct">{{ store.contact }}</p>{% endif %}
+    <small class="sf-inquiry__note">MarketQR does not process payments. Arrange payment directly with the business.</small>
+  </div>
+
+  {% with messages = get_flashed_messages(with_categories=true) %}
+  {% if messages %}
+  <div class="sf-inquiry__flashes">
+    {% for category, message in messages %}
+    <p class="mq-flash mq-flash-{{ category }}">{{ message }}</p>
+    {% endfor %}
+  </div>
+  {% endif %}
+  {% endwith %}
+
+  {% if not preview_mode %}
+  <form class="sf-inquiry__form" method="post" action="{{ url_for('storefront_inquire', slug=store.slug) }}">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <div class="sf-inquiry__grid">
+      <label class="sf-inquiry__field">
+        <span class="sf-inquiry__label">Your name *</span>
+        <input class="sf-inquiry__input" name="customer_name" required autocomplete="name">
+      </label>
+      <label class="sf-inquiry__field">
+        <span class="sf-inquiry__label">Email</span>
+        <input class="sf-inquiry__input" type="email" name="customer_email" autocomplete="email">
+      </label>
+      <label class="sf-inquiry__field">
+        <span class="sf-inquiry__label">Phone</span>
+        <input class="sf-inquiry__input" type="tel" name="customer_phone" autocomplete="tel">
+      </label>
+    </div>
+    <label class="sf-inquiry__field">
+      <span class="sf-inquiry__label">Message</span>
+      <textarea class="sf-inquiry__input sf-inquiry__textarea" name="message" rows="3" placeholder="What would you like to order or ask about?"></textarea>
+    </label>
+    <button class="mq-btn mq-btn-primary" type="submit">Send request</button>
+  </form>
+  {% else %}
+  <p class="sf-inquiry__preview-note">Inquiry form is disabled in preview mode.</p>
+  {% endif %}
+</section>

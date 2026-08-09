@@ -1,0 +1,29 @@
+{% extends 'owner_base.html' %}
+{% from 'owner/_feedback_nav.html' import feedback_nav %}
+{% set active_tab = 'feedback' %}
+{% block title %}Settings — Feedback{% endblock %}
+{% block os_header %}
+<h1 class="os-page-title">Settings</h1>
+<p class="os-page-subtitle">Feedback platform configuration for this store.</p>
+{% endblock %}
+{% block owner_content %}
+{{ feedback_nav(store, fb_section) }}
+
+<form method="post" class="os-card os-card-padded os-form fb-settings-form">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+  <h2 class="fb-panel__title">Privacy</h2>
+  <label class="fb-check"><input type="checkbox" name="anonymous_allowed" value="1"{% if settings.anonymous_allowed %} checked{% endif %}> Allow anonymous feedback</label>
+  <label class="fb-check"><input type="checkbox" name="require_login" value="1"{% if settings.require_login %} checked{% endif %}> Require login (future)</label>
+
+  <h2 class="fb-panel__title">Notifications</h2>
+  <label class="fb-check"><input type="checkbox" name="notify_new" value="1"{% if settings.notify_new %} checked{% endif %}> Notify on new feedback</label>
+  <label class="fb-check"><input type="checkbox" name="notify_negative" value="1"{% if settings.notify_negative %} checked{% endif %}> Notify on negative reviews (≤2 stars)</label>
+
+  <h2 class="fb-panel__title">Defaults</h2>
+  <div class="os-field"><label class="os-label">Default thank you message</label><textarea class="os-textarea" name="thank_you_message" rows="2">{{ settings.thank_you_message or '' }}</textarea></div>
+  <div class="os-field"><label class="os-label">Auto-close after (days, 0 = never)</label><input class="os-input" type="number" name="auto_close_days" min="0" value="{{ settings.auto_close_days or 0 }}"></div>
+
+  <button class="os-btn os-btn-primary" type="submit">Save settings</button>
+</form>
+<link rel="stylesheet" href="{{ url_for('static', filename='feedback.css') }}">
+{% endblock %}

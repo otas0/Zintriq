@@ -86,5 +86,5 @@ export function groupRelatedObjects(collection, id) {
 }
 
 export function getModulePath(collection) {
-  return getObjectType(collection)?.modulePath || "/app";
+  return getObjectType(collection)?.modulePath || "/app/store";
 }

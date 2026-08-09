@@ -1,0 +1,849 @@
+/* Business OS — Merchant UI (Uber Eats × Shopify) */
+
+/* ── Top bar ── */
+.bos-toolbar--merchant {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 10px 20px;
+  background: #fff;
+  border-bottom: 1px solid #ebebeb;
+}
+
+.bos-toolbar--merchant .bos-toolbar__menu {
+  display: none;
+}
+
+.bos-toolbar--merchant .bos-toolbar__center {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+  flex: 1;
+}
+
+.bos-toolbar--merchant .bos-topbar-workspace-mount {
+  position: relative;
+  flex-shrink: 0;
+}
+
+.bos-toolbar--merchant .ws-switcher__trigger {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 12px;
+  border: 1px solid #e5e5e5;
+  border-radius: 999px;
+  background: #fff;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  max-width: 220px;
+}
+
+.bos-toolbar--merchant .ws-switcher__label {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.bos-toolbar--merchant .ws-switcher__dropdown {
+  left: 0;
+  right: auto;
+}
+
+.bos-toolbar--merchant .bos-search-trigger {
+  flex: 1;
+  max-width: 480px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 16px;
+  border: none;
+  border-radius: 999px;
+  background: #f3f3f3;
+  font-size: 14px;
+  color: #6b6b6b;
+  cursor: pointer;
+  text-align: left;
+}
+
+.bos-toolbar--merchant .bos-search-trigger:hover {
+  background: #ebebeb;
+}
+
+.bos-toolbar--merchant .bos-toolbar__actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-left: auto;
+}
+
+.bos-toolbar--merchant .bos-notifications-wrap {
+  position: relative;
+}
+
+.bos-toolbar--merchant .bos-notifications-btn,
+.bos-toolbar--merchant .bos-user-menu {
+  width: 40px;
+  height: 40px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  border: 1px solid #e5e5e5;
+  background: #fff;
+  text-decoration: none;
+  font-size: 16px;
+}
+
+.bos-toolbar--merchant .bos-header {
+  display: none;
+}
+
+.bos-toolbar--merchant .bos-breadcrumbs {
+  display: none;
+}
+
+/* ── Sidebar (resource nav) ── */
+.bos-sidebar--merchant .bos-sidebar__workspace {
+  display: none;
+}
+
+.bos-sidebar--merchant .bos-nav__item.is-active {
+  background: #f3f3f3;
+  color: #000;
+  font-weight: 600;
+}
+
+.bos-sidebar--merchant .bos-sidebar__foot .bos-nav__item[href*="my-stores"] {
+  display: none;
+}
+
+/* ── Page layout ── */
+.merchant-page {
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+.merchant-page-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 24px;
+}
+
+.merchant-page-head__title {
+  margin: 0;
+  font-size: 24px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+}
+
+.merchant-page-head__subtitle {
+  margin: 6px 0 0;
+  font-size: 14px;
+  color: #6b6b6b;
+}
+
+.merchant-welcome {
+  margin-bottom: 28px;
+}
+
+.merchant-welcome__title {
+  margin: 0;
+  font-size: 26px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+}
+
+.merchant-welcome__hint {
+  margin: 8px 0 0;
+  font-size: 15px;
+  color: #6b6b6b;
+}
+
+/* ── Quick actions ── */
+.merchant-quick-actions {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 12px;
+  margin-bottom: 28px;
+}
+
+.merchant-quick-action {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  padding: 18px 20px;
+  border-radius: 12px;
+  font-size: 15px;
+  font-weight: 600;
+  text-decoration: none;
+  transition: transform 0.15s, box-shadow 0.15s;
+}
+
+.merchant-quick-action--primary {
+  background: #000;
+  color: #fff;
+}
+
+.merchant-quick-action--secondary {
+  background: #fff;
+  color: #000;
+  border: 1px solid #e5e5e5;
+}
+
+.merchant-quick-action:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+}
+
+.merchant-quick-action__icon {
+  font-size: 18px;
+}
+
+/* ── Sections ── */
+.merchant-section {
+  margin-bottom: 32px;
+}
+
+.merchant-section__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 16px;
+}
+
+.merchant-section__title {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 700;
+}
+
+.merchant-link {
+  font-size: 14px;
+  font-weight: 600;
+  color: #000;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+/* ── Card grid ── */
+.merchant-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: 16px;
+}
+
+.merchant-grid--responses {
+  grid-template-columns: 1fr;
+  max-width: 720px;
+}
+
+/* ── QR Experience card ── */
+.merchant-qr-card {
+  background: #fff;
+  border: 1px solid #ebebeb;
+  border-radius: 16px;
+  overflow: hidden;
+  transition: box-shadow 0.15s, border-color 0.15s;
+}
+
+.merchant-qr-card:hover {
+  border-color: #d4d4d4;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.06);
+}
+
+.merchant-qr-card__preview {
+  aspect-ratio: 4/3;
+  background: #f7f7f7;
+  display: grid;
+  place-items: center;
+  border-bottom: 1px solid #ebebeb;
+}
+
+.merchant-qr-card__preview-img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  padding: 16px;
+}
+
+.merchant-qr-card__preview-placeholder {
+  font-size: 48px;
+  opacity: 0.25;
+}
+
+.merchant-qr-card__body {
+  padding: 16px;
+}
+
+.merchant-qr-card__head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 6px;
+}
+
+.merchant-qr-card__title {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 700;
+  line-height: 1.3;
+}
+
+.merchant-qr-card__type {
+  margin: 0 0 10px;
+  font-size: 13px;
+  color: #6b6b6b;
+  text-transform: capitalize;
+}
+
+.merchant-qr-card__stats {
+  display: flex;
+  gap: 12px;
+  font-size: 13px;
+  color: #6b6b6b;
+  margin-bottom: 14px;
+}
+
+.merchant-qr-card__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.merchant-qr-card--compact .merchant-qr-card__body {
+  padding: 14px 16px;
+}
+
+.merchant-qr-card--compact {
+  cursor: pointer;
+}
+
+/* ── Response card ── */
+.merchant-response-card {
+  background: #fff;
+  border: 1px solid #ebebeb;
+  border-radius: 12px;
+  padding: 16px 18px;
+  cursor: pointer;
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+
+.merchant-response-card:hover {
+  border-color: #d4d4d4;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.05);
+}
+
+.merchant-response-card__head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 8px;
+}
+
+.merchant-response-card__type {
+  font-size: 12px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: #6b6b6b;
+}
+
+.merchant-response-card__rating {
+  color: #000;
+  font-size: 14px;
+  letter-spacing: 1px;
+}
+
+.merchant-response-card__comment {
+  margin: 0 0 10px;
+  font-size: 15px;
+  line-height: 1.45;
+  color: #000;
+}
+
+.merchant-response-card__meta {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  font-size: 13px;
+  color: #6b6b6b;
+}
+
+/* ── Member card ── */
+.merchant-member-card {
+  display: flex;
+  gap: 14px;
+  background: #fff;
+  border: 1px solid #ebebeb;
+  border-radius: 12px;
+  padding: 16px;
+  cursor: pointer;
+  transition: border-color 0.15s;
+}
+
+.merchant-member-card:hover {
+  border-color: #d4d4d4;
+}
+
+.merchant-member-card__avatar {
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  background: #f3f3f3;
+  display: grid;
+  place-items: center;
+  font-weight: 700;
+  font-size: 14px;
+  flex-shrink: 0;
+}
+
+.merchant-member-card__name {
+  margin: 0 0 2px;
+  font-size: 15px;
+  font-weight: 700;
+}
+
+.merchant-member-card__email {
+  margin: 0 0 10px;
+  font-size: 13px;
+  color: #6b6b6b;
+}
+
+.merchant-member-card__foot {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.merchant-member-card__role {
+  font-size: 12px;
+  font-weight: 600;
+  text-transform: capitalize;
+  color: #6b6b6b;
+}
+
+/* ── Settings layout ── */
+.merchant-settings {
+  display: grid;
+  grid-template-columns: 240px 1fr;
+  gap: 24px;
+  align-items: start;
+}
+
+.merchant-settings-nav {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  position: sticky;
+  top: 80px;
+}
+
+.merchant-settings-nav__item {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+  padding: 12px 14px;
+  border: none;
+  border-radius: 10px;
+  background: transparent;
+  text-align: left;
+  cursor: pointer;
+  width: 100%;
+}
+
+.merchant-settings-nav__item:hover {
+  background: #f3f3f3;
+}
+
+.merchant-settings-nav__item.is-active {
+  background: #f3f3f3;
+  font-weight: 600;
+}
+
+.merchant-settings-nav__label {
+  font-size: 14px;
+}
+
+.merchant-settings-nav__hint {
+  font-size: 12px;
+  color: #6b6b6b;
+}
+
+/* ── Status badges (merchant) ── */
+.bos-badge--disabled,
+.bos-badge--paused {
+  background: #fef3c7;
+  color: #92400e;
+}
+
+.bos-badge--active {
+  background: #dcfce7;
+  color: #166534;
+}
+
+.bos-badge--draft {
+  background: #f3f4f6;
+  color: #374151;
+}
+
+.bos-badge--archived {
+  background: #f3f4f6;
+  color: #9ca3af;
+}
+
+.bos-badge--needs_attention {
+  background: #fef3c7;
+  color: #92400e;
+}
+
+.merchant-search {
+  max-width: 320px;
+  border-radius: 999px;
+  padding: 10px 16px;
+  border: none;
+  background: #f3f3f3;
+}
+
+.merchant-search:focus {
+  outline: 2px solid #000;
+  background: #fff;
+}
+
+.bos-workspace {
+  padding: 20px 24px 32px;
+}
+@media (max-width: 900px) {
+  .bos-toolbar--merchant {
+    grid-template-columns: auto 1fr auto;
+  }
+
+  .bos-toolbar--merchant .bos-toolbar__menu {
+    display: grid;
+    place-items: center;
+  }
+
+  .bos-toolbar--merchant .bos-search-trigger__hint,
+  .bos-toolbar--merchant .bos-kbd {
+    display: none;
+  }
+
+  .merchant-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .merchant-settings {
+    grid-template-columns: 1fr;
+  }
+
+  .merchant-settings-nav {
+    flex-direction: row;
+    overflow-x: auto;
+    position: static;
+    padding-bottom: 8px;
+  }
+
+  .merchant-settings-nav__item {
+    flex-shrink: 0;
+  }
+
+  .merchant-quick-actions {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 768px) {
+  .bos-app {
+    grid-template-columns: 1fr;
+  }
+
+  .bos-sidebar {
+    position: fixed;
+    left: 0;
+    top: 0;
+    transform: translateX(-100%);
+    transition: transform 0.2s;
+  }
+
+  .bos-sidebar.is-open {
+    transform: translateX(0);
+  }
+}
+
+/* Store hub — workspace + experiences + responses */
+.bos-store-hub {
+  width: 100%;
+  max-width: none;
+}
+
+.bos-store-hub__tabs {
+  margin-bottom: 20px;
+}
+
+.bos-store-hub__panel .workspace {
+  min-height: 480px;
+}
+
+/* Account page — matches BOS shell typography & spacing */
+.bos-account-page {
+  max-width: 560px;
+}
+
+.bos-account-stack {
+  display: grid;
+  gap: 16px;
+}
+
+.bos-account-stack .bos-panel {
+  padding: 20px;
+}
+
+.bos-panel-head--split {
+  align-items: flex-start;
+  margin-bottom: 0;
+}
+
+.bos-panel-desc {
+  margin: 4px 0 0;
+  font-size: 13px;
+  color: var(--color-text-secondary);
+}
+
+.bos-account-stack .bos-form .bos-field + .bos-field {
+  margin-top: 12px;
+}
+
+.bos-account-stack .bos-form .bos-btn {
+  margin-top: 16px;
+}
+
+.bos-danger-zone {
+  margin-top: 8px;
+  padding: 20px;
+  border: 1px solid rgba(248, 113, 113, 0.25);
+  border-radius: var(--mq-radius-sm);
+  background: rgba(254, 226, 226, 0.45);
+}
+
+.bos-danger-zone h2 {
+  margin: 0 0 6px;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--mq-danger, #dc2626);
+}
+
+.bos-danger-zone p {
+  margin: 0 0 14px;
+  font-size: 13px;
+  color: var(--color-text-secondary);
+}
+
+.bos-confirm-modal {
+  position: fixed;
+  inset: 0;
+  z-index: 400;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+}
+
+.bos-confirm-modal[hidden] {
+  display: none;
+}
+
+.bos-confirm-modal__backdrop {
+  position: absolute;
+  inset: 0;
+  background: rgba(17, 17, 17, 0.4);
+}
+
+.bos-confirm-modal__panel {
+  position: relative;
+  width: min(440px, 100%);
+  padding: 24px;
+  border-radius: var(--mq-radius-sm);
+}
+
+.bos-confirm-modal__title {
+  margin: 0 0 8px;
+  font-size: 18px;
+  font-weight: 600;
+}
+
+.bos-confirm-modal__text {
+  margin: 0 0 20px;
+  font-size: 14px;
+  line-height: 1.5;
+  color: var(--color-text-secondary);
+}
+
+.bos-confirm-modal__actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+body.bos-confirm-modal-open {
+  overflow: hidden;
+}
+
+.bos-2fa-status {
+  display: grid;
+  gap: 12px;
+}
+
+.bos-2fa-status-text {
+  margin: 0;
+  font-size: 13px;
+  color: var(--color-text-secondary);
+}
+
+.bos-tag--success {
+  display: inline-block;
+  padding: 4px 10px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 600;
+  background: rgba(52, 211, 153, 0.15);
+  color: var(--mq-success, #059669);
+}
+
+.bos-2fa-steps {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.bos-2fa-steps > li + li {
+  margin-top: 24px;
+  padding-top: 24px;
+  border-top: 1px solid var(--color-border);
+}
+
+.bos-2fa-steps p {
+  margin: 6px 0 0;
+  font-size: 13px;
+  color: var(--color-text-secondary);
+}
+
+.bos-2fa-qr-wrap {
+  margin-top: 12px;
+}
+
+.bos-2fa-qr {
+  width: 180px;
+  height: 180px;
+  border-radius: 8px;
+  border: 1px solid var(--color-border);
+}
+
+.bos-2fa-manual {
+  margin-top: 16px;
+}
+
+.bos-2fa-secret {
+  display: block;
+  margin-top: 6px;
+  padding: 10px 12px;
+  font-family: ui-monospace, monospace;
+  font-size: 13px;
+  background: var(--color-surface-subtle, #fafafa);
+  border: 1px solid var(--color-border);
+  border-radius: 6px;
+  word-break: break-all;
+}
+
+.bos-input-code {
+  letter-spacing: 0.2em;
+  font-variant-numeric: tabular-nums;
+  max-width: 200px;
+}
+
+/* Experiences batch selection */
+.qrx-toolbar .checkbox-label,
+.qrx-select-all {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  color: var(--color-text-secondary);
+  white-space: nowrap;
+  cursor: pointer;
+  user-select: none;
+}
+
+.qrx-card-wrap {
+  position: relative;
+}
+
+.qrx-card-wrap.is-selected .merchant-qr-card {
+  border-color: var(--color-text-primary, #111);
+  box-shadow: 0 0 0 1px var(--color-text-primary, #111);
+}
+
+.qrx-row-check {
+  position: absolute;
+  top: 10px;
+  left: 10px;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  margin: 0;
+  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.92);
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.08);
+  cursor: pointer;
+}
+
+.qrx-row-check input {
+  width: 16px;
+  height: 16px;
+  margin: 0;
+  cursor: pointer;
+}
+
+.bos-store-empty-banner {
+  margin-bottom: 20px;
+  padding: 20px 24px;
+}
+
+.bos-store-empty-banner .bos-panel-title {
+  margin: 0 0 8px;
+}
+
+.bos-store-empty-banner p {
+  margin: 0 0 16px;
+  font-size: 14px;
+}
+
+.qrx-store-filter {
+  margin: 0 0 12px;
+  font-size: 13px;
+}
+
+body.has-action-bar {
+  padding-bottom: 72px;
+}
+
+.bos-tag--muted {
+  display: inline-block;
+  margin-bottom: 8px;
+  padding: 4px 10px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 600;
+  background: var(--color-surface-subtle, #f4f4f5);
+  color: var(--color-text-secondary);
+}

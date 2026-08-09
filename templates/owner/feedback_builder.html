@@ -1,0 +1,52 @@
+{% extends 'owner_base.html' %}
+{% from 'owner/_feedback_nav.html' import feedback_nav %}
+{% set active_tab = 'feedback' %}
+{% block title %}{{ template.name }} — Builder{% endblock %}
+{% block os_header %}
+<h1 class="os-page-title">{{ template.name }}</h1>
+<p class="os-page-subtitle">Configure blocks and customer experience.</p>
+{% endblock %}
+{% block os_actions %}
+<a class="os-btn os-btn-primary" href="{{ url_for('manage_feedback_publish', slug=store.slug, template_id=template.id) }}">Publish</a>
+{% endblock %}
+{% block owner_content %}
+{{ feedback_nav(store, fb_section) }}
+
+<div class="fb-builder-layout">
+  <aside class="fb-builder-palette os-card os-card-padded">
+    <h2 class="fb-panel__title">Add block</h2>
+    <div class="fb-block-palette" id="fb-block-palette">
+      {% for bt in block_types %}
+      <button type="button" class="fb-palette-btn" data-block-type="{{ bt }}">{{ bt|replace('_', ' ') }}</button>
+      {% endfor %}
+    </div>
+  </aside>
+  <section class="fb-builder-canvas os-card os-card-padded">
+    <form method="post" id="fb-builder-form" class="os-form">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <input type="hidden" name="blocks_json" id="fb-blocks-json" value="">
+      <div class="os-grid-2">
+        <div class="os-field"><label class="os-label">Template name</label><input class="os-input" name="name" value="{{ template.name }}" required></div>
+        <div class="os-field"><label class="os-label">Type</label><select class="os-select" name="feedback_type">{% for t in feedback_types %}<option value="{{ t }}"{% if template.feedback_type == t %} selected{% endif %}>{{ t }}</option>{% endfor %}</select></div>
+      </div>
+      <div class="os-field"><label class="os-label">Description</label><input class="os-input" name="description" value="{{ template.description or '' }}"></div>
+      <div class="os-field"><label class="os-label">Thank you message</label><input class="os-input" name="thank_you_message" value="{{ template.thank_you_message or '' }}"></div>
+      <div class="os-field"><label class="os-label">Status</label><select class="os-select" name="status"><option value="draft"{% if template.status == 'draft' %} selected{% endif %}>draft</option><option value="published"{% if template.status == 'published' %} selected{% endif %}>published</option><option value="archived"{% if template.status == 'archived' %} selected{% endif %}>archived</option></select></div>
+      <h2 class="fb-panel__title">Blocks</h2>
+      <div id="fb-builder-blocks" class="fb-builder-blocks"></div>
+      <div class="os-actions-row" style="margin-top:20px">
+        <button class="os-btn os-btn-primary" type="submit" name="action" value="save">Save template</button>
+      </div>
+    </form>
+    <form method="post" class="confirm-form os-actions-row" style="margin-top:12px" data-confirm="Delete this template? Publications will be removed. Existing feedback will be kept.">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <input type="hidden" name="action" value="delete">
+      <button class="os-btn os-btn-danger os-btn-ghost" type="submit">Delete template</button>
+    </form>
+  </section>
+</div>
+<script>window.FB_BUILDER_BOOT = {{ {'blocks': blocks}|tojson }};</script>
+<link rel="stylesheet" href="{{ url_for('static', filename='feedback.css') }}">
+<script src="{{ url_for('static', filename='feedback-builder.js') }}"></script>
+<script src="{{ url_for('static', filename='owner.js') }}"></script>
+{% endblock %}

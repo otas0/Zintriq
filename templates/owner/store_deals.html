@@ -1,0 +1,94 @@
+{% extends 'owner_base.html' %}
+{% set active_tab = 'deals' %}
+{% block title %}Deals — {{ store.name }}{% endblock %}
+{% block os_head %}
+<link rel="stylesheet" href="{{ url_for('static', filename='storefront.css') }}">
+{% endblock %}
+{% block os_header %}
+<h1 class="os-page-title">Deals &amp; promotions</h1>
+<p class="os-page-subtitle">Set discounts and schedules — customers see a deals bar and sale badges on your storefront.</p>
+{% endblock %}
+{% block os_actions %}
+<a class="os-btn os-btn-ghost" href="{{ url_for('store_preview', slug=store.slug, view='deals') }}" target="_blank" rel="noopener">Preview deals ↗</a>
+{% endblock %}
+{% block owner_content %}
+<div class="sf-owner-split">
+<div class="sf-owner-split__main">
+<form class="panel os-card os-form" method="post">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+  {% if not items %}
+  <p class="cp-muted">Add published products first, then set deals here.</p>
+  <a class="os-btn os-btn-primary" href="{{ url_for('manage_store', slug=store.slug) }}">Go to products</a>
+  {% else %}
+  <div class="sf-deals-editor">
+    {% for item in items %}
+    {% set deal = deals_by_item.get(item.id) %}
+    {% set row = deal_rows.get(item.id) %}
+    {% set schedule = deal_status_by_item.get(item.id) %}
+    <article class="sf-deals-row material-panel">
+      <div class="sf-deals-row__product">
+        <strong>{{ item.name }}</strong>
+        <span class="cp-muted">${{ '%.2f'|format(item.price) }}{% if item.status != 'published' %} · {{ item.status }}{% endif %}</span>
+        {% if schedule %}<span class="sf-deals-status sf-deals-status--{{ schedule }}">{{ schedule }}</span>{% endif %}
+      </div>
+      <label class="checkbox-label">
+        <input type="checkbox" name="deal_enabled_{{ item.id }}" value="1"{% if deal %} checked{% endif %} data-deal-toggle="{{ item.id }}"> On sale
+      </label>
+      <div class="sf-deals-row__fields" data-deal-fields="{{ item.id }}">
+        <select class="os-select os-select-sm" name="deal_type_{{ item.id }}">
+          <option value="percent"{% if not row or row.discount_type == 'percent' %} selected{% endif %}>% off</option>
+          <option value="fixed"{% if row and row.discount_type == 'fixed' %} selected{% endif %}>$ off</option>
+        </select>
+        <input class="os-input os-input-sm" type="number" step="0.01" min="0" name="deal_value_{{ item.id }}"
+               value="{{ row.discount_value if row else '20' }}" placeholder="20">
+        <input class="os-input os-input-sm" type="text" name="deal_label_{{ item.id }}"
+               value="{{ row.label if row else '' }}" placeholder="Label (optional)">
+        <label class="sf-deals-schedule">
+          <span class="os-label">Starts</span>
+          <input class="os-input os-input-sm" type="datetime-local" name="deal_starts_{{ item.id }}"
+                 value="{{ row.starts_at[:16] if row and row.starts_at else '' }}">
+        </label>
+        <label class="sf-deals-schedule">
+          <span class="os-label">Ends</span>
+          <input class="os-input os-input-sm" type="datetime-local" name="deal_ends_{{ item.id }}"
+                 value="{{ row.ends_at[:16] if row and row.ends_at else '' }}">
+        </label>
+        <label class="checkbox-label">
+          <input type="checkbox" name="deal_featured_{{ item.id }}" value="1"{% if row and row.featured %} checked{% endif %}> Featured in deals bar
+        </label>
+        {% if deal %}
+        <span class="sf-deals-preview">${{ '%.2f'|format(deal.sale_price) }} <s>${{ '%.2f'|format(deal.compare_at_price) }}</s></span>
+        {% endif %}
+      </div>
+    </article>
+    {% endfor %}
+  </div>
+  <button class="os-btn os-btn-primary" type="submit" style="margin-top:16px">Save deals</button>
+  {% endif %}
+</form>
+<script>
+document.querySelectorAll('[data-deal-toggle]').forEach((cb) => {
+  const id = cb.dataset.dealToggle;
+  const fields = document.querySelector(`[data-deal-fields="${id}"]`);
+  const sync = () => { if (fields) fields.style.opacity = cb.checked ? '1' : '0.45'; };
+  cb.addEventListener('change', sync);
+  sync();
+});
+</script>
+<style>
+.sf-deals-editor { display: grid; gap: 12px; }
+.sf-deals-row { padding: 14px 16px; display: grid; gap: 10px; }
+.sf-deals-row__product { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.sf-deals-row__fields { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.sf-deals-schedule { display: flex; flex-direction: column; gap: 2px; font-size: 12px; }
+.sf-deals-preview { font-size: 13px; font-weight: 600; }
+.sf-deals-preview s { color: var(--os-text-muted); font-weight: 400; margin-left: 4px; }
+.sf-deals-status { font-size: 11px; font-weight: 600; text-transform: uppercase; padding: 2px 8px; border-radius: 999px; }
+.sf-deals-status--active { background: #e8f5e9; color: #1b5e20; }
+.sf-deals-status--scheduled { background: #fff3e0; color: #e65100; }
+.sf-deals-status--expired { background: #f5f5f5; color: #757575; }
+</style>
+</div>
+{% include 'owner/_storefront_preview.html' %}
+</div>
+{% endblock %}

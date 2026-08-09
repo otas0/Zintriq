@@ -1,0 +1,72 @@
+{% extends 'owner_base.html' %}
+{% set active_tab = 'groups' %}
+{% block title %}Item groups — {{ store.name }}{% endblock %}
+{% block os_header %}
+<h1 class="os-page-title">Item groups</h1>
+<p class="os-page-subtitle">Organize items into categories like Drinks, Food, or Featured.</p>
+{% endblock %}
+{% block owner_content %}
+<section class="os-card os-card-padded">
+  <h2 class="os-card-title">Create group</h2>
+  <form method="post" class="os-actions-row">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <input type="hidden" name="action" value="create">
+    <input class="os-input" style="flex:1;max-width:280px" name="name" required placeholder="e.g. Drinks">
+    <button class="os-btn os-btn-primary" type="submit">Create</button>
+  </form>
+</section>
+<section class="items">
+  <div class="section-title"><h2>Groups</h2><span class="os-tag">{{ item_groups|length }}</span></div>
+  {% if item_groups %}
+  <form method="post" id="group-reorder-form"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><input type="hidden" name="action" value="reorder"><input type="hidden" name="order" id="group-order"></form>
+  <div class="manage-list sortable-list" data-reorder-input="group-order" data-reorder-form="group-reorder-form">
+    {% for group in item_groups %}
+    <article class="sortable-row" draggable="true" data-id="{{ group.id }}">
+      <div class="drag-handle">⋮⋮</div>
+      <div class="item-icon">{{ group.name[0]|upper }}</div>
+      <div><h3 style="margin:0;font-size:14px">{{ group.name }}</h3><p style="margin:2px 0 0;font-size:12px;color:var(--os-text-muted)">{{ group_counts.get(group.id, 0) }} items</p></div>
+      <form method="post" class="os-actions-row">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <input type="hidden" name="action" value="rename">
+        <input type="hidden" name="group_id" value="{{ group.id }}">
+        <input class="os-input" style="width:140px" name="name" value="{{ group.name }}" required>
+        <button class="os-btn os-btn-ghost os-btn-sm" type="submit">Rename</button>
+      </form>
+      <form method="post" class="confirm-form" data-confirm="Delete group &quot;{{ group.name }}&quot;?">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <input type="hidden" name="action" value="delete">
+        <input type="hidden" name="group_id" value="{{ group.id }}">
+        <button class="os-btn os-btn-danger os-btn-sm" type="submit">Delete</button>
+      </form>
+    </article>
+    {% endfor %}
+  </div>
+  {% else %}
+  <div class="os-empty"><p class="os-empty-title">No groups yet</p><p>Create one to organize your catalog.</p></div>
+  {% endif %}
+</section>
+{% if items %}
+<section class="items">
+  <div class="section-title"><h2>Move items</h2></div>
+  <div class="manage-list">
+    {% for item in items %}
+    <article style="grid-template-columns:36px 1fr auto">
+      <div class="item-icon">{{ item.name[0]|upper }}</div>
+      <div><h3 style="margin:0;font-size:14px">{{ item.name }}</h3><p style="margin:2px 0 0;font-size:12px;color:var(--os-text-muted)">{{ item.group_name or 'Default' }}</p></div>
+      <form method="post" class="os-actions-row">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <input type="hidden" name="action" value="move_item">
+        <input type="hidden" name="item_id" value="{{ item.id }}">
+        <select class="os-select" name="group_id" style="width:auto">
+          <option value=""{% if not item.group_id %} selected{% endif %}>Default</option>
+          {% for group in item_groups %}<option value="{{ group.id }}"{% if item.group_id == group.id %} selected{% endif %}>{{ group.name }}</option>{% endfor %}
+        </select>
+        <button class="os-btn os-btn-ghost os-btn-sm" type="submit">Move</button>
+      </form>
+    </article>
+    {% endfor %}
+  </div>
+</section>
+{% endif %}
+<script src="{{ url_for('static', filename='owner.js') }}"></script>
+{% endblock %}

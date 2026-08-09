@@ -1,5 +1,16 @@
 /**
- * Universal Business Object definitions — single source of truth for the platform graph.
+ * UI property schema for Business OS modules.
+ *
+ * Domain authority (ownership, relationships, lifecycle):
+ *   static/bos/platform/domain-model.js
+ *   bos/domain.py
+ *   docs/bos/DOMAIN_MODEL.md
+ *
+ * Object standards (behavior, interaction, API):
+ *   static/bos/platform/object-standards.js
+ *   bos/object_standards.py
+ *   docs/bos/OBJECT_STANDARDS.md
+ *
  * @typedef {'text'|'number'|'currency'|'date'|'status'|'tag'|'boolean'|'relationship'|'url'|'email'|'phone'|'select'} PropertyType
  * @typedef {{ key: string, label: string, type: PropertyType, required?: boolean, readonly?: boolean, options?: string[], relation?: string, multi?: boolean }} PropertyDef
  * @typedef {{ field: string, target: string, label: string, multi?: boolean, inverse?: string }} RelationDef
@@ -98,17 +109,20 @@ export const OBJECT_TYPES = {
     createLabel: "New customer",
     taggable: true,
     sortKey: "name",
-    filters: ["all", "active", "inactive"],
+    filters: ["all", "active", "inactive", "blocked", "archived"],
     properties: [
       { key: "name", label: "Name", type: "text", required: true },
       { key: "email", label: "Email", type: "email", required: true },
       { key: "phone", label: "Phone", type: "phone" },
-      { key: "status", label: "Status", type: "status", options: ["active", "inactive"] },
+      { key: "workspaceId", label: "Workspace", type: "relationship", relation: "workspaces" },
+      { key: "status", label: "Status", type: "status", options: ["active", "inactive", "blocked", "archived"] },
       { key: "updatedAt", label: "Updated", type: "date", readonly: true },
     ],
     relations: [
+      { field: "workspaceId", target: "workspaces", label: "Workspace" },
       { field: "tagIds", target: "tags", label: "Tags", multi: true },
       { field: "_transactions", target: "transactions", label: "Transactions", inverse: "customerId" },
+      { field: "_feedback", target: "feedback", label: "Feedback", inverse: "customerId" },
     ],
   },
   transactions: {

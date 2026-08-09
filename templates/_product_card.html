@@ -1,0 +1,52 @@
+{# Shared product card — same component, progressive disclosure by role #}
+{# Required: item. Optional: href, show_owner, store_slug, tag #}
+{% if show_owner %}
+<article class="mq-product-card mq-product-card--owner mq-product-card--row">
+{% else %}
+<a class="mq-product-card mq-animate-hover" href="{{ href }}">
+{% endif %}
+  <div class="mq-product-card__media">
+    {% if deal %}<span class="mq-deal-badge">{{ deal.label }}</span>{% endif %}
+    {% if item.image_url %}
+    <img src="{{ item.image_url }}" alt="{{ item.name }}">
+    {% else %}
+    <div class="mq-product-card__placeholder">{{ item.name[0]|upper }}</div>
+    {% endif %}
+  </div>
+  <div class="mq-product-card__body">
+    <div style="flex:1;min-width:0">
+      {% if item.group_name %}<span class="mq-tag mq-tag--brand">{{ item.group_name }}</span>{% endif %}
+      <h3 class="mq-product-card__name">
+        {% if show_owner and store_slug %}
+        <a href="{{ url_for('owner_item_detail', slug=store_slug, item_id=item.id) }}" style="color:inherit;text-decoration:none">{{ item.name }}</a>
+        {% else %}
+        {{ item.name }}
+        {% endif %}
+      </h3>
+      {% if item.description %}<p class="mq-product-card__desc">{{ item.description }}</p>{% endif %}
+    </div>
+    <strong class="mq-product-card__price">
+      {% if deal %}
+      <span class="mq-price-sale">${{ '%.2f'|format(deal.sale_price) }}</span>
+      <span class="mq-price-compare">${{ '%.2f'|format(deal.compare_at_price) }}</span>
+      {% else %}
+      ${{ '%.2f'|format(item.price) }}
+      {% endif %}
+    </strong>
+    {% if show_owner %}
+    <div class="mq-product-card__owner">
+      {% if item.sku %}<span class="mq-tag">SKU {{ item.sku }}</span>{% endif %}
+      {% if item.inventory is not none %}<span class="mq-tag">Stock {{ item.inventory }}</span>{% endif %}
+      <span class="mq-tag mq-tag--{% if item.status == 'published' %}success{% else %}warn{% endif %}">{{ item.status }}</span>
+      {% if store_slug %}
+      <a class="mq-btn mq-btn-ghost mq-btn-sm" href="{{ url_for('edit_item', slug=store_slug, item_id=item.id) }}">Edit</a>
+      <a class="mq-btn mq-btn-ghost mq-btn-sm" href="{{ url_for('item_preview', slug=store_slug, item_id=item.id) }}" target="_blank" rel="noopener">Preview</a>
+      {% endif %}
+    </div>
+    {% endif %}
+  </div>
+{% if show_owner %}
+</article>
+{% else %}
+</a>
+{% endif %}

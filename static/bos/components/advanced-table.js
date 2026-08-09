@@ -28,7 +28,7 @@ export function resolveColumns(columns, layout = {}) {
 export function renderAdvancedTable(container, items, columns, options = {}, onLayoutChange) {
   if (!container) return;
   if (!items.length) {
-    container.innerHTML = emptyState("No results", "Try adjusting search or filters.");
+    container.innerHTML = emptyState({ title: "No results", text: "Try adjusting search or filters." });
     return;
   }
 

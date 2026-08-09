@@ -1,3 +1,19 @@
-{% extends 'base.html' %}{% block title %}Create your store — MarketQR{% endblock %}{% block content %}
-<section class="form-page"><p class="eyebrow">START SELLING</p><h1>Create your storefront</h1><p class="lead">A few details now. You can add your items next.</p><form class="panel" method="post"><label>Business name *<input name="name" required placeholder="e.g. Sunbeam Bakery"></label><label>Your name<input name="owner_name" placeholder="e.g. Maya Johnson"></label><label>Customer contact<input name="contact" placeholder="Phone, email, or Instagram handle"></label><label>About your business<textarea name="description" placeholder="Tell customers a little about what you offer."></textarea></label><button class="button" type="submit">Create my store <span>→</span></button></form></section>
+{% extends 'os_base.html' %}
+{% set os_nav = 'create' %}
+{% block title %}Create your store — MarketQR{% endblock %}
+{% block os_header %}
+<h1 class="os-page-title">Create store</h1>
+<p class="os-page-subtitle">A few details now. You can add items next.</p>
+{% endblock %}
+{% block os_content %}
+<form class="os-card os-card-padded os-form" style="max-width:560px" method="post">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+  <div class="os-field"><label class="os-label">Business name *</label><input class="os-input" name="name" required placeholder="e.g. Sunbeam Bakery"></div>
+  <div class="os-field"><label class="os-label">Your name</label><input class="os-input" name="owner_name" placeholder="e.g. Maya Johnson"></div>
+  <div class="os-field"><label class="os-label">Customer contact</label><input class="os-input" name="contact" placeholder="Phone, email, or Instagram"></div>
+  <div class="os-field"><label class="os-label">Address</label><textarea class="os-textarea" name="address" placeholder="Optional"></textarea></div>
+  <div class="os-field"><label class="os-label">Business hours</label><textarea class="os-textarea" name="business_hours" placeholder="Optional"></textarea></div>
+  <div class="os-field"><label class="os-label">About your business</label><textarea class="os-textarea" name="description" placeholder="Tell customers what you offer"></textarea></div>
+  <button class="os-btn os-btn-primary" type="submit">Create store</button>
+</form>
 {% endblock %}

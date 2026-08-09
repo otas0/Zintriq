@@ -4,6 +4,7 @@ import { escapeHtml } from "../services/search.js";
 import { openDrawer, closeDrawer, showToast } from "../services/api.js";
 import { statusBadge, tag as tagBadge } from "../components/index.js";
 import { OBJECT_TYPES, getObjectType, getObjectTitle } from "./object-types.js";
+import { STANDARD_DRAWER_TABS } from "./object-standards.js";
 import { groupRelatedObjects } from "./relationships.js";
 import { renderPropertiesPanel, parsePropertyForm, renderPropertyDisplay } from "./properties.js";
 import { formatActivityAction } from "./activity.js";
@@ -18,14 +19,7 @@ let drawerStack = [];
 /** @type {(() => void) | null} */
 let onRefresh = null;
 
-const TABS = [
-  { id: "overview", label: "Overview" },
-  { id: "properties", label: "Properties" },
-  { id: "related", label: "Related" },
-  { id: "activity", label: "Activity" },
-  { id: "attachments", label: "Attachments" },
-  { id: "notes", label: "Notes" },
-];
+const TABS = STANDARD_DRAWER_TABS;
 
 function renderOverview(typeDef, record) {
   const tags = (record.tagIds || []).map((id) => {
@@ -221,7 +215,7 @@ function renderActions(typeDef, record, collection, id) {
     ? '<button type="button" class="os-btn os-btn-ghost os-btn-sm" data-action="restore">Restore</button>'
     : '<button type="button" class="os-btn os-btn-ghost os-btn-sm" data-action="archive">Archive</button>'}
     <button type="button" class="os-btn os-btn-danger os-btn-sm" data-action="delete">Delete</button>
-    ${record.type === "qr" ? '<a class="os-btn os-btn-primary os-btn-sm" href="/my-stores">QR Workspace</a>' : ""}
+    ${record.type === "qr" ? '<a class="os-btn os-btn-primary os-btn-sm" href="/app/store#experiences">View store</a>' : ""}
   </div>`;
 }
 
@@ -308,6 +302,10 @@ export function renderObjectDetail(collection, id, activeTab, opts = {}) {
 
   const titleEl = document.getElementById("bos-drawer-title");
   if (titleEl) titleEl.textContent = title;
+
+  window.dispatchEvent(new CustomEvent("bos:object-opened", {
+    detail: { moduleId: typeDef.moduleId || document.body.dataset.module, objectLabel: title },
+  }));
 
   const body = document.getElementById("bos-drawer-body");
   body?.querySelectorAll("[data-tab]").forEach((btn) => {

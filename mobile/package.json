@@ -1,0 +1,25 @@
+{
+  "name": "business-os-mobile",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Business OS — native Android & iOS apps (Capacitor shell around the web app)",
+  "scripts": {
+    "config": "node scripts/write-cap-config.js",
+    "sync": "npm run config && npx cap sync",
+    "android": "npm run sync && npx cap open android",
+    "ios": "npm run sync && npx cap open ios",
+    "add:android": "npx cap add android",
+    "add:ios": "npx cap add ios"
+  },
+  "dependencies": {
+    "@capacitor/android": "^7.2.0",
+    "@capacitor/app": "^7.0.1",
+    "@capacitor/core": "^7.2.0",
+    "@capacitor/ios": "^7.2.0",
+    "@capacitor/splash-screen": "^7.0.1",
+    "@capacitor/status-bar": "^7.0.1"
+  },
+  "devDependencies": {
+    "@capacitor/cli": "^7.2.0"
+  }
+}

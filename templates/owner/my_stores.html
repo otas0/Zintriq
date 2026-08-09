@@ -1,0 +1,13 @@
+{% extends 'os_base.html' %}
+{% set os_nav = 'stores' %}
+{% block title %}Stores & QR Codes — Business OS{% endblock %}
+{% block os_header %}
+<h1 class="os-page-title">Stores &amp; QR Codes</h1>
+<p class="os-page-subtitle">Manage storefronts, items, and QR codes.</p>
+{% endblock %}
+{% block os_actions %}
+<a class="os-btn os-btn-primary" href="{{ url_for('create_store') }}">Create store</a>
+{% endblock %}
+{% block os_content %}
+{% include 'owner/_workspace.html' %}
+{% endblock %}

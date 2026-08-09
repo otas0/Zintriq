@@ -31,6 +31,8 @@ def ensure_default_workspace(conn: sqlite3.Connection, owner_id: int) -> dict:
         "UPDATE stores SET workspace_id = ? WHERE owner_id = ? AND workspace_id IS NULL",
         (workspace["id"], owner_id),
     )
+    from bos.workspace_store import ensure_workspace_store
+    ensure_workspace_store(conn, int(workspace["id"]), owner_id)
     return workspace
 
 

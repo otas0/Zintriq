@@ -1,6 +1,6 @@
 import { peekUndo, consumeUndo, clearUndo } from "./undo.js";
 
-/** @param {string} message @param {{ undo?: () => void, undoLabel?: string }} [opts] */
+/** @param {string} message @param {{ undo?: () => void, undoLabel?: string, type?: 'success'|'warning'|'error'|'info' }} [opts] */
 export function showToast(message, opts = {}) {
   const el = document.getElementById("bos-toast");
   const undoBtn = document.getElementById("bos-toast-undo");
@@ -9,6 +9,10 @@ export function showToast(message, opts = {}) {
   if (opts.undo) {
     import("./undo.js").then(({ pushUndo }) => pushUndo(opts.undoLabel || "Undo", opts.undo));
   }
+
+  el.classList.remove("bos-toast--success", "bos-toast--warning", "bos-toast--error", "bos-toast--info");
+  const type = opts.type || "info";
+  el.classList.add(`bos-toast--${type}`);
 
   const msgEl = el.querySelector(".bos-toast__msg");
   if (msgEl) msgEl.textContent = message;

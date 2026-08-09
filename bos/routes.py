@@ -1,4 +1,4 @@
-"""Business OS API and page routes."""
+"""Business OS API and page routes — MVP scope."""
 
 from __future__ import annotations
 
@@ -9,6 +9,12 @@ from flask import Blueprint, abort, flash, redirect, render_template, request, u
 from bos.models import BOS_MODULES, module_for_id
 
 bos_bp = Blueprint("bos", __name__, url_prefix="/app")
+
+# Platforms removed from MVP — redirect to Store
+_V1_REMOVED = frozenset({
+    "organizations", "catalog", "transactions", "contacts",
+    "assets", "documents", "tags", "workspaces",
+})
 
 
 def _current_user():
@@ -30,7 +36,23 @@ def _login_required(view):
 
 @bos_bp.app_context_processor
 def inject_bos_modules():
-    return {"bos_modules": BOS_MODULES}
+    from flask import session
+    from app import db
+
+    ws_id = session.get("active_workspace_id")
+    ws_name = ""
+    if ws_id:
+        try:
+            with db() as conn:
+                row = conn.execute("SELECT name FROM workspaces WHERE id=?", (int(ws_id),)).fetchone()
+                ws_name = row["name"] if row else ""
+        except (TypeError, ValueError):
+            pass
+    return {
+        "bos_modules": BOS_MODULES,
+        "bos_active_workspace_id": ws_id,
+        "bos_active_workspace_name": ws_name,
+    }
 
 
 def _render_module(module_id: str, title: str, subtitle: str = ""):
@@ -46,73 +68,100 @@ def _render_module(module_id: str, title: str, subtitle: str = ""):
     )
 
 
+def _redirect_removed():
+    return redirect(url_for("bos.store"))
+
+
 @bos_bp.get("")
 @_login_required
 def home():
-    return _render_module("home", "Home", "Your Business OS overview")
+    return redirect(url_for("bos.store"))
 
 
-@bos_bp.get("/organizations")
+@bos_bp.get("/store")
 @_login_required
-def organizations():
-    return _render_module("organizations", "Organization", "Manage your company profile")
+def store():
+    from app import workspace_snapshot
+
+    user = _current_user()
+    return render_template(
+        "bos/store_module.html",
+        module_id="store",
+        page_title="Stores",
+        page_subtitle="Manage storefronts, customer QR, and responses.",
+        workspace=workspace_snapshot(user["id"]),
+        workspace_mode="all",
+    )
 
 
-@bos_bp.get("/workspaces")
+@bos_bp.get("/responses")
 @_login_required
-def workspaces():
-    return _render_module("workspaces", "Workspaces", "Business units and locations")
-
-
-@bos_bp.get("/catalog")
-@_login_required
-def catalog():
-    return _render_module("catalog", "Catalog", "Products and services")
-
-
-@bos_bp.get("/transactions")
-@_login_required
-def transactions():
-    return _render_module("transactions", "Transactions", "Sales and payments")
+def responses():
+    return redirect(url_for("bos.store", _anchor="responses"))
 
 
 @bos_bp.get("/customers")
+@bos_bp.get("/interactions")
+@bos_bp.get("/feedback")
 @_login_required
-def customers():
-    return _render_module("customers", "Customers", "Contacts and relationships")
-
-
-@bos_bp.get("/team")
-@_login_required
-def team():
-    return _render_module("team", "Team", "Members and roles")
-
-
-@bos_bp.get("/assets")
-@_login_required
-def assets():
-    return _render_module("assets", "Assets", "QR codes, storefronts, and resources")
+def legacy_response_routes():
+    return redirect(url_for("bos.store", _anchor="responses"))
 
 
 @bos_bp.get("/operations")
 @_login_required
 def operations():
-    return _render_module("operations", "Operations", "Tasks and workflows")
+    return redirect(url_for("bos.store", _anchor="responses"))
 
 
-@bos_bp.get("/documents")
+@bos_bp.get("/qr")
 @_login_required
-def documents():
-    return _render_module("documents", "Documents", "Files and records")
+def qr_experiences():
+    frag = request.args.get("experience") or ""
+    if frag:
+        return redirect(f"{url_for('bos.store')}#experience/{frag}")
+    return redirect(url_for("bos.store", _anchor="experiences"))
 
 
+@bos_bp.get("/calendar")
+@bos_bp.get("/booking")
+@bos_bp.get("/check-in")
+@_login_required
+def deferred_operations():
+    return redirect(url_for("bos.store", _anchor="experiences"))
+
+
+@bos_bp.get("/team")
+@_login_required
+def team():
+    return _render_module("team", "Team", "Invite members and manage access")
+
+
+@bos_bp.get("/settings")
+@_login_required
+def settings():
+    return _render_module("settings", "Settings", "Workspace configuration")
+
+
+@bos_bp.get("/workspaces")
+@_login_required
+def workspaces():
+    return redirect(url_for("bos.settings"))
+
+
+@bos_bp.get("/organizations")
+@bos_bp.get("/catalog")
+@bos_bp.get("/transactions")
+@bos_bp.get("/contacts")
+@bos_bp.get("/assets")
+@bos_bp.get("/documents")
 @bos_bp.get("/tags")
 @_login_required
-def tags():
-    return _render_module("tags", "Tags", "Labels and classification")
+def removed_v1_modules():
+    return _redirect_removed()
 
 
 @bos_bp.get("/legacy/stores")
 @_login_required
 def legacy_stores_redirect():
-    return redirect(url_for("my_stores"))
+    return redirect(url_for("bos.store"))

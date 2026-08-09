@@ -1,0 +1,35 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="csrf-token" content="{{ csrf_token() }}">
+  <title>{% block title %}Store{% endblock %}</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/geist@1.3.1/dist/fonts/geist-sans/style.min.css">
+  <link rel="stylesheet" href="{{ url_for('static', filename='tokens.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='materials.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='system.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='marketing.css') }}">
+  {% block customer_head %}{% endblock %}
+</head>
+<body class="material-canvas mq-app mq-density-customer mq-public">
+  {% if preview_mode %}
+  <div class="material-feedback mq-preview-banner">Customer preview — this is exactly what shoppers see.</div>
+  {% endif %}
+
+  <header class="material-panel mq-public-header" id="mq-public-header">
+    <div class="mq-public-header__inner">
+      <a class="mq-shell-brand" href="{{ url_for('index') }}">
+        <span class="mq-shell-brand-mark">M</span>
+        <span>MarketQR</span>
+      </a>
+      {% block customer_header_actions %}{% endblock %}
+    </div>
+  </header>
+
+  <main class="material-sheet mq-shell-main">{% block content %}{% endblock %}</main>
+  <footer class="mq-public-footer"><strong>MarketQR</strong> · Powered by MarketQR</footer>
+  <script src="{{ url_for('static', filename='marketing.js') }}"></script>
+  {% block customer_scripts %}{% endblock %}
+</body>
+</html>

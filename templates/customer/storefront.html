@@ -1,0 +1,76 @@
+{% extends 'customer_base.html' %}
+{% block title %}{{ store.name }}{% endblock %}
+{% block customer_head %}
+<link rel="stylesheet" href="{{ url_for('static', filename='storefront.css') }}">
+{% endblock %}
+{% block customer_header_actions %}
+{% if store_profile.contact %}
+<a class="mq-btn mq-btn-primary mq-btn-sm" href="#sf-contact">Contact</a>
+{% endif %}
+{% endblock %}
+{% block content %}
+<div class="sf-page">
+  <header class="sf-hero">
+    <div class="sf-hero__banner{% if not store.background_image %} sf-hero__banner--empty{% endif %}"
+         {% if store.background_image %}style="background-image:url('{{ store.background_image }}')"{% endif %}
+         role="img" aria-label="{{ store.name }} cover"></div>
+    <div class="sf-hero__logo-wrap">
+      {% if store_profile.logo_url %}
+      <img class="sf-hero__logo sf-hero__logo--img" src="{{ store_profile.logo_url }}" alt="{{ store_profile.name }}">
+      {% else %}
+      <div class="sf-hero__logo" aria-hidden="true">{{ store_profile.name[0]|upper }}</div>
+      {% endif %}
+    </div>
+  </header>
+
+  <div class="sf-body">
+    {% include 'customer/_store_profile.html' %}
+
+    <div class="sf-main">
+      <div class="sf-search-wrap">
+        <label class="sf-search">
+          <span class="sf-search__icon" aria-hidden="true">⌕</span>
+          <input class="sf-search__input" type="search" id="sf-search" placeholder="Search products…" autocomplete="off">
+        </label>
+      </div>
+
+      {% include 'customer/_deals_bar.html' %}
+
+      {% if catalog_sections %}
+      <div class="sf-catalog">
+        {% for section in catalog_sections %}
+        <section class="sf-catalog__section" id="sf-cat-{{ section.id }}" aria-labelledby="sf-cat-head-{{ section.id }}">
+          <div class="sf-catalog__head" id="sf-cat-head-{{ section.id }}">
+            {% if section.num %}<span class="sf-catalog__num">{{ section.num }}.</span>{% endif %}
+            <h2 class="sf-catalog__title">{{ section.name }}</h2>
+            <span class="sf-catalog__count">{{ section['items']|length }}</span>
+          </div>
+          <div class="sf-catalog__track">
+            {% for item in section['items'] %}
+            {% set deal = deals_map.get(item.id) %}
+            {% set back_group = ('default' if section.id == 'default' else section.id|string) if section.id not in ('all', 'deals') else none %}
+            {% set href = url_for('item_preview' if preview_mode else 'customer_item_detail', slug=store.slug, item_id=item.id, group=back_group) if back_group else url_for('item_preview' if preview_mode else 'customer_item_detail', slug=store.slug, item_id=item.id) %}
+            {% include 'customer/_product_tile.html' %}
+            {% endfor %}
+          </div>
+        </section>
+        {% endfor %}
+      </div>
+      {% else %}
+      <div class="mq-empty sf-catalog__empty">
+        {% if store_view == 'deals' %}No active deals right now.{% elif show_group_nav %}No items in this group yet.{% else %}This storefront is getting ready. Please check back soon.{% endif %}
+      </div>
+      {% endif %}
+
+      {% if store_profile.contact or not preview_mode %}
+      <section class="sf-contact mq-section">
+        {% include 'customer/_store_contact.html' %}
+      </section>
+      {% endif %}
+    </div>
+  </div>
+</div>
+{% endblock %}
+{% block customer_scripts %}
+<script src="{{ url_for('static', filename='storefront.js') }}"></script>
+{% endblock %}
