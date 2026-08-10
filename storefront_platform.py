@@ -39,6 +39,34 @@ def migrate_storefront_columns(conn) -> None:
             conn.execute(f"ALTER TABLE stores ADD COLUMN {column} {definition}")
     migrate_store_deals(conn)
     migrate_store_inquiries(conn)
+    migrate_store_analytics(conn)
+    migrate_storefront_catalog_columns(conn)
+    from guest_platform import migrate_guest_tables
+
+    migrate_guest_tables(conn)
+    from place_platform import migrate_place_tables
+
+    migrate_place_tables(conn)
+    from discover_platform import migrate_discover_columns
+
+    migrate_discover_columns(conn)
+
+
+def migrate_storefront_catalog_columns(conn) -> None:
+    group_columns = {row["name"] for row in conn.execute("PRAGMA table_info(item_groups)")}
+    if "prefix" not in group_columns:
+        conn.execute("ALTER TABLE item_groups ADD COLUMN prefix TEXT")
+    item_columns = {row["name"] for row in conn.execute("PRAGMA table_info(items)")}
+    if "unit" not in item_columns:
+        conn.execute("ALTER TABLE items ADD COLUMN unit TEXT")
+
+
+def category_label(prefix: str | None, index: int) -> str:
+    """Uber-style category number — owner prefix or zero-padded index."""
+    text = (prefix or "").strip()
+    if text:
+        return text.rstrip(".")
+    return f"{index:02d}"
 
 
 def migrate_store_inquiries(conn) -> None:
@@ -51,10 +79,52 @@ def migrate_store_inquiries(conn) -> None:
             customer_email TEXT,
             customer_phone TEXT,
             message TEXT,
+            status TEXT DEFAULT 'new',
             created_at TEXT DEFAULT CURRENT_TIMESTAMP,
             FOREIGN KEY(store_id) REFERENCES stores(id) ON DELETE CASCADE,
             FOREIGN KEY(item_id) REFERENCES items(id) ON DELETE SET NULL
         );
+    """)
+    columns = {row["name"] for row in conn.execute("PRAGMA table_info(store_inquiries)")}
+    if "status" not in columns:
+        conn.execute("ALTER TABLE store_inquiries ADD COLUMN status TEXT DEFAULT 'new'")
+    if "source_ref" not in columns:
+        conn.execute("ALTER TABLE store_inquiries ADD COLUMN source_ref TEXT")
+
+
+STOREFRONT_REF_SOURCES = ("discover", "place_directory", "brand_hub", "qr")
+
+
+def remember_storefront_ref(flask_session, store_id: int, ref: str | None) -> None:
+    if ref not in STOREFRONT_REF_SOURCES:
+        return
+    refs = dict(flask_session.get("storefront_refs") or {})
+    refs[str(store_id)] = ref
+    flask_session["storefront_refs"] = refs
+
+
+def pop_storefront_ref(flask_session, store_id: int) -> str | None:
+    refs = dict(flask_session.get("storefront_refs") or {})
+    ref = refs.pop(str(store_id), None)
+    flask_session["storefront_refs"] = refs
+    return ref
+
+
+def migrate_store_analytics(conn) -> None:
+    conn.executescript("""
+        CREATE TABLE IF NOT EXISTS store_analytics_events (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            store_id INTEGER NOT NULL,
+            event_type TEXT NOT NULL,
+            item_id INTEGER,
+            qr_code TEXT,
+            metadata TEXT DEFAULT '{}',
+            created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY(store_id) REFERENCES stores(id) ON DELETE CASCADE,
+            FOREIGN KEY(item_id) REFERENCES items(id) ON DELETE SET NULL
+        );
+        CREATE INDEX IF NOT EXISTS idx_store_analytics_store
+            ON store_analytics_events(store_id, event_type, created_at);
     """)
 
 
@@ -145,7 +215,8 @@ def resolve_deal(row: Any, item_price: float) -> dict[str, Any]:
 
 def list_store_deals(conn, store_id: int, *, active_only: bool = False) -> list:
     rows = conn.execute(
-        """SELECT d.*, i.name AS item_name, i.price AS item_price, i.image_url, i.status AS item_status
+        """SELECT d.*, i.name AS item_name, i.price AS item_price, i.image_url, i.unit AS item_unit,
+                  i.status AS item_status
            FROM store_deals d
            JOIN items i ON i.id = d.item_id
            WHERE d.store_id = ?
@@ -171,6 +242,7 @@ def active_deals_for_storefront(conn, store_id: int) -> list[dict[str, Any]]:
         deal = resolve_deal(row, float(row["item_price"]))
         deal["item_name"] = row["item_name"]
         deal["image_url"] = row["image_url"]
+        deal["item_unit"] = row["item_unit"] if "item_unit" in row.keys() else None
         deals.append(deal)
     deals.sort(key=lambda d: (not d["featured"], d["item_name"]))
     return deals
@@ -219,6 +291,53 @@ def save_deal_from_form(conn, store_id: int, item_id: int, form, prefix: str = "
                VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'active')""",
             (store_id, item_id, discount_type, discount_value, label, featured, starts_at, ends_at),
         )
+
+
+def toggle_item_deal(
+    conn,
+    store_id: int,
+    item_id: int,
+    enabled: bool,
+    *,
+    discount_type: str = "percent",
+    discount_value: float = 20.0,
+) -> dict[str, Any]:
+    """Quick on/off deal from products list — defaults to 20% off when enabling."""
+    existing = conn.execute(
+        "SELECT * FROM store_deals WHERE store_id = ? AND item_id = ?",
+        (store_id, item_id),
+    ).fetchone()
+    if not enabled:
+        if existing:
+            conn.execute("DELETE FROM store_deals WHERE id = ?", (existing["id"],))
+        return {"enabled": False, "item_id": item_id}
+    if discount_type not in ("percent", "fixed"):
+        discount_type = "percent"
+    if discount_value <= 0:
+        discount_value = 20.0
+    label = default_deal_label(discount_type, discount_value)
+    if existing:
+        conn.execute(
+            """UPDATE store_deals SET discount_type=?, discount_value=?, label=?, status='active',
+               updated_at=CURRENT_TIMESTAMP WHERE id=?""",
+            (discount_type, discount_value, label, existing["id"]),
+        )
+        row = conn.execute("SELECT * FROM store_deals WHERE id = ?", (existing["id"],)).fetchone()
+    else:
+        cur = conn.execute(
+            """INSERT INTO store_deals (store_id, item_id, discount_type, discount_value, label, status)
+               VALUES (?, ?, ?, ?, ?, 'active')""",
+            (store_id, item_id, discount_type, discount_value, label),
+        )
+        row = conn.execute("SELECT * FROM store_deals WHERE id = ?", (cur.lastrowid,)).fetchone()
+    item = conn.execute("SELECT price FROM items WHERE id = ? AND store_id = ?", (item_id, store_id)).fetchone()
+    deal = resolve_deal(row, float(item["price"])) if row and item else None
+    return {
+        "enabled": True,
+        "item_id": item_id,
+        "label": deal["label"] if deal else label,
+        "sale_price": deal["sale_price"] if deal else None,
+    }
 
 
 def parse_hours_json(raw: str | None) -> dict[str, dict[str, str | None]]:
@@ -461,6 +580,43 @@ def sync_store_geocode(conn, store_id: int, address: str | None) -> None:
         )
 
 
+STOREFRONT_EVENT_TYPES = ("qr_scan", "storefront_view", "item_view", "inquiry", "brand_hub_click")
+
+
+def analytics_period_clause(period: str, *, column: str = "created_at") -> tuple[str, list]:
+    if period == "today":
+        return f"date({column})=date('now')", []
+    if period == "7d":
+        return f"{column} >= datetime('now', '-7 days')", []
+    if period == "30d":
+        return f"{column} >= datetime('now', '-30 days')", []
+    return "1=1", []
+
+
+def record_store_event(
+    conn,
+    store_id: int,
+    event_type: str,
+    *,
+    item_id: int | None = None,
+    qr_code: str | None = None,
+    metadata: dict | None = None,
+) -> None:
+    if event_type not in STOREFRONT_EVENT_TYPES:
+        return
+    conn.execute(
+        """INSERT INTO store_analytics_events (store_id, event_type, item_id, qr_code, metadata)
+           VALUES (?, ?, ?, ?, ?)""",
+        (
+            store_id,
+            event_type,
+            item_id,
+            qr_code,
+            json.dumps(metadata or {}),
+        ),
+    )
+
+
 def save_store_inquiry(
     conn,
     store_id: int,
@@ -470,13 +626,283 @@ def save_store_inquiry(
     customer_phone: str | None = None,
     message: str | None = None,
     item_id: int | None = None,
+    customer_id: int | None = None,
+    visitor_key: str | None = None,
+    source_ref: str | None = None,
 ) -> int:
     cur = conn.execute(
-        """INSERT INTO store_inquiries (store_id, item_id, customer_name, customer_email, customer_phone, message)
-           VALUES (?, ?, ?, ?, ?, ?)""",
-        (store_id, item_id, customer_name, customer_email, customer_phone, message),
+        """INSERT INTO store_inquiries
+           (store_id, item_id, customer_id, customer_name, customer_email, customer_phone, message, status, source_ref)
+           VALUES (?, ?, ?, ?, ?, ?, ?, 'new', ?)""",
+        (store_id, item_id, customer_id, customer_name, customer_email, customer_phone, message, source_ref),
     )
-    return int(cur.lastrowid)
+    inquiry_id = int(cur.lastrowid)
+    meta = {"inquiry_id": inquiry_id}
+    if visitor_key:
+        meta["visitor_key"] = visitor_key
+    if source_ref:
+        meta["source_ref"] = source_ref
+    record_store_event(conn, store_id, "inquiry", item_id=item_id, metadata=meta)
+    return inquiry_id
+
+
+def notify_owner_new_inquiry(conn, store_id: int, inquiry_id: int, *, inbox_url: str) -> bool:
+    from email_delivery import send_transactional_email
+
+    row = conn.execute(
+        """SELECT s.name AS store_name, u.email AS owner_email,
+                  si.customer_name, si.customer_email, si.customer_phone, si.message,
+                  si.source_ref, i.name AS item_name
+           FROM store_inquiries si
+           JOIN stores s ON s.id = si.store_id
+           JOIN users u ON u.id = s.owner_id
+           LEFT JOIN items i ON i.id = si.item_id
+           WHERE si.id = ? AND si.store_id = ?""",
+        (inquiry_id, store_id),
+    ).fetchone()
+    if not row or not row["owner_email"]:
+        return False
+
+    source = row["source_ref"] or "shop"
+    source_labels = {
+        "discover": "Discover",
+        "place_directory": "Place directory",
+        "brand_hub": "Brand hub",
+        "qr": "QR",
+    }
+    source_label = source_labels.get(source, "Shop")
+
+    subject = f"New customer request — {row['store_name']}"
+    contact_bits = []
+    if row["customer_email"]:
+        contact_bits.append(row["customer_email"])
+    if row["customer_phone"]:
+        contact_bits.append(row["customer_phone"])
+    contact_line = " · ".join(contact_bits) or "No email or phone provided"
+
+    text = (
+        f"New request for {row['store_name']} (via {source_label}).\n\n"
+        f"From: {row['customer_name']}\n"
+        f"Contact: {contact_line}\n"
+    )
+    if row["item_name"]:
+        text += f"Product: {row['item_name']}\n"
+    if row["message"]:
+        text += f"\nMessage:\n{row['message']}\n"
+    text += f"\nOpen inbox: {inbox_url}\n"
+
+    html = (
+        f"<p>New request for <strong>{row['store_name']}</strong> (via {source_label}).</p>"
+        f"<p><strong>{row['customer_name']}</strong><br>{contact_line}</p>"
+    )
+    if row["item_name"]:
+        html += f"<p>Product: {row['item_name']}</p>"
+    if row["message"]:
+        html += f"<p>{row['message']}</p>"
+    html += f'<p><a href="{inbox_url}">View in inbox</a></p>'
+
+    return send_transactional_email(row["owner_email"], subject, text, html_body=html)
+
+
+def _pct(part: int, whole: int) -> int | None:
+    if whole <= 0:
+        return None
+    return round((part / whole) * 100)
+
+
+def _count_store_events(conn, store_id: int, event_type: str, period: str) -> int:
+    clause, params = analytics_period_clause(period)
+    row = conn.execute(
+        f"""SELECT COUNT(*) AS c FROM store_analytics_events
+            WHERE store_id = ? AND event_type = ? AND {clause}""",
+        [store_id, event_type, *params],
+    ).fetchone()
+    return int(row["c"] or 0)
+
+
+def _count_landing_scans(conn, store_id: int, period: str) -> int:
+    clause, params = analytics_period_clause(period, column="e.created_at")
+    try:
+        row = conn.execute(
+            f"""SELECT COUNT(*) AS c
+                FROM qr_experience_analytics_events e
+                JOIN qr_experiences x ON x.id = e.experience_id
+                WHERE x.store_id = ? AND e.event_type IN ('qr_scan', 'experience_view')
+                  AND {clause}""",
+            [store_id, *params],
+        ).fetchone()
+        return int(row["c"] or 0)
+    except Exception:
+        return 0
+
+
+def storefront_insights(conn, store_id: int, *, period: str = "7d") -> dict[str, Any]:
+    """Funnel metrics for owner Insights overview."""
+    shop_qr_scans = _count_store_events(conn, store_id, "qr_scan", period)
+    landing_scans = _count_landing_scans(conn, store_id, period)
+    qr_scans = shop_qr_scans + landing_scans
+    shop_views = _count_store_events(conn, store_id, "storefront_view", period)
+    item_views = _count_store_events(conn, store_id, "item_view", period)
+
+    inq_clause, inq_params = analytics_period_clause(period)
+    inq_row = conn.execute(
+        f"""SELECT COUNT(*) AS total,
+                   SUM(CASE WHEN status = 'new' THEN 1 ELSE 0 END) AS new_count
+            FROM store_inquiries WHERE store_id = ? AND {inq_clause}""",
+        [store_id, *inq_params],
+    ).fetchone()
+    inquiries = int(inq_row["total"] or 0)
+    new_inquiries = int(inq_row["new_count"] or 0)
+
+    clause, params = analytics_period_clause(period, column="e.created_at")
+    top_items = conn.execute(
+        f"""SELECT e.item_id, i.name, COUNT(*) AS views
+            FROM store_analytics_events e
+            LEFT JOIN items i ON i.id = e.item_id
+            WHERE e.store_id = ? AND e.event_type = 'item_view' AND e.item_id IS NOT NULL
+              AND {clause}
+            GROUP BY e.item_id ORDER BY views DESC LIMIT 5""",
+        [store_id, *params],
+    ).fetchall()
+
+    recent_inquiries = list_store_inquiries(conn, store_id, limit=5)
+    discovery = _storefront_discovery_metrics(conn, store_id, period)
+
+    return {
+        "period": period,
+        "qr_scans": qr_scans,
+        "shop_qr_scans": shop_qr_scans,
+        "landing_scans": landing_scans,
+        "shop_views": shop_views,
+        "item_views": item_views,
+        "inquiries": inquiries,
+        "new_inquiries": new_inquiries,
+        "discovery": discovery,
+        "funnel": [
+            {"key": "qr_scans", "label": "QR & landing", "count": qr_scans},
+            {"key": "shop_views", "label": "Shop views", "count": shop_views},
+            {"key": "item_views", "label": "Product views", "count": item_views},
+            {"key": "inquiries", "label": "Requests", "count": inquiries},
+        ],
+        "conversion": {
+            "shop_from_qr": _pct(shop_views, qr_scans),
+            "items_from_shop": _pct(item_views, shop_views),
+            "requests_from_shop": _pct(inquiries, shop_views),
+        },
+        "top_items": [dict(r) for r in top_items],
+        "recent_inquiries": recent_inquiries,
+    }
+
+
+def _storefront_discovery_metrics(conn, store_id: int, period: str) -> dict[str, Any]:
+    """Guest discovery — returning visitors and brand hub clicks."""
+    visit_clause, visit_params = analytics_period_clause(period, column="last_visited_at")
+    unique_row = conn.execute(
+        f"""SELECT COUNT(DISTINCT visitor_key) AS c FROM guest_store_visits
+            WHERE store_id = ? AND {visit_clause}""",
+        [store_id, *visit_params],
+    ).fetchone()
+    returning_row = conn.execute(
+        f"""SELECT COUNT(*) AS c FROM guest_store_visits
+            WHERE store_id = ? AND visit_count >= 2 AND {visit_clause}""",
+        [store_id, *visit_params],
+    ).fetchone()
+    unique_visitors = int(unique_row["c"] or 0)
+    returning_visitors = int(returning_row["c"] or 0)
+    brand_hub_clicks = _count_store_events(conn, store_id, "brand_hub_click", period)
+    clause2, params2 = analytics_period_clause(period)
+    place_row = conn.execute(
+        f"""SELECT COUNT(*) AS c FROM store_analytics_events
+            WHERE store_id = ? AND event_type = 'storefront_view'
+              AND metadata LIKE '%place_directory%' AND {clause2}""",
+        [store_id, *params2],
+    ).fetchone()
+    place_directory_views = int(place_row["c"] or 0)
+    discover_row = conn.execute(
+        f"""SELECT COUNT(*) AS c FROM store_analytics_events
+            WHERE store_id = ? AND event_type = 'storefront_view'
+              AND metadata LIKE '%discover%' AND {clause2}""",
+        [store_id, *params2],
+    ).fetchone()
+    discover_views = int(discover_row["c"] or 0)
+    inq_clause, inq_params = analytics_period_clause(period, column="created_at")
+    discover_inq_row = conn.execute(
+        f"""SELECT COUNT(*) AS c FROM store_inquiries
+            WHERE store_id = ? AND source_ref = 'discover' AND {inq_clause}""",
+        [store_id, *inq_params],
+    ).fetchone()
+    discover_inquiries = int(discover_inq_row["c"] or 0)
+    place_inq_row = conn.execute(
+        f"""SELECT COUNT(*) AS c FROM store_inquiries
+            WHERE store_id = ? AND source_ref = 'place_directory' AND {inq_clause}""",
+        [store_id, *inq_params],
+    ).fetchone()
+    place_directory_inquiries = int(place_inq_row["c"] or 0)
+
+    return {
+        "unique_visitors": unique_visitors,
+        "returning_visitors": returning_visitors,
+        "returning_pct": _pct(returning_visitors, unique_visitors),
+        "brand_hub_clicks": brand_hub_clicks,
+        "place_directory_views": place_directory_views,
+        "discover_views": discover_views,
+        "discover_inquiries": discover_inquiries,
+        "discover_request_rate": _pct(discover_inquiries, discover_views),
+        "place_directory_inquiries": place_directory_inquiries,
+        "place_directory_request_rate": _pct(place_directory_inquiries, place_directory_views),
+    }
+
+
+INQUIRY_STATUSES = ("new", "read", "archived")
+
+
+def list_store_inquiries(
+    conn,
+    store_id: int,
+    *,
+    q: str | None = None,
+    status: str | None = None,
+    limit: int = 100,
+) -> list[dict[str, Any]]:
+    query = """
+        SELECT si.*, i.name AS item_name
+        FROM store_inquiries si
+        LEFT JOIN items i ON i.id = si.item_id
+        WHERE si.store_id = ?
+    """
+    params: list[Any] = [store_id]
+    if status:
+        query += " AND si.status = ?"
+        params.append(status)
+    if q:
+        like = f"%{q.strip()}%"
+        query += " AND (si.customer_name LIKE ? OR si.customer_email LIKE ? OR si.customer_phone LIKE ? OR si.message LIKE ?)"
+        params.extend([like, like, like, like])
+    query += " ORDER BY si.created_at DESC LIMIT ?"
+    params.append(limit)
+    rows = conn.execute(query, params).fetchall()
+    return [dict(r) for r in rows]
+
+
+def get_store_inquiry(conn, store_id: int, inquiry_id: int) -> dict[str, Any] | None:
+    row = conn.execute(
+        """SELECT si.*, i.name AS item_name
+           FROM store_inquiries si
+           LEFT JOIN items i ON i.id = si.item_id
+           WHERE si.id = ? AND si.store_id = ?""",
+        (inquiry_id, store_id),
+    ).fetchone()
+    return dict(row) if row else None
+
+
+def update_inquiry_status(conn, store_id: int, inquiry_id: int, status: str) -> bool:
+    if status not in INQUIRY_STATUSES:
+        return False
+    cur = conn.execute(
+        "UPDATE store_inquiries SET status = ? WHERE id = ? AND store_id = ?",
+        (status, inquiry_id, store_id),
+    )
+    return cur.rowcount > 0
 
 
 def build_location_profile(store: dict | Any) -> dict[str, Any]:

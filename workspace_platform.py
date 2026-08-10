@@ -757,11 +757,18 @@ def register_workspace_platform(app) -> None:
                 results.append({"type": "feedback", "id": r["id"], "label": (r["comment"] or "")[:60] or "Feedback", "href": "/app/customers#feedback"})
             if _table_exists(conn, "qr_experiences"):
                 for r in conn.execute(
-                    """SELECT id, name, status FROM qr_experiences
-                       WHERE workspace_id=? AND status!='archived' AND name LIKE ? LIMIT 10""",
+                    """SELECT e.id, e.name, e.status, s.slug AS store_slug
+                       FROM qr_experiences e
+                       LEFT JOIN stores s ON s.id = e.store_id
+                       WHERE e.workspace_id=? AND e.status!='archived' AND e.name LIKE ? LIMIT 10""",
                     (workspace_id, like),
                 ).fetchall():
-                    results.append({"type": "qr_experience", "id": r["id"], "label": r["name"], "href": f"/app/qr#experience/{r['id']}"})
+                    href = (
+                        f"/manage/{r['store_slug']}/landing-qr#experience/{r['id']}"
+                        if r["store_slug"]
+                        else f"/app/store#experience/{r['id']}"
+                    )
+                    results.append({"type": "qr_experience", "id": r["id"], "label": r["name"], "href": href})
             if _table_exists(conn, "bookings"):
                 for r in conn.execute(
                     """SELECT id, title, customer_name FROM bookings

@@ -630,11 +630,13 @@ def register_qr_experience_platform(app) -> None:
                     "business_name": branding.get("business_name") or store["name"],
                 })
             from bos.events import emit
+            from customer_qr_platform import manage_landing_qr_href
+
             emit(
                 conn, "qr_experience.created", "qr_experience", eid,
                 workspace_id=int(ws), user_id=uid(), actor="member",
-                title=f"Experience created: {name}",
-                href=f"/app/qr#builder/{eid}",
+                title=f"Landing page created: {name}",
+                href=manage_landing_qr_href(conn, eid, builder=True),
             )
             row = conn.execute("SELECT * FROM qr_experiences WHERE id=?", (eid,)).fetchone()
             return jsonify(experience_to_api(conn, row)), 201
@@ -767,11 +769,13 @@ def register_qr_experience_platform(app) -> None:
                 )
             if "status" in data and data["status"] != before["status"]:
                 from bos.events import emit
+                from customer_qr_platform import manage_landing_qr_href
+
                 emit(
                     conn, "qr_experience.status_changed", "qr_experience", experience_id,
                     workspace_id=int(ws), user_id=uid(), actor="member",
-                    title=f"QR Experience {data['status']}: {row['name']}",
-                    href=f"/app/qr#experience/{experience_id}",
+                    title=f"Landing page {data['status']}: {row['name']}",
+                    href=manage_landing_qr_href(conn, experience_id),
                     metadata={"from": before["status"], "to": data["status"]},
                 )
             row = conn.execute("SELECT * FROM qr_experiences WHERE id=?", (experience_id,)).fetchone()
@@ -864,11 +868,13 @@ def register_qr_experience_platform(app) -> None:
                     (experience_id, _now(), row["qr_code_id"]),
                 )
             from bos.events import emit
+            from customer_qr_platform import manage_landing_qr_href
+
             emit(
                 conn, "qr_experience.published", "qr_experience", experience_id,
                 workspace_id=int(ws), user_id=uid(), actor="member",
-                title=f"QR Experience published: {row['name']}",
-                href=f"/app/qr#experience/{experience_id}",
+                title=f"Landing page published: {row['name']}",
+                href=manage_landing_qr_href(conn, experience_id),
             )
             return jsonify(experience_to_api(conn, row))
 

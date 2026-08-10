@@ -84,11 +84,9 @@ def assign_public_slug(conn, experience_id: int, name: str) -> str:
 
 
 def ensure_visitor_key(session) -> str:
-    key = session.get("visitor_key")
-    if not key:
-        key = secrets.token_urlsafe(16)
-        session["visitor_key"] = key
-    return key
+    from guest_platform import ensure_visitor_key as _ensure
+
+    return _ensure(session)
 
 
 def resolve_experience(conn, key: str, *, allow_draft: bool = False):

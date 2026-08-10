@@ -10,6 +10,7 @@ import secrets
 import socket
 import sqlite3
 import time
+from contextlib import contextmanager
 from functools import wraps
 from pathlib import Path
 
@@ -56,12 +57,20 @@ app.config.update(
 )
 
 
-def db() -> sqlite3.Connection:
+@contextmanager
+def db():
     connection = sqlite3.connect(DATABASE, timeout=30)
     connection.row_factory = sqlite3.Row
     connection.execute("PRAGMA journal_mode=WAL")
     connection.execute("PRAGMA busy_timeout=30000")
-    return connection
+    try:
+        yield connection
+        connection.commit()
+    except BaseException:
+        connection.rollback()
+        raise
+    finally:
+        connection.close()
 
 
 def init_db() -> None:
@@ -354,6 +363,15 @@ def current_user():
         return conn.execute("SELECT id, email FROM users WHERE id = ?", (session["user_id"],)).fetchone()
 
 
+def owner_stores_for_nav(owner_id: int) -> list:
+    with db() as conn:
+        rows = conn.execute(
+            "SELECT id, name, slug, status FROM stores WHERE owner_id = ? ORDER BY name COLLATE NOCASE",
+            (owner_id,),
+        ).fetchall()
+    return [dict(row) for row in rows]
+
+
 @app.context_processor
 def inject_globals():
     path = request.path
@@ -363,7 +381,69 @@ def inject_globals():
         active_app_nav = "qr"
     else:
         active_app_nav = None
-    return {"csrf_token": csrf_token, "current_user": current_user(), "active_app_nav": active_app_nav}
+    user = current_user()
+    owner_stores_nav = owner_stores_for_nav(user["id"]) if user and path.startswith("/manage") else []
+    return {
+        "csrf_token": csrf_token,
+        "current_user": user,
+        "active_app_nav": active_app_nav,
+        "owner_stores_nav": owner_stores_nav,
+    }
+
+
+@app.context_processor
+def inject_guest_context():
+    from guest_platform import (
+        ensure_visitor_key,
+        guest_contact_hints,
+        guest_remembered_email,
+        is_customer_surface_path,
+        recent_store_count,
+    )
+
+    path = request.path or ""
+    if not is_customer_surface_path(path):
+        return {}
+    key = ensure_visitor_key(session)
+    try:
+        with db() as conn:
+            remembered = guest_remembered_email(conn, key)
+            offer = session.get("guest_remember_offer")
+            if remembered and offer:
+                session.pop("guest_remember_offer", None)
+                offer = None
+            return {
+                "guest_recent_count": recent_store_count(conn, key),
+                "guest_contact": guest_contact_hints(conn, key),
+                "guest_remembered_email": remembered,
+                "guest_remember_offer": offer,
+            }
+    except Exception:
+        return {
+            "guest_recent_count": 0,
+            "guest_contact": {},
+            "guest_remembered_email": None,
+            "guest_remember_offer": None,
+        }
+
+
+def track_guest_store_visit(conn, store_id: int, *, path: str | None = None) -> str:
+    from guest_platform import ensure_visitor_key, record_store_visit
+
+    key = ensure_visitor_key(session)
+    record_store_visit(conn, key, store_id, path=path)
+    return key
+
+
+def _safe_guest_redirect(target: str | None, *, fallback: str) -> str:
+    if target and target.startswith("/") and not target.startswith("//"):
+        return target
+    return fallback
+
+
+def _dismiss_guest_remember_offer() -> None:
+    if request.args.get("dismiss_remember"):
+        session.pop("guest_remember_offer", None)
 
 
 def login_required(view):
@@ -409,9 +489,31 @@ def get_store_or_404(slug: str):
     return store
 
 
+def get_store_or_404_by_id(store_id: int):
+    with db() as conn:
+        store = conn.execute("SELECT * FROM stores WHERE id = ?", (store_id,)).fetchone()
+    if not store:
+        abort(404)
+    return store
+
+
 def require_store_owner(store):
     if not current_user() or store["owner_id"] != current_user()["id"]:
         abort(403)
+
+
+def safe_table_count(conn, table: str, where: str = "", params: tuple = ()) -> int:
+    """Return row count, or 0 if the table has not been migrated yet."""
+    row = conn.execute(
+        "SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = ?",
+        (table,),
+    ).fetchone()
+    if not row:
+        return 0
+    query = f"SELECT COUNT(*) FROM {table}"
+    if where:
+        query += f" WHERE {where}"
+    return int(conn.execute(query, params).fetchone()[0])
 
 
 def public_store_or_404(slug: str):
@@ -429,7 +531,7 @@ def storefront_render_context(
     view: str = "shop",
     group_in_url: bool = False,
 ):
-    from storefront_platform import active_deals_for_storefront, build_store_profile, deals_map_for_items
+    from storefront_platform import active_deals_for_storefront, build_store_profile, category_label, deals_map_for_items
 
     view = "deals" if view == "deals" else "shop"
     group_nav = build_item_group_nav(store["id"], published_only=True)
@@ -439,6 +541,9 @@ def storefront_render_context(
         store_profile = build_store_profile(conn, store)
         deals = active_deals_for_storefront(conn, store["id"])
         deals_map = deals_map_for_items(conn, store["id"])
+        from guest_platform import brand_hub_for_store
+
+        brand_hub = brand_hub_for_store(conn, store)
 
     catalog_sections: list[dict] = []
     active_group = None
@@ -458,20 +563,21 @@ def storefront_render_context(
         )
         items = customer_items(store["id"], active_group)
         if items:
-            idx = next((i for i, g in enumerate(group_nav, 1) if g["id"] == active_group), 1)
+            idx = next((g["index"] for g in group_nav if g["id"] == active_group), 1)
+            prefix = next((g["prefix"] for g in group_nav if g["id"] == active_group), None)
             catalog_sections = [{
                 "id": active_group,
-                "num": f"{idx:02d}",
+                "num": category_label(prefix, idx),
                 "name": active_group_name,
                 "items": items,
             }]
     elif group_nav:
-        for idx, entry in enumerate(group_nav, 1):
+        for entry in group_nav:
             section_items = customer_items(store["id"], entry["id"])
             if section_items:
                 catalog_sections.append({
                     "id": entry["id"],
-                    "num": f"{idx:02d}",
+                    "num": category_label(entry.get("prefix"), entry["index"]),
                     "name": entry["name"],
                     "items": section_items,
                 })
@@ -497,6 +603,7 @@ def storefront_render_context(
         "active_group_name": active_group_name,
         "preview_mode": preview_mode,
         "group_in_url": group_in_url,
+        "brand_hub": brand_hub,
     }
 
 
@@ -558,14 +665,32 @@ def count_items_in_group(store_id: int, group_id: str | int, published_only: boo
 
 
 def build_item_group_nav(store_id: int, published_only: bool = False) -> list[dict]:
+    from storefront_platform import category_label
+
     groups = store_item_groups(store_id)
     if not groups:
         return []
     nav: list[dict] = []
+    idx = 1
     if count_items_in_group(store_id, "default", published_only) > 0:
-        nav.append({"id": "default", "name": "Default"})
+        nav.append({
+            "id": "default",
+            "name": "Default",
+            "prefix": None,
+            "index": idx,
+            "num": category_label(None, idx),
+        })
+        idx += 1
     for group in groups:
-        nav.append({"id": group["id"], "name": group["name"]})
+        prefix = group["prefix"] if "prefix" in group.keys() else None
+        nav.append({
+            "id": group["id"],
+            "name": group["name"],
+            "prefix": prefix,
+            "index": idx,
+            "num": category_label(prefix, idx),
+        })
+        idx += 1
     return nav
 
 
@@ -1725,6 +1850,90 @@ def api_stores_create():
     return jsonify({"id": store_id, "slug": slug, "name": name}), 201
 
 
+@app.post("/api/stores/<int:store_id>/customer-qr")
+@login_required
+def api_store_customer_qr_create(store_id: int):
+    """Create shop or specialized customer QR from the unified wizard."""
+    if not csrf_valid():
+        return jsonify({"error": "Invalid CSRF token"}), 400
+    store = get_store_or_404_by_id(store_id)
+    require_store_owner(store)
+    data = request.get_json(silent=True) or {}
+    kind = (data.get("kind") or "").strip()
+    name = (data.get("name") or "").strip() or "Untitled"
+    slug = store["slug"]
+
+    with db() as conn:
+        if kind == "shop":
+            code = new_qr_code()
+            cur = conn.execute(
+                "INSERT INTO qr_codes (store_id, name, code) VALUES (?, ?, ?)",
+                (store["id"], name, code),
+            )
+            return jsonify({
+                "kind": "shop",
+                "id": int(cur.lastrowid),
+                "redirect": url_for("manage_qr_codes", slug=slug),
+            }), 201
+
+        if kind == "product":
+            code = unique_entity_code(conn, "qr_products", "product_code")
+            cur = conn.execute(
+                """INSERT INTO qr_products (store_id, product_code, name, status, updated_at)
+                   VALUES (?, ?, ?, 'draft', CURRENT_TIMESTAMP)""",
+                (store["id"], code, name),
+            )
+            pid = int(cur.lastrowid)
+            return jsonify({
+                "kind": "product",
+                "id": pid,
+                "redirect": url_for("manage_product_qr_detail", slug=slug, product_id=pid),
+            }), 201
+
+        if kind == "event":
+            cur = conn.execute(
+                """INSERT INTO events (store_id, name, status, capacity, timezone, updated_at)
+                   VALUES (?, ?, 'draft', 100, 'Asia/Singapore', CURRENT_TIMESTAMP)""",
+                (store["id"], name),
+            )
+            eid = int(cur.lastrowid)
+            return jsonify({
+                "kind": "event",
+                "id": eid,
+                "redirect": url_for("manage_event_pass_detail", slug=slug, event_id=eid),
+            }), 201
+
+        if kind == "business_card":
+            code = unique_entity_code(conn, "business_cards", "card_code")
+            cur = conn.execute(
+                """INSERT INTO business_cards (store_id, card_code, name, status, updated_at)
+                   VALUES (?, ?, ?, 'draft', CURRENT_TIMESTAMP)""",
+                (store["id"], code, name),
+            )
+            cid = int(cur.lastrowid)
+            return jsonify({
+                "kind": "business_card",
+                "id": cid,
+                "redirect": url_for("manage_business_card_detail", slug=slug, card_id=cid),
+            }), 201
+
+        if kind == "check_in":
+            code = unique_entity_code(conn, "check_in_points", "point_code")
+            cur = conn.execute(
+                """INSERT INTO check_in_points (store_id, point_code, name, scenario, status, updated_at)
+                   VALUES (?, ?, ?, 'visitor', 'draft', CURRENT_TIMESTAMP)""",
+                (store["id"], code, name),
+            )
+            pid = int(cur.lastrowid)
+            return jsonify({
+                "kind": "check_in",
+                "id": pid,
+                "redirect": url_for("manage_check_in_detail", slug=slug, point_id=pid),
+            }), 201
+
+    return jsonify({"error": "Invalid kind. Use shop, product, event, business_card, or check_in."}), 400
+
+
 @app.post("/api/workspace/batch")
 @login_required
 def api_workspace_batch():
@@ -1946,8 +2155,8 @@ def manage_store(slug: str):
                 image_url = resolve_image_field("image_url", "image_file")
                 with db() as conn:
                     conn.execute(
-                        """INSERT INTO items (store_id, name, price, description, image_url, group_id, sku, inventory, status, display_order)
-                           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, COALESCE((SELECT MAX(display_order) + 1 FROM items WHERE store_id = ?), 0))""",
+                        """INSERT INTO items (store_id, name, price, description, image_url, group_id, sku, inventory, status, unit, display_order)
+                           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, COALESCE((SELECT MAX(display_order) + 1 FROM items WHERE store_id = ?), 0))""",
                         (
                             store["id"],
                             name,
@@ -1958,6 +2167,7 @@ def manage_store(slug: str):
                             request.form.get("sku", "").strip() or None,
                             request.form.get("inventory", type=int),
                             request.form.get("status", "published"),
+                            request.form.get("unit", "").strip() or None,
                             store["id"],
                         ),
                     )
@@ -1971,9 +2181,17 @@ def manage_store(slug: str):
                 else:
                     flash("Use a valid non-negative price.", "error")
     items = owner_items(store["id"], active_group)
-    qr_codes = store_qr_codes(store["id"])
-    primary_qr = qr_codes[0] if qr_codes else None
-    primary_qr_image = qr_data_uri(public_url_for("qr_entry", code=primary_qr["code"])) if primary_qr else None
+    from storefront_platform import deal_schedule_status, list_store_deals, resolve_deal
+
+    with db() as conn:
+        deal_rows = {r["item_id"]: r for r in list_store_deals(conn, store["id"])}
+    deals_by_item = {}
+    deal_status_by_item = {}
+    for item in items:
+        row = deal_rows.get(item["id"])
+        if row:
+            deals_by_item[item["id"]] = resolve_deal(row, float(item["price"]))
+            deal_status_by_item[item["id"]] = deal_schedule_status(row)
     return render_template(
         "owner/manage.html",
         store=store,
@@ -1983,10 +2201,174 @@ def manage_store(slug: str):
         active_group=active_group,
         active_group_name=active_group_name,
         item_groups=store_item_groups(store["id"]),
-        qr_codes=qr_codes,
-        primary_qr=primary_qr,
-        primary_qr_image=primary_qr_image,
+        deals_by_item=deals_by_item,
+        deal_status_by_item=deal_status_by_item,
     )
+
+
+@app.post("/manage/<slug>/items/<int:item_id>/deal")
+@login_required
+def toggle_manage_item_deal(slug: str, item_id: int):
+    store = get_store_or_404(slug)
+    require_store_owner(store)
+    get_item_or_404(store["id"], item_id)
+    enabled = bool(request.get_json(silent=True).get("enabled")) if request.is_json else request.form.get("enabled") == "1"
+    from storefront_platform import toggle_item_deal
+
+    with db() as conn:
+        result = toggle_item_deal(conn, store["id"], item_id, enabled)
+    if request.headers.get("X-Requested-With") == "fetch" or request.is_json:
+        return jsonify(result)
+    flash("Deal updated." if enabled else "Deal removed.", "success")
+    return redirect(request.referrer or url_for("manage_store", slug=slug))
+
+
+@app.get("/manage/<slug>/storefront")
+@login_required
+def manage_storefront_hub(slug: str):
+    store = get_store_or_404(slug)
+    require_store_owner(store)
+    with db() as conn:
+        deal_count = safe_table_count(conn, "store_deals", "store_id = ?", (store["id"],))
+        group_count = safe_table_count(conn, "item_groups", "store_id = ?", (store["id"],))
+    return render_template(
+        "owner/storefront_hub.html",
+        store=store,
+        deal_count=int(deal_count),
+        group_count=int(group_count),
+    )
+
+
+def insights_ctx(store, section: str, *, period: str = "7d", new_count: int = 0) -> dict:
+    from storefront_platform import INQUIRY_STATUSES
+    return {
+        "store": store,
+        "insights_section": section,
+        "insights_period": period,
+        "inquiry_statuses": INQUIRY_STATUSES,
+        "inquiry_new_count": new_count,
+    }
+
+
+def _inquiry_new_count(conn, store_id: int) -> int:
+    row = conn.execute(
+        "SELECT COUNT(*) AS c FROM store_inquiries WHERE store_id = ? AND status = 'new'",
+        (store_id,),
+    ).fetchone()
+    return int(row["c"] or 0)
+
+
+@app.get("/manage/<slug>/insights")
+@login_required
+def manage_store_insights(slug: str):
+    store = get_store_or_404(slug)
+    require_store_owner(store)
+    period = request.args.get("period", "7d")
+    if period not in ("today", "7d", "30d"):
+        period = "7d"
+    from storefront_platform import storefront_insights
+    with db() as conn:
+        metrics = storefront_insights(conn, store["id"], period=period)
+        new_count = _inquiry_new_count(conn, store["id"])
+    return render_template(
+        "owner/insights_overview.html",
+        **insights_ctx(store, "overview", period=period, new_count=new_count),
+        metrics=metrics,
+    )
+
+
+@app.get("/manage/<slug>/insights/requests")
+@login_required
+def manage_store_inquiries(slug: str):
+    store = get_store_or_404(slug)
+    require_store_owner(store)
+    status = request.args.get("status", "").strip() or None
+    q = request.args.get("q", "").strip() or None
+    from storefront_platform import list_store_inquiries
+    with db() as conn:
+        inquiries = list_store_inquiries(conn, store["id"], q=q, status=status)
+        new_count = _inquiry_new_count(conn, store["id"])
+    return render_template(
+        "owner/inquiries_inbox.html",
+        **insights_ctx(store, "requests", new_count=new_count),
+        inquiries=inquiries,
+        new_count=new_count,
+        filters={"status": status or "", "q": q or ""},
+    )
+
+
+@app.route("/manage/<slug>/insights/requests/<int:inquiry_id>", methods=["GET", "POST"])
+@login_required
+def manage_store_inquiry_detail(slug: str, inquiry_id: int):
+    store = get_store_or_404(slug)
+    require_store_owner(store)
+    from storefront_platform import get_store_inquiry, update_inquiry_status
+    if request.method == "POST":
+        action = request.form.get("action")
+        with db() as conn:
+            if action == "mark_read":
+                update_inquiry_status(conn, store["id"], inquiry_id, "read")
+                flash("Marked as read.", "success")
+            elif action == "archive":
+                update_inquiry_status(conn, store["id"], inquiry_id, "archived")
+                flash("Request archived.", "success")
+            elif action == "reopen":
+                update_inquiry_status(conn, store["id"], inquiry_id, "new")
+                flash("Moved back to new.", "success")
+        return redirect(url_for("manage_store_inquiry_detail", slug=slug, inquiry_id=inquiry_id))
+    with db() as conn:
+        inquiry = get_store_inquiry(conn, store["id"], inquiry_id)
+        if inquiry and inquiry.get("status") == "new":
+            update_inquiry_status(conn, store["id"], inquiry_id, "read")
+            inquiry["status"] = "read"
+        new_count = _inquiry_new_count(conn, store["id"])
+    if not inquiry:
+        abort(404)
+    return render_template(
+        "owner/inquiry_detail.html",
+        **insights_ctx(store, "requests", new_count=new_count),
+        inquiry=inquiry,
+    )
+
+
+@app.get("/manage/<slug>/qr")
+@login_required
+def manage_qr_hub(slug: str):
+    store = get_store_or_404(slug)
+    require_store_owner(store)
+    store_id = store["id"]
+    with db() as conn:
+        qr_count = safe_table_count(conn, "qr_codes", "store_id = ?", (store_id,))
+        event_count = safe_table_count(conn, "events", "store_id = ?", (store_id,))
+        card_count = safe_table_count(conn, "business_cards", "store_id = ?", (store_id,))
+        product_qr_count = safe_table_count(conn, "qr_products", "store_id = ?", (store_id,))
+        checkin_count = safe_table_count(
+            conn, "check_in_points", "store_id = ? AND status != 'archived'", (store_id,)
+        )
+        landing_count = safe_table_count(
+            conn,
+            "qr_experiences",
+            "store_id = ? AND status != 'archived'",
+            (store_id,),
+        )
+    return render_template(
+        "owner/qr_hub.html",
+        store=store,
+        qr_count=int(qr_count),
+        event_count=int(event_count),
+        card_count=int(card_count),
+        product_qr_count=int(product_qr_count),
+        checkin_count=int(checkin_count),
+        landing_count=int(landing_count),
+    )
+
+
+@app.get("/manage/<slug>/landing-qr")
+@login_required
+def manage_landing_qr(slug: str):
+    store = get_store_or_404(slug)
+    require_store_owner(store)
+    return render_template("owner/landing_qr.html", store=store)
 
 
 @app.route("/manage/<slug>/settings", methods=["GET", "POST"])
@@ -2015,11 +2397,12 @@ def store_settings(slug: str):
         hours_json = hours_from_form(request.form)
         timezone = request.form.get("timezone", "").strip() or DEFAULT_TIMEZONE
         new_address = request.form.get("address", "").strip()
+        discoverable = request.form.get("discoverable") == "1"
         with db() as conn:
             conn.execute(
                 """UPDATE stores SET name = ?, description = ?, owner_name = ?, contact = ?, address = ?,
                    business_hours_json = ?, timezone = ?, logo_url = ?, background_image = ?, group_id = ?,
-                   updated_at = CURRENT_TIMESTAMP
+                   discoverable = ?, updated_at = CURRENT_TIMESTAMP
                    WHERE id = ?""",
                 (
                     request.form.get("name", "").strip() or store["name"],
@@ -2032,6 +2415,7 @@ def store_settings(slug: str):
                     logo_url,
                     background_image,
                     request.form.get("group_id") or None,
+                    1 if discoverable else 0,
                     store["id"],
                 ),
             )
@@ -2042,6 +2426,7 @@ def store_settings(slug: str):
         flash("Store settings saved.", "success")
         return redirect(url_for("store_settings", slug=slug))
     from storefront_platform import parse_hours_json, WEEKDAYS, WEEKDAY_LABELS, DEFAULT_TIMEZONE
+    from discover_platform import discover_listing_readiness
 
     hours_data = parse_hours_json(store["business_hours_json"] if "business_hours_json" in store.keys() else None)
     return render_template(
@@ -2052,6 +2437,8 @@ def store_settings(slug: str):
         weekdays=WEEKDAYS,
         weekday_labels=WEEKDAY_LABELS,
         default_timezone=DEFAULT_TIMEZONE,
+        discover_readiness=discover_listing_readiness(dict(store)),
+        discover_url=url_for("guest_discover"),
     )
 
 
@@ -2167,20 +2554,26 @@ def item_groups_manage(slug: str):
         action = request.form.get("action", "create")
         if action == "create":
             name = request.form.get("name", "").strip()
+            prefix = request.form.get("prefix", "").strip() or None
             if name:
                 with db() as conn:
                     conn.execute(
-                        "INSERT INTO item_groups (store_id, name, display_order) VALUES (?, ?, COALESCE((SELECT MAX(display_order) + 1 FROM item_groups WHERE store_id = ?), 0))",
-                        (store["id"], name, store["id"]),
+                        """INSERT INTO item_groups (store_id, name, prefix, display_order)
+                           VALUES (?, ?, ?, COALESCE((SELECT MAX(display_order) + 1 FROM item_groups WHERE store_id = ?), 0))""",
+                        (store["id"], name, prefix, store["id"]),
                     )
                 flash("Item group created.", "success")
         elif action == "rename":
             group_id = request.form.get("group_id", type=int)
             name = request.form.get("name", "").strip()
+            prefix = request.form.get("prefix", "").strip() or None
             if group_id and name:
                 with db() as conn:
-                    conn.execute("UPDATE item_groups SET name = ? WHERE id = ? AND store_id = ?", (name, group_id, store["id"]))
-                flash("Item group renamed.", "success")
+                    conn.execute(
+                        "UPDATE item_groups SET name = ?, prefix = ? WHERE id = ? AND store_id = ?",
+                        (name, prefix, group_id, store["id"]),
+                    )
+                flash("Category updated.", "success")
         elif action == "delete":
             group_id = request.form.get("group_id", type=int)
             if group_id:
@@ -2262,7 +2655,7 @@ def edit_item(slug: str, item_id: int):
                 with db() as conn:
                     conn.execute(
                         """UPDATE items SET name = ?, price = ?, description = ?, image_url = ?, group_id = ?,
-                           sku = ?, inventory = ?, status = ?, internal_notes = ?, display_order = ?,
+                           sku = ?, inventory = ?, status = ?, internal_notes = ?, display_order = ?, unit = ?,
                            updated_at = CURRENT_TIMESTAMP WHERE id = ? AND store_id = ?""",
                         (
                             name,
@@ -2275,6 +2668,7 @@ def edit_item(slug: str, item_id: int):
                             request.form.get("status", "published"),
                             request.form.get("internal_notes", "").strip(),
                             request.form.get("display_order", type=int) or 0,
+                            request.form.get("unit", "").strip() or None,
                             item_id,
                             store["id"],
                         ),
@@ -2427,7 +2821,13 @@ def qr_entry(code: str):
             return redirect(url_for("survey_submit_view", code=survey["pub_code"]))
     if pass_type == "booking":
         # Booking experiences land on the storefront until a dedicated booking page exists
+        with db() as conn:
+            from storefront_platform import record_store_event
+            record_store_event(conn, qr["store_id"], "qr_scan", qr_code=code)
         return redirect(url_for("storefront", slug=qr["slug"], qr=code))
+    with db() as conn:
+        from storefront_platform import record_store_event
+        record_store_event(conn, qr["store_id"], "qr_scan", qr_code=code)
     return redirect(url_for("storefront", slug=qr["slug"], qr=code))
 
 
@@ -3276,25 +3676,559 @@ def storefront_inquire(slug: str):
         flash("Please enter your name.", "error")
         return redirect(url_for("storefront", slug=slug) + "#sf-contact")
     item_id = request.form.get("item_id", type=int)
-    from storefront_platform import save_store_inquiry
+    email = request.form.get("customer_email", "").strip() or None
+    phone = request.form.get("customer_phone", "").strip() or None
+    from guest_platform import bind_inquiry_to_guest, ensure_visitor_key
+    from storefront_platform import notify_owner_new_inquiry, pop_storefront_ref, save_store_inquiry
 
+    visitor_key = ensure_visitor_key(session)
+    source_ref = pop_storefront_ref(session, store["id"])
     with db() as conn:
-        save_store_inquiry(
+        inquiry_id = save_store_inquiry(
             conn,
             store["id"],
             customer_name=name,
-            customer_email=request.form.get("customer_email", "").strip() or None,
-            customer_phone=request.form.get("customer_phone", "").strip() or None,
+            customer_email=email,
+            customer_phone=phone,
             message=request.form.get("message", "").strip() or None,
             item_id=item_id,
+            visitor_key=visitor_key,
+            source_ref=source_ref,
         )
+        bind_inquiry_to_guest(
+            conn,
+            visitor_key,
+            store,
+            customer_name=name,
+            customer_email=email,
+            customer_phone=phone,
+            inquiry_id=inquiry_id,
+        )
+        inbox_url = url_for(
+            "manage_store_inquiry_detail",
+            slug=slug,
+            inquiry_id=inquiry_id,
+            _external=True,
+        )
+        if not notify_owner_new_inquiry(conn, store["id"], inquiry_id, inbox_url=inbox_url):
+            owner = conn.execute(
+                "SELECT u.email FROM stores s JOIN users u ON u.id = s.owner_id WHERE s.id = ?",
+                (store["id"],),
+            ).fetchone()
+            app.logger.warning(
+                "Dev: new inquiry %s for store %s — inbox %s (notify %s)",
+                inquiry_id,
+                slug,
+                inbox_url,
+                owner["email"] if owner else "?",
+            )
+        if email:
+            from guest_platform import guest_remembered_email
+
+            if not guest_remembered_email(conn, visitor_key):
+                session["guest_remember_offer"] = email
+        conn.commit()
     flash("Thanks — the store received your message.", "success")
+    if item_id:
+        return redirect(url_for("customer_item_detail", slug=slug, item_id=item_id) + "#sf-contact")
     return redirect(url_for("storefront", slug=slug) + "#sf-contact")
+
+
+@app.get("/place/<place_slug>")
+def place_directory(place_slug: str):
+    from place_platform import get_place_by_slug, record_place_event, stores_owned_by_user, tenants_for_place
+
+    with db() as conn:
+        place = get_place_by_slug(conn, place_slug)
+        if not place or (place.get("status") or "active") == "archived":
+            abort(404)
+        record_place_event(conn, place["id"], "place_view")
+        tenants = tenants_for_place(conn, place["id"], public_only=True)
+    user = current_user()
+    owned_stores = []
+    if user:
+        with db() as conn:
+            owned_stores = stores_owned_by_user(conn, user["id"])
+    apply_url = url_for("place_tenant_apply", place_slug=place_slug)
+    return render_template(
+        "customer/place_directory.html",
+        place=place,
+        tenants=tenants,
+        preview_mode=False,
+        current_user_logged_in=bool(user),
+        user_has_stores=bool(owned_stores),
+        apply_url=apply_url,
+        login_apply_url=url_for("login", next=apply_url),
+        create_store_url=url_for("create_store", next=apply_url),
+    )
+
+
+@app.get("/place/<place_slug>/go/<store_slug>")
+def place_tenant_go(place_slug: str, store_slug: str):
+    from place_platform import get_place_by_slug, is_place_tenant, record_place_event
+
+    with db() as conn:
+        place = get_place_by_slug(conn, place_slug)
+        if not place or (place.get("status") or "active") == "archived":
+            abort(404)
+        store = get_store_or_404(store_slug)
+        if (store["status"] or "active") == "archived":
+            abort(404)
+        if not is_place_tenant(conn, place["id"], store["id"]):
+            abort(404)
+        record_place_event(conn, place["id"], "tenant_click", store_id=store["id"])
+    return redirect(
+        url_for("storefront", slug=store["slug"], ref="place_directory", from_place=place_slug)
+    )
+
+
+@app.get("/manage/places")
+@login_required
+def manage_places_list():
+    from place_platform import list_places_for_owner
+
+    with db() as conn:
+        places = list_places_for_owner(conn, current_user()["id"])
+    return render_template("owner/places_list.html", places=places)
+
+
+@app.route("/manage/places/new", methods=["GET", "POST"])
+@login_required
+def manage_places_new():
+    from place_platform import create_place
+
+    if request.method == "POST":
+        name = request.form.get("name", "").strip()
+        if not name:
+            flash("Place name is required.", "error")
+            return render_template("owner/place_form.html", place=None)
+        with db() as conn:
+            place = create_place(
+                conn,
+                current_user()["id"],
+                name=name,
+                description=request.form.get("description"),
+                address=request.form.get("address"),
+            )
+        flash(f"Place directory “{place['name']}” created.", "success")
+        return redirect(url_for("manage_place_detail", place_slug=place["slug"]))
+    return render_template("owner/place_form.html", place=None)
+
+
+@app.route("/manage/places/<place_slug>", methods=["GET", "POST"])
+@login_required
+def manage_place_detail(place_slug: str):
+    from place_platform import (
+        add_place_tenant,
+        get_place_by_slug,
+        place_insights,
+        remove_place_tenant,
+        require_place_owner,
+        resolve_store_for_tenant,
+        tenants_for_place,
+        update_place,
+    )
+
+    with db() as conn:
+        place = get_place_by_slug(conn, place_slug)
+    if not place:
+        abort(404)
+    require_place_owner(place, current_user()["id"])
+
+    if request.method == "POST":
+        action = request.form.get("action", "")
+        with db() as conn:
+            if action == "update":
+                update_place(
+                    conn,
+                    place["id"],
+                    name=request.form.get("name"),
+                    description=request.form.get("description"),
+                    address=request.form.get("address"),
+                    cover_image=request.form.get("cover_image"),
+                )
+                flash("Place updated.", "success")
+            elif action == "add_tenant":
+                store_slug = (request.form.get("store_slug") or "").strip().lower()
+                store = resolve_store_for_tenant(conn, store_slug) if store_slug else None
+                if not store:
+                    flash("Store not found. Enter the store slug from its shop URL.", "error")
+                elif add_place_tenant(
+                    conn,
+                    place["id"],
+                    store["id"],
+                    unit_label=request.form.get("unit_label"),
+                ):
+                    flash(f"Added {store['name']} to the directory.", "success")
+                else:
+                    flash("That store is already listed or cannot be added.", "error")
+            elif action == "remove_tenant":
+                store_id = request.form.get("store_id", type=int)
+                if store_id and remove_place_tenant(conn, place["id"], store_id):
+                    flash("Store removed from directory.", "success")
+            elif action == "approve_application":
+                from place_platform import approve_tenant_application, notify_tenant_application_decision
+
+                app_id = request.form.get("application_id", type=int)
+                if app_id and approve_tenant_application(conn, app_id, current_user()["id"]):
+                    directory_url = url_for("place_directory", place_slug=place_slug, _external=True)
+                    if not notify_tenant_application_decision(
+                        conn, app_id, approved=True, directory_url=directory_url
+                    ):
+                        app.logger.warning(
+                            "Dev: tenant approved for application %s — directory %s",
+                            app_id,
+                            directory_url,
+                        )
+                    flash("Application approved — shop added to directory.", "success")
+                else:
+                    flash("Could not approve that application.", "error")
+            elif action == "reject_application":
+                from place_platform import notify_tenant_application_decision, reject_tenant_application
+
+                app_id = request.form.get("application_id", type=int)
+                if app_id and reject_tenant_application(
+                    conn,
+                    app_id,
+                    current_user()["id"],
+                    note=request.form.get("rejection_note"),
+                ):
+                    if not notify_tenant_application_decision(conn, app_id, approved=False):
+                        app.logger.warning("Dev: tenant rejected for application %s", app_id)
+                    flash("Application rejected.", "success")
+                else:
+                    flash("Could not reject that application.", "error")
+        return redirect(url_for("manage_place_detail", place_slug=place_slug))
+
+    period = request.args.get("period", "30d")
+    if period not in ("today", "7d", "30d"):
+        period = "30d"
+    with db() as conn:
+        from place_platform import applications_for_place
+
+        place = get_place_by_slug(conn, place_slug)
+        tenants = tenants_for_place(conn, place["id"], public_only=False)
+        metrics = place_insights(conn, place["id"], period=period)
+        pending_applications = applications_for_place(conn, place["id"], status="pending")
+
+    directory_url = url_for("place_directory", place_slug=place["slug"], _external=True)
+    apply_url = url_for("place_tenant_apply", place_slug=place["slug"], _external=True)
+    return render_template(
+        "owner/place_detail.html",
+        place=place,
+        tenants=tenants,
+        metrics=metrics,
+        pending_applications=pending_applications,
+        directory_url=directory_url,
+        apply_url=apply_url,
+        qr_image=qr_data_uri(directory_url),
+    )
+
+
+@app.route("/place/<place_slug>/apply", methods=["GET", "POST"])
+@login_required
+def place_tenant_apply(place_slug: str):
+    from place_platform import (
+        get_place_by_slug,
+        stores_owned_by_user,
+        submit_tenant_application,
+        tenant_application_for_store,
+        is_place_tenant,
+    )
+
+    with db() as conn:
+        place = get_place_by_slug(conn, place_slug)
+    if not place or (place.get("status") or "active") == "archived":
+        abort(404)
+
+    user = current_user()
+    owned_stores = []
+    with db() as conn:
+        owned_stores = stores_owned_by_user(conn, user["id"])
+
+    if not owned_stores:
+        flash("Create a storefront first, then apply to list it here.", "error")
+        return redirect(url_for("create_store"))
+
+    if request.method == "POST":
+        store_id = request.form.get("store_id", type=int)
+        owned_ids = {s["id"] for s in owned_stores}
+        if not store_id or store_id not in owned_ids:
+            flash("Choose one of your stores.", "error")
+        else:
+            with db() as conn:
+                result, app_id = submit_tenant_application(
+                    conn,
+                    place["id"],
+                    store_id,
+                    user["id"],
+                    unit_label=request.form.get("unit_label"),
+                    message=request.form.get("message"),
+                )
+                if result == "submitted" and app_id:
+                    from place_platform import notify_venue_new_application
+
+                    review_url = url_for("manage_place_detail", place_slug=place_slug, _external=True)
+                    if not notify_venue_new_application(conn, app_id, review_url=review_url):
+                        app.logger.warning(
+                            "Dev: new tenant application %s — venue review %s",
+                            app_id,
+                            review_url,
+                        )
+            messages = {
+                "submitted": "Application sent — the venue will review it.",
+                "updated": "Application updated.",
+                "already_listed": "This shop is already listed in the directory.",
+                "forbidden": "You can only apply with stores you own.",
+                "invalid_store": "That store cannot be listed.",
+            }
+            flash(messages.get(result, "Something went wrong."), "success" if result in ("submitted", "updated") else "error")
+            if result in ("submitted", "updated", "already_listed"):
+                return redirect(url_for("manage_store_place_membership", slug=next(
+                    (s["slug"] for s in owned_stores if s["id"] == store_id), owned_stores[0]["slug"]
+                )))
+        return redirect(url_for("place_tenant_apply", place_slug=place_slug))
+
+    store_statuses = []
+    with db() as conn:
+        for s in owned_stores:
+            if is_place_tenant(conn, place["id"], s["id"]):
+                status = "listed"
+            else:
+                application = tenant_application_for_store(conn, place["id"], s["id"])
+                status = application["status"] if application else None
+            store_statuses.append({**s, "membership_status": status})
+
+    return render_template(
+        "owner/place_apply.html",
+        place=place,
+        stores=store_statuses,
+    )
+
+
+@app.route("/manage/<slug>/place-membership", methods=["GET", "POST"])
+@login_required
+def manage_store_place_membership(slug: str):
+    from place_platform import (
+        applications_for_store,
+        get_place_by_slug,
+        is_place_tenant,
+        submit_tenant_application,
+    )
+
+    store = get_store_or_404(slug)
+    require_store_owner(store)
+
+    if request.method == "POST":
+        place_slug = (request.form.get("place_slug") or "").strip().lower()
+        with db() as conn:
+            place = get_place_by_slug(conn, place_slug) if place_slug else None
+            if not place:
+                flash("Place not found. Use the slug from the venue directory URL.", "error")
+            else:
+                result, app_id = submit_tenant_application(
+                    conn,
+                    place["id"],
+                    store["id"],
+                    current_user()["id"],
+                    unit_label=request.form.get("unit_label"),
+                    message=request.form.get("message"),
+                )
+                if result == "submitted" and app_id:
+                    from place_platform import notify_venue_new_application
+
+                    review_url = url_for("manage_place_detail", place_slug=place["slug"], _external=True)
+                    if not notify_venue_new_application(conn, app_id, review_url=review_url):
+                        app.logger.warning(
+                            "Dev: new tenant application %s — venue review %s",
+                            app_id,
+                            review_url,
+                        )
+                messages = {
+                    "submitted": f"Application sent to {place['name']}.",
+                    "updated": "Application updated.",
+                    "already_listed": "Your shop is already listed there.",
+                }
+                flash(
+                    messages.get(result, "Could not submit application."),
+                    "success" if result in ("submitted", "updated") else "error",
+                )
+        return redirect(url_for("manage_store_place_membership", slug=slug))
+
+    with db() as conn:
+        applications = applications_for_store(conn, store["id"])
+        memberships = []
+        for row in conn.execute(
+            """SELECT p.slug, p.name, ps.unit_label
+               FROM place_stores ps
+               JOIN places p ON p.id = ps.place_id
+               WHERE ps.store_id = ?
+               ORDER BY p.name COLLATE NOCASE""",
+            (store["id"],),
+        ).fetchall():
+            memberships.append(dict(row))
+
+    return render_template(
+        "owner/store_place_membership.html",
+        store=store,
+        applications=applications,
+        memberships=memberships,
+    )
+
+
+@app.get("/discover")
+def guest_discover():
+    from discover_platform import discover_categories, discoverable_stores
+    from guest_platform import ensure_visitor_key, recent_stores_for_visitor
+
+    lat = request.args.get("lat", type=float)
+    lng = request.args.get("lng", type=float)
+    q = (request.args.get("q") or "").strip() or None
+    category = (request.args.get("category") or "").strip() or None
+    open_only = request.args.get("open") == "1"
+    visitor_key = ensure_visitor_key(session)
+    with db() as conn:
+        stores = discoverable_stores(
+            conn,
+            q=q,
+            category=category,
+            open_only=open_only,
+            lat=lat,
+            lng=lng,
+        )
+        recent = recent_stores_for_visitor(conn, visitor_key, limit=6)
+        categories = discover_categories(
+            discoverable_stores(conn, lat=lat, lng=lng, limit=200)
+        )
+    return render_template(
+        "customer/discover.html",
+        stores=stores,
+        categories=categories,
+        recent_places=recent,
+        preview_mode=False,
+        user_lat=lat,
+        user_lng=lng,
+        search_q=q or "",
+        active_category=category or "",
+        open_only=open_only,
+    )
+
+
+@app.get("/api/discover/stores")
+def api_discover_stores():
+    from discover_platform import discoverable_stores
+
+    lat = request.args.get("lat", type=float)
+    lng = request.args.get("lng", type=float)
+    q = (request.args.get("q") or "").strip() or None
+    category = (request.args.get("category") or "").strip() or None
+    open_only = request.args.get("open") == "1"
+    with db() as conn:
+        stores = discoverable_stores(
+            conn,
+            q=q,
+            category=category,
+            open_only=open_only,
+            lat=lat,
+            lng=lng,
+        )
+    return jsonify({"stores": stores})
+
+
+@app.get("/places")
+def guest_recent_places():
+    from guest_platform import ensure_visitor_key, recent_stores_for_visitor
+
+    visitor_key = ensure_visitor_key(session)
+    with db() as conn:
+        places = recent_stores_for_visitor(conn, visitor_key)
+    return render_template(
+        "customer/recent_places.html",
+        places=places,
+        preview_mode=False,
+    )
+
+
+@app.post("/places/remember")
+def guest_remember_request():
+    from guest_platform import create_guest_remember_token, ensure_visitor_key, send_guest_remember_email, upsert_guest_profile
+
+    email = (request.form.get("email") or "").strip().lower()
+    if not email or "@" not in email:
+        flash("Please enter a valid email address.", "error")
+        return redirect(_safe_guest_redirect(request.form.get("next"), fallback=url_for("guest_recent_places") + "#remember"))
+
+    visitor_key = ensure_visitor_key(session)
+    with db() as conn:
+        upsert_guest_profile(conn, visitor_key, email=email)
+        token = create_guest_remember_token(conn, email, visitor_key)
+
+    remember_url = url_for("guest_remember_signin", token=token, _external=True)
+    sent = send_guest_remember_email(remember_url, email)
+    session.pop("guest_remember_offer", None)
+    if sent:
+        flash("Check your email for a link to save your places on other devices.", "success")
+    else:
+        app.logger.warning("Development guest remember link: %s", remember_url)
+        flash(
+            "If that email works, we sent a remember-me link. "
+            "In local development, check the Flask terminal for the link.",
+            "success",
+        )
+
+    return redirect(_safe_guest_redirect(request.form.get("next"), fallback=url_for("guest_recent_places") + "#remember"))
+
+
+@app.get("/guest/remember/<token>")
+def guest_remember_signin(token: str):
+    from guest_platform import apply_guest_remember_link, consume_guest_remember_token, ensure_visitor_key
+
+    current_key = ensure_visitor_key(session)
+    with db() as conn:
+        row = consume_guest_remember_token(conn, token)
+        if not row:
+            flash("This link is invalid or expired. Request a new one from Your places.", "error")
+            return redirect(url_for("guest_recent_places"))
+        canonical = apply_guest_remember_link(conn, row, current_key)
+
+    session["visitor_key"] = canonical
+    flash("Your places are saved on this device.", "success")
+    return redirect(url_for("guest_recent_places"))
 
 
 @app.route("/store/<slug>")
 def storefront(slug: str):
     store = public_store_or_404(slug)
+    _dismiss_guest_remember_offer()
+    with db() as conn:
+        from storefront_platform import record_store_event, remember_storefront_ref
+
+        visitor_key = track_guest_store_visit(conn, store["id"], path=f"/store/{slug}")
+        view_meta: dict = {"visitor_key": visitor_key}
+        ref = request.args.get("ref")
+        if ref == "place_directory":
+            view_meta["ref"] = "place_directory"
+            remember_storefront_ref(session, store["id"], "place_directory")
+            if request.args.get("from_place"):
+                view_meta["from_place"] = request.args.get("from_place")
+        elif ref == "discover":
+            view_meta["ref"] = "discover"
+            remember_storefront_ref(session, store["id"], "discover")
+        elif ref == "brand_hub":
+            remember_storefront_ref(session, store["id"], "brand_hub")
+        record_store_event(
+            conn, store["id"], "storefront_view", metadata=view_meta,
+        )
+        if request.args.get("ref") == "brand_hub":
+            record_store_event(
+                conn,
+                store["id"],
+                "brand_hub_click",
+                metadata={
+                    "visitor_key": visitor_key,
+                    "from_store_slug": request.args.get("from"),
+                },
+            )
     ctx = storefront_render_context(
         store,
         preview_mode=False,
@@ -3308,18 +4242,23 @@ def storefront(slug: str):
 @app.get("/store/<slug>/items/<int:item_id>")
 def customer_item_detail(slug: str, item_id: int):
     store = public_store_or_404(slug)
+    _dismiss_guest_remember_offer()
     item = get_item_or_404(store["id"], item_id)
     if item["status"] != "published":
         abort(404)
+    path = f"/store/{slug}/items/{item_id}"
+    back_group = parse_item_group_arg(request.args.get("group"))
     with db() as conn:
+        from storefront_platform import deals_map_for_items, record_store_event
+
+        visitor_key = track_guest_store_visit(conn, store["id"], path=path)
+        record_store_event(
+            conn, store["id"], "item_view", item_id=item_id, metadata={"visitor_key": visitor_key},
+        )
         group_name = None
         if item["group_id"]:
             row = conn.execute("SELECT name FROM item_groups WHERE id = ?", (item["group_id"],)).fetchone()
             group_name = row["name"] if row else None
-    back_group = parse_item_group_arg(request.args.get("group"))
-    deal = None
-    with db() as conn:
-        from storefront_platform import deals_map_for_items
         deal = deals_map_for_items(conn, store["id"]).get(item_id)
     return render_template(
         "customer/item_detail.html",

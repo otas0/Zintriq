@@ -94,6 +94,20 @@ def store():
     )
 
 
+@bos_bp.get("/store/organize")
+@_login_required
+def store_organize():
+    from app import workspace_snapshot
+
+    user = _current_user()
+    return render_template(
+        "bos/store_organize.html",
+        module_id="store",
+        page_title="Groups & labels",
+        workspace=workspace_snapshot(user["id"]),
+    )
+
+
 @bos_bp.get("/responses")
 @_login_required
 def responses():
@@ -117,9 +131,19 @@ def operations():
 @bos_bp.get("/qr")
 @_login_required
 def qr_experiences():
-    frag = request.args.get("experience") or ""
-    if frag:
-        return redirect(f"{url_for('bos.store')}#experience/{frag}")
+    """Legacy QR Experiences URL — redirect into store Customer QR hub."""
+    exp_id = (request.args.get("experience") or request.args.get("builder") or "").strip()
+    if exp_id.isdigit():
+        from app import db
+        from customer_qr_platform import manage_landing_qr_href
+
+        with db() as conn:
+            href = manage_landing_qr_href(
+                conn,
+                int(exp_id),
+                builder=bool(request.args.get("builder")),
+            )
+        return redirect(href)
     return redirect(url_for("bos.store", _anchor="experiences"))
 
 

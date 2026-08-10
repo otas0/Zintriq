@@ -191,8 +191,10 @@ def register_home_platform(app) -> None:
 
     def _qr_status(conn, ws, today: str) -> list[dict]:
         rows = conn.execute(
-            """SELECT id, name, status, experience_config, updated_at FROM qr_experiences
-               WHERE workspace_id=? AND status!='archived' ORDER BY updated_at DESC LIMIT 8""",
+            """SELECT e.id, e.name, e.status, e.experience_config, e.updated_at, s.slug AS store_slug
+               FROM qr_experiences e
+               LEFT JOIN stores s ON s.id = e.store_id
+               WHERE e.workspace_id=? AND e.status!='archived' ORDER BY e.updated_at DESC LIMIT 8""",
             (ws,),
         ).fetchall()
         if not rows:
@@ -271,15 +273,25 @@ def register_home_platform(app) -> None:
                 "response_count": response_counts.get(eid, 0),
                 "status_hint": hint,
                 "updated_at": row["updated_at"] if "updated_at" in row.keys() else "",
+                "store_slug": row["store_slug"] if "store_slug" in row.keys() else None,
             })
         return result
+
+    def _landing_manage_href(entry: dict) -> str:
+        slug = entry.get("store_slug")
+        eid = entry.get("id")
+        if slug and eid:
+            return f"/manage/{slug}/landing-qr#experience/{eid}"
+        if eid:
+            return f"/app/store#experience/{eid}"
+        return "/app/store#experiences"
 
     def _recommended_actions(counts: dict, qr_status: list) -> list[dict]:
         actions = []
         if counts["new_feedback"]:
             actions.append({
                 "title": f"{counts['new_feedback']} new response{'s' if counts['new_feedback'] != 1 else ''}",
-                "detail": "Customers responded through your QR Experiences",
+                "detail": "Customers responded through your landing pages",
                 "href": "/app/responses",
                 "cta": "View responses",
                 "urgent": True,
@@ -287,18 +299,18 @@ def register_home_platform(app) -> None:
         drafts = [e for e in qr_status if e["status"] == "draft"]
         if drafts:
             actions.append({
-                "title": f"{len(drafts)} QR Experience{'s' if len(drafts) != 1 else ''} ready to publish",
+                "title": f"{len(drafts)} landing page{'s' if len(drafts) != 1 else ''} ready to publish",
                 "detail": drafts[0]["name"],
-                "href": f"/app/qr#experience/{drafts[0]['id']}",
-                "cta": "Publish QR",
+                "href": _landing_manage_href(drafts[0]),
+                "cta": "Publish",
                 "urgent": False,
             })
         if not qr_status:
             actions.append({
-                "title": "Create your first QR Experience",
-                "detail": "Put a QR on your table and start collecting feedback",
-                "href": "/app/qr",
-                "cta": "Create QR",
+                "title": "Add your first customer QR",
+                "detail": "Create a shop code or landing page for customers to scan",
+                "href": "/app/store#experiences",
+                "cta": "Customer QR",
                 "urgent": False,
             })
         elif not actions:
@@ -323,9 +335,9 @@ def register_home_platform(app) -> None:
         drafts = [e for e in qr_status if e["status"] == "draft"]
         if drafts:
             items.append({
-                "title": "QR Experience draft unfinished",
+                "title": "Landing page draft unfinished",
                 "detail": drafts[0]["name"],
-                "href": f"/app/qr#experience/{drafts[0]['id']}",
+                "href": _landing_manage_href(drafts[0]),
                 "urgent": False,
             })
         paused = [e for e in qr_status if e["status"] in ("paused", "disabled")]
@@ -333,7 +345,7 @@ def register_home_platform(app) -> None:
             items.append({
                 "title": f"{paused[0]['name']} is paused",
                 "detail": "Customers cannot scan until reactivated",
-                "href": f"/app/qr#experience/{paused[0]['id']}",
+                "href": _landing_manage_href(paused[0]),
                 "urgent": False,
             })
         return items[:5]

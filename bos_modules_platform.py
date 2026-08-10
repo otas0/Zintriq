@@ -347,7 +347,7 @@ def register_bos_modules_platform(app) -> None:
                    FROM qr_codes q JOIN stores s ON s.id=q.store_id WHERE s.workspace_id=?""",
                 (ws_id,),
             ).fetchall():
-                assets.append({**dict(r), "href": f"/manage/{r['store_slug']}/qr-codes"})
+                assets.append({**dict(r), "href": f"/manage/{r['store_slug']}/qr"})
             for r in conn.execute(
                 """SELECT bc.id, bc.card_code AS code, 'business_card' AS asset_type, s.name AS store_name, s.slug AS store_slug
                    FROM business_cards bc JOIN stores s ON s.id=bc.store_id WHERE s.workspace_id=?""",

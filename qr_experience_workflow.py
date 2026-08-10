@@ -332,12 +332,14 @@ def record_workflow_analytics(conn, experience_id: int, session_id: str, event_t
 
 def emit_workflow_activity(conn, event_type: str, workflow_id: int, experience_id: int, workspace_id: int, title: str, metadata: dict | None = None) -> None:
     from bos.events import emit
+    from customer_qr_platform import manage_landing_qr_href
+
     emit(
         conn, event_type, "qr_experience_workflow", workflow_id,
         workspace_id=int(workspace_id), actor="customer",
         title=title,
         metadata={"experience_id": experience_id, **(metadata or {})},
-        href=f"/app/qr#experience/{experience_id}",
+        href=manage_landing_qr_href(conn, experience_id),
     )
 
 
@@ -585,11 +587,13 @@ def register_qr_experience_workflow(app) -> None:
                 (_now(), row["id"]),
             )
             from bos.events import emit
+            from customer_qr_platform import manage_landing_qr_href
+
             emit(
                 conn, "qr_experience.workflow_published", "qr_experience_workflow", row["id"],
                 workspace_id=int(ws), user_id=uid(), actor="member",
                 title=f"Workflow published: {row['name']}",
-                href=f"/app/qr#experience/{experience_id}",
+                href=manage_landing_qr_href(conn, experience_id),
             )
             updated = conn.execute("SELECT * FROM qr_experience_workflows WHERE id=?", (row["id"],)).fetchone()
             return jsonify(workflow_to_api(updated))
