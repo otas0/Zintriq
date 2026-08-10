@@ -44,10 +44,10 @@ export async function mountOperationsPage(root) {
         </div>
         <span class="bos-btn bos-btn-sm bos-btn-ghost">View</span>
       </a>
-      <a href="/app/qr" class="bos-action-card">
+      <a href="/app/store#experiences" class="bos-action-card">
         <div class="bos-action-card__body">
-          <strong>QR Experiences</strong>
-          <p class="cp-muted" style="margin:4px 0 0;font-size:13px">Source of customer flows</p>
+          <strong>Customer QR</strong>
+          <p class="cp-muted" style="margin:4px 0 0;font-size:13px">Shop codes and landing pages</p>
         </div>
         <span class="bos-btn bos-btn-sm bos-btn-ghost">Manage</span>
       </a>

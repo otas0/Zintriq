@@ -2,9 +2,9 @@
 window.QR_PASS_TYPES = {
   storefront: {
     id: "storefront",
-    label: "Storefront QR",
-    description: "Catalog and menu links",
-    ownerPath: (slug) => `/manage/${slug}/qr-codes`,
+    label: "Shop QR",
+    description: "Opens your catalog and menu",
+    ownerPath: (slug) => `/manage/${slug}/qr`,
   },
   event_pass: {
     id: "event_pass",

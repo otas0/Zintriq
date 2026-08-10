@@ -17,7 +17,7 @@ export async function mountInteractionsPage(root) {
     const { feedback = [], bookings = [], checkins = [], counts = {} } = data;
 
     root.innerHTML = `
-      <p class="cp-muted" style="margin:0 0 20px">Customer activity from your QR Experiences — feedback, bookings, and check-ins in one place.</p>
+      <p class="cp-muted" style="margin:0 0 20px">Customer activity from your QR codes — feedback, bookings, and check-ins in one place.</p>
 
       <section class="bos-dash-grid" style="grid-template-columns:repeat(auto-fill,minmax(160px,1fr));margin-bottom:24px">
         <a href="#feedback" class="bos-stat-card bos-stat-card--link">
@@ -32,7 +32,7 @@ export async function mountInteractionsPage(root) {
           <span class="bos-stat-val">${counts.today_checkins ?? 0}</span>
           <span class="bos-stat-lbl">Check-ins today</span>
         </a>
-        <a href="/app/qr" class="bos-stat-card bos-stat-card--link">
+        <a href="/app/store#experiences" class="bos-stat-card bos-stat-card--link">
           <span class="bos-stat-val">${counts.active_qr ?? 0}</span>
           <span class="bos-stat-lbl">Active QR</span>
         </a>

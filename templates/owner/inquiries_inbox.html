@@ -1,0 +1,56 @@
+{% extends 'owner_base.html' %}
+{% from 'owner/_insights_nav.html' import insights_nav %}
+{% set active_tab = 'insights' %}
+{% block title %}Customer requests — {{ store.name }}{% endblock %}
+{% block os_header %}
+<h1 class="os-page-title">Customer requests</h1>
+<p class="os-page-subtitle">Inquiries from your shop contact form{% if new_count %} · {{ new_count }} new{% endif %}.</p>
+{% endblock %}
+{% block owner_content %}
+{{ insights_nav(store, insights_section, inquiry_new_count|default(0)) }}
+
+<form method="get" class="fb-toolbar ins-inbox-toolbar">
+  <input type="search" class="os-input ins-inbox-search" name="q" value="{{ filters.q }}" placeholder="Search name, email, phone, message…" enterkeyhint="search">
+  <select class="os-select ins-inbox-status" name="status" onchange="this.form.submit()">
+    <option value="">All statuses</option>
+    {% for s in inquiry_statuses %}
+    <option value="{{ s }}"{% if filters.status == s %} selected{% endif %}>{{ s }}</option>
+    {% endfor %}
+  </select>
+  <button class="os-btn os-btn-ghost os-btn-sm ins-inbox-search-btn" type="submit">Search</button>
+</form>
+
+{% if not inquiries %}
+<p class="fb-empty-hint">No requests yet. Customers can reach you from the contact section at the bottom of your shop — or from Discover when you opt in.</p>
+{% else %}
+<div class="fb-inbox-list ins-inbox-list">
+  {% for r in inquiries %}
+  <article class="fb-inbox-item os-card ins-inbox-card{% if r.status == 'new' %} ins-inbox-item--new{% endif %}">
+    <a class="fb-inbox-body ins-inbox-link" href="{{ url_for('manage_store_inquiry_detail', slug=store.slug, inquiry_id=r.id) }}">
+      <div class="fb-inbox-head ins-inbox-head">
+        <span class="os-tag os-tag-sm ins-status-tag ins-status-tag--{{ r.status }}">{{ r.status }}</span>
+        {% if r.source_ref %}
+        <span class="os-tag os-tag-sm ins-source-tag">via {{ r.source_ref|replace('_', ' ') }}</span>
+        {% endif %}
+        {% if r.item_name %}<span class="fb-meta ins-inbox-product">{{ r.item_name }}</span>{% endif %}
+      </div>
+      <p class="fb-inbox-preview ins-inbox-name"><strong>{{ r.customer_name }}</strong></p>
+      {% if r.message %}<p class="ins-inbox-message">{{ r.message[:140] }}{% if (r.message or '')|length > 140 %}…{% endif %}</p>{% endif %}
+      <span class="fb-meta ins-inbox-meta">
+        {% if r.customer_email %}{{ r.customer_email }}{% endif %}
+        {% if r.customer_phone %}{% if r.customer_email %} · {% endif %}{{ r.customer_phone }}{% endif %}
+        · {{ r.created_at[:16] if r.created_at else '' }}
+      </span>
+    </a>
+    <div class="ins-inbox-quick">
+      {% if r.customer_phone %}<a class="os-btn os-btn-ghost os-btn-sm" href="tel:{{ r.customer_phone }}">Call</a>{% endif %}
+      {% if r.customer_email %}<a class="os-btn os-btn-ghost os-btn-sm" href="mailto:{{ r.customer_email }}">Email</a>{% endif %}
+    </div>
+  </article>
+  {% endfor %}
+</div>
+{% endif %}
+
+<link rel="stylesheet" href="{{ url_for('static', filename='feedback.css') }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='insights.css') }}">
+{% endblock %}

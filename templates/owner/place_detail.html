@@ -1,0 +1,185 @@
+{% extends 'os_base.html' %}
+{% set os_nav = 'stores' %}
+{% block title %}{{ place.name }} — Place directory{% endblock %}
+{% block os_header %}
+<h1 class="os-page-title">{{ place.name }}</h1>
+<p class="os-page-subtitle">Venue QR · <code>/place/{{ place.slug }}</code></p>
+{% endblock %}
+{% block os_actions %}
+<a class="os-btn os-btn-ghost" href="{{ url_for('place_directory', place_slug=place.slug) }}" target="_blank" rel="noopener">Preview ↗</a>
+<a class="os-btn os-btn-ghost" href="{{ url_for('manage_places_list') }}">All places</a>
+{% endblock %}
+{% block os_content %}
+<div class="place-owner-detail">
+  <section class="os-card os-card-padded place-owner-qr">
+    <h2 class="os-card-title">Venue QR</h2>
+    <p class="place-owner-qr__hint">Print or display this QR at the entrance — visitors pick a shop from the directory.</p>
+    <div class="place-owner-qr__grid">
+      <img class="place-owner-qr__img" src="{{ qr_image }}" alt="QR code for place directory">
+      <div class="place-owner-qr__meta">
+        <p class="place-owner-qr__url"><a href="{{ directory_url }}" target="_blank" rel="noopener">{{ directory_url }}</a></p>
+        <button type="button" class="os-btn os-btn-ghost os-btn-sm" id="place-copy-url" data-url="{{ directory_url }}">Copy directory link</button>
+        <p class="place-owner-qr__apply-label">Tenant apply link</p>
+        <p class="place-owner-qr__url"><a href="{{ apply_url }}" target="_blank" rel="noopener">{{ apply_url }}</a></p>
+        <button type="button" class="os-btn os-btn-ghost os-btn-sm" id="place-copy-apply" data-url="{{ apply_url }}">Copy apply link</button>
+      </div>
+    </div>
+  </section>
+
+  <section class="os-card os-card-padded">
+    <div class="place-owner-metrics-head">
+      <h2 class="os-card-title">Activity</h2>
+      <form method="get" class="ins-period-form">
+        <select class="os-select os-select-sm" name="period" onchange="this.form.submit()">
+          <option value="today"{% if metrics.period == 'today' %} selected{% endif %}>Today</option>
+          <option value="7d"{% if metrics.period == '7d' %} selected{% endif %}>Last 7 days</option>
+          <option value="30d"{% if metrics.period == '30d' %} selected{% endif %}>Last 30 days</option>
+        </select>
+      </form>
+    </div>
+    <div class="place-owner-metrics">
+      <article class="place-owner-metric"><span class="place-owner-metric__val">{{ metrics.views }}</span><span class="place-owner-metric__lbl">Directory views</span></article>
+      <article class="place-owner-metric"><span class="place-owner-metric__val">{{ metrics.tenant_clicks }}</span><span class="place-owner-metric__lbl">Shop clicks</span></article>
+      <article class="place-owner-metric"><span class="place-owner-metric__val">{{ metrics.applications_submitted }}</span><span class="place-owner-metric__lbl">Applications</span></article>
+      <article class="place-owner-metric"><span class="place-owner-metric__val">{{ metrics.applications_pending }}</span><span class="place-owner-metric__lbl">Pending now</span></article>
+    </div>
+    {% if metrics.application_approval_rate is not none %}
+    <p class="place-owner-metrics__conv">{{ metrics.applications_approved }} approved · {{ metrics.applications_rejected }} rejected · {{ metrics.application_approval_rate }}% approval rate</p>
+    {% endif %}
+    {% if metrics.top_tenants %}
+    <ul class="place-owner-top">
+      {% for row in metrics.top_tenants %}
+      <li><span>{{ row.name or ('Store #' ~ row.store_id) }}</span><span>{{ row.clicks }} clicks</span></li>
+      {% endfor %}
+    </ul>
+    {% endif %}
+  </section>
+
+  <section class="os-card os-card-padded">
+    <h2 class="os-card-title">Place details</h2>
+    <form method="post" class="os-form">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <input type="hidden" name="action" value="update">
+      <label class="os-field">
+        <span class="os-label">Name</span>
+        <input class="os-input" name="name" value="{{ place.name }}" required>
+      </label>
+      <label class="os-field">
+        <span class="os-label">Address</span>
+        <input class="os-input" name="address" value="{{ place.address or '' }}">
+      </label>
+      <label class="os-field">
+        <span class="os-label">Cover image URL</span>
+        <input class="os-input" name="cover_image" value="{{ place.cover_image or '' }}" placeholder="https://…">
+      </label>
+      <label class="os-field">
+        <span class="os-label">Description</span>
+        <textarea class="os-input" name="description" rows="3">{{ place.description or '' }}</textarea>
+      </label>
+      <button class="os-btn os-btn-primary" type="submit">Save</button>
+    </form>
+  </section>
+
+  {% if pending_applications %}
+  <section class="os-card os-card-padded place-owner-applications">
+    <h2 class="os-card-title">Pending applications ({{ pending_applications|length }})</h2>
+    <ul class="place-owner-applications__list">
+      {% for app in pending_applications %}
+      <li class="place-app-review material-module">
+        <div class="place-app-review__body">
+          <strong>{{ app.store_name }}</strong>
+          <span class="place-app-review__slug">/store/{{ app.store_slug }}</span>
+          {% if app.unit_label %}<span class="place-app-review__unit">{{ app.unit_label }}</span>{% endif %}
+          <span class="place-app-review__email">{{ app.applicant_email }}</span>
+          {% if app.message %}<p class="place-app-review__msg">{{ app.message }}</p>{% endif %}
+        </div>
+        <div class="place-app-review__actions">
+          <form method="post" class="place-app-review__form">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <input type="hidden" name="action" value="approve_application">
+            <input type="hidden" name="application_id" value="{{ app.id }}">
+            <button class="os-btn os-btn-primary os-btn-sm" type="submit">Approve</button>
+          </form>
+          <form method="post" class="place-app-review__form place-app-review__form--reject">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <input type="hidden" name="action" value="reject_application">
+            <input type="hidden" name="application_id" value="{{ app.id }}">
+            <input class="os-input os-input-sm" name="rejection_note" placeholder="Reason (optional)">
+            <button class="os-btn os-btn-ghost os-btn-sm" type="submit">Reject</button>
+          </form>
+        </div>
+      </li>
+      {% endfor %}
+    </ul>
+  </section>
+  {% endif %}
+
+  <section class="os-card os-card-padded">
+    <h2 class="os-card-title">Tenant shops ({{ tenants|length }})</h2>
+    <p class="place-owner-tenants__hint">Add stores directly by slug, or review applications above. Tenants can also apply from the public directory.</p>
+
+    <form method="post" class="os-form place-owner-add-tenant">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <input type="hidden" name="action" value="add_tenant">
+      <div class="place-owner-add-tenant__row">
+        <label class="os-field">
+          <span class="os-label">Store slug</span>
+          <input class="os-input" name="store_slug" required placeholder="e.g. bcdeiohu">
+        </label>
+        <label class="os-field">
+          <span class="os-label">Unit / floor (optional)</span>
+          <input class="os-input" name="unit_label" placeholder="#B2-12">
+        </label>
+        <button class="os-btn os-btn-primary" type="submit">Add shop</button>
+      </div>
+    </form>
+
+    {% if tenants %}
+    <ul class="place-owner-tenants">
+      {% for tenant in tenants %}
+      <li class="place-owner-tenant material-module">
+        <div class="place-owner-tenant__body">
+          <strong>{{ tenant.name }}</strong>
+          <span class="place-owner-tenant__slug">/store/{{ tenant.slug }}</span>
+          {% if tenant.unit_label %}<span class="place-owner-tenant__unit">{{ tenant.unit_label }}</span>{% endif %}
+        </div>
+        <form method="post">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+          <input type="hidden" name="action" value="remove_tenant">
+          <input type="hidden" name="store_id" value="{{ tenant.store_id }}">
+          <button class="os-btn os-btn-ghost os-btn-sm" type="submit">Remove</button>
+        </form>
+      </li>
+      {% endfor %}
+    </ul>
+    {% else %}
+    <p class="fb-empty-hint">No tenants yet — add store slugs above.</p>
+    {% endif %}
+  </section>
+</div>
+<link rel="stylesheet" href="{{ url_for('static', filename='place.css') }}">
+<script>
+document.getElementById("place-copy-url")?.addEventListener("click", async () => {
+  const btn = document.getElementById("place-copy-url");
+  const url = btn?.dataset.url;
+  if (!url) return;
+  try {
+    await navigator.clipboard.writeText(url);
+    btn.textContent = "Copied";
+  } catch {
+    window.prompt("Copy link:", url);
+  }
+});
+document.getElementById("place-copy-apply")?.addEventListener("click", async () => {
+  const btn = document.getElementById("place-copy-apply");
+  const url = btn?.dataset.url;
+  if (!url) return;
+  try {
+    await navigator.clipboard.writeText(url);
+    btn.textContent = "Copied";
+  } catch {
+    window.prompt("Copy link:", url);
+  }
+});
+</script>
+{% endblock %}

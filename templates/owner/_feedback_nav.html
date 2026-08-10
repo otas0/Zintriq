@@ -1,5 +1,6 @@
 {% macro feedback_nav(store, section) %}
 <nav class="fb-subnav" aria-label="Feedback sections">
+  <a href="{{ url_for('manage_store_insights', slug=store.slug) }}" class="fb-subnav__item">← Insights</a>
   <a href="{{ url_for('manage_feedback_overview', slug=store.slug) }}" class="fb-subnav__item{% if section == 'overview' %} is-active{% endif %}">Overview</a>
   <a href="{{ url_for('manage_feedback_templates', slug=store.slug) }}" class="fb-subnav__item{% if section == 'templates' %} is-active{% endif %}">Templates</a>
   <a href="{{ url_for('manage_feedback_inbox', slug=store.slug) }}" class="fb-subnav__item{% if section == 'inbox' %} is-active{% endif %}">Inbox</a>

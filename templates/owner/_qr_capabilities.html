@@ -1,11 +1,20 @@
 {% macro qr_capabilities(store, active) %}
 <section class="os-card os-card-padded ep-capabilities">
-  <h2 class="os-card-title">QR capabilities</h2>
+  <h2 class="os-card-title">Customer QR</h2>
+  <p class="os-page-subtitle" style="margin:0 0 12px">Shop, landing pages, and specialized passes — managed in one place.</p>
   <div class="ep-cap-grid ep-cap-grid--wide">
-    {% if active == 'storefront' %}
-    <span class="ep-cap-card is-active"><span class="ep-cap-label">Storefront QR</span><span class="ep-cap-desc">Catalog &amp; menu</span></span>
+    <a class="ep-cap-card{% if active == 'hub' %} is-active{% endif %}" href="{{ url_for('manage_qr_hub', slug=store.slug) }}">
+      <span class="ep-cap-label">Overview</span><span class="ep-cap-desc">All customer QR types</span>
+    </a>
+    {% if active == 'shop' %}
+    <span class="ep-cap-card is-active"><span class="ep-cap-label">Shop QR</span><span class="ep-cap-desc">Catalog &amp; menu</span></span>
     {% else %}
-    <a class="ep-cap-card" href="{{ url_for('manage_qr_codes', slug=store.slug) }}"><span class="ep-cap-label">Storefront QR</span><span class="ep-cap-desc">Catalog &amp; menu</span></a>
+    <a class="ep-cap-card" href="{{ url_for('manage_qr_codes', slug=store.slug) }}"><span class="ep-cap-label">Shop QR</span><span class="ep-cap-desc">Catalog &amp; menu</span></a>
+    {% endif %}
+    {% if active == 'landing' %}
+    <span class="ep-cap-card is-active"><span class="ep-cap-label">Landing QR</span><span class="ep-cap-desc">Intro pages before shop</span></span>
+    {% else %}
+    <a class="ep-cap-card" href="{{ url_for('manage_landing_qr', slug=store.slug) }}"><span class="ep-cap-label">Landing QR</span><span class="ep-cap-desc">Intro pages before shop</span></a>
     {% endif %}
     {% if active == 'event_pass' %}
     <span class="ep-cap-card is-active"><span class="ep-cap-label">Event Pass</span><span class="ep-cap-desc">Events &amp; check-in</span></span>

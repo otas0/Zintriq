@@ -4,7 +4,7 @@ import { statusBadge, emptyState, loadingState, button, setPageActions, renderFi
 import { notifySuccess, notifyError } from "../services/notify.js";
 import { showToast, apiPost, renderActionBar } from "../services/api.js";
 import { MVP_FLAGS } from "../product-focus.js";
-import { CUSTOMER_QR_TYPES } from "../customer-qr-types.js";
+import { openCustomerQrWizard } from "../../customer-qr-wizard.js";
 
 const MVP_BLOCK_TYPES = [
   { id: "text", label: "Text" },
@@ -23,8 +23,6 @@ const MVP_EDITOR_ADD_OPTIONS = [
   { id: "survey", label: "Feedback", preset: { title: "Share your feedback", body: "Rate your experience" } },
   { id: "survey", label: "Survey", preset: { title: "Quick survey", body: "Answer a few questions" } },
 ];
-
-const MVP_QR_TYPES = CUSTOMER_QR_TYPES;
 
 const FULL_BLOCK_TYPES = [
   ...MVP_BLOCK_TYPES,
@@ -881,82 +879,6 @@ async function renderDetail(panel, exp, { onRefresh, onOpenBuilder, tab = "overv
   });
 }
 
-/** MVP create flow — pick customer QR type */
-function openCreateWizard(_categories, onCreated, opts = {}) {
-  const { storeId = null } = opts;
-  let selected = MVP_QR_TYPES[0];
-  let name = selected.name;
-
-  const overlay = document.createElement("div");
-  overlay.className = "bos-modal-overlay";
-  overlay.innerHTML = `
-    <div class="bos-modal bos-modal--sm bos-create-wizard" role="dialog" aria-labelledby="qrx-create-title">
-      <header class="bos-create-wizard__head">
-        <h2 class="bos-panel-title" id="qrx-create-title">Add customer QR</h2>
-        <p class="cp-muted bos-create-wizard__hint">Pick a type → customize → go live → share with customers</p>
-      </header>
-      <div class="bos-type-picker" role="listbox" aria-label="Experience type">
-        ${MVP_QR_TYPES.map((t) => `
-          <button type="button" class="bos-type-picker__option${selected.id === t.id ? " is-selected" : ""}" data-tpl="${t.id}" role="option" aria-selected="${selected.id === t.id}">
-            <strong class="bos-type-picker__name">${escapeHtml(t.name)}</strong>
-            <p class="bos-type-picker__desc">${escapeHtml(t.description)}</p>
-          </button>`).join("")}
-      </div>
-      <div class="bos-field bos-create-wizard__name">
-        <label class="bos-label" for="qrx-name">Name</label>
-        <input class="bos-input" id="qrx-name" value="${escapeHtml(name)}">
-      </div>
-      <footer class="bos-create-wizard__foot">
-        <button type="button" class="bos-btn bos-btn-ghost" id="qrx-cancel">Cancel</button>
-        <button type="button" class="bos-btn bos-btn-primary" id="qrx-create">Continue</button>
-      </footer>
-    </div>`;
-
-  const paintSel = () => {
-    overlay.querySelectorAll("[data-tpl]").forEach((btn) => {
-      const on = selected.id === btn.dataset.tpl;
-      btn.classList.toggle("is-selected", on);
-      btn.setAttribute("aria-selected", on ? "true" : "false");
-    });
-  };
-  overlay.querySelectorAll("[data-tpl]").forEach((btn) => {
-    btn.addEventListener("click", () => {
-      selected = MVP_QR_TYPES.find((t) => t.id === btn.dataset.tpl) || selected;
-      overlay.querySelector("#qrx-name").value = selected.name;
-      paintSel();
-    });
-  });
-  overlay.querySelector("#qrx-cancel").addEventListener("click", () => overlay.remove());
-  overlay.addEventListener("click", (e) => {
-    if (e.target === overlay) overlay.remove();
-  });
-  overlay.querySelector(".bos-modal")?.addEventListener("click", (e) => e.stopPropagation());
-  overlay.querySelector("#qrx-create").addEventListener("click", async () => {
-    name = overlay.querySelector("#qrx-name")?.value.trim() || selected.name;
-    const description = selected.description;
-    try {
-      const created = await fetchJson("/api/qr-experiences", {
-        method: "POST",
-        headers: csrfHeaders(),
-        body: JSON.stringify({
-          name,
-          type: selected.id,
-          description,
-          template_id: selected.template_id,
-          store_id: storeId || undefined,
-          experience_config: { template_id: selected.template_id, description },
-        }),
-      });
-      overlay.remove();
-      onCreated?.(created);
-    } catch (err) {
-      notifyError(err.message);
-    }
-  });
-  document.body.appendChild(overlay);
-  overlay.querySelector("#qrx-name")?.focus();
-}
-
 /** @deprecated full template picker — kept for deferredActions */
 function openCreateWizardFull(categories, onCreated) {
   const allTemplates = categories.flatMap((c) => (c.templates || []).map((t) => ({ ...t, category: c.label })));
@@ -1054,26 +976,25 @@ export async function mountQrExperiencesPage(root, opts = {}) {
   const { embedded = false, storeId = null } = opts;
   root.innerHTML = loadingState();
   if (!embedded) {
-    setPageActions(button({ variant: "primary", label: "Add customer QR", id: "qrx-new", sm: true }));
+    setPageActions(button({ variant: "primary", label: "Add landing page", id: "qrx-new", sm: true }));
   }
 
-  const storeLabel = storeId && window.WORKSPACE_BOOT?.stores
-    ? window.WORKSPACE_BOOT.stores.find((s) => s.id === storeId)?.name
+  const storeMeta = storeId && window.WORKSPACE_BOOT?.stores
+    ? window.WORKSPACE_BOOT.stores.find((s) => s.id === storeId)
     : null;
-
-  const triggerCreate = () => {
-    openCreateWizard(null, async (created) => {
-      await refresh();
-      if (created?.id) openBuilderFor(created);
-    }, { storeId });
-  };
+  const storeLabel = storeMeta?.name ?? null;
 
   window.addEventListener("bos:add-customer-qr", (e) => {
     if (storeId && e.detail?.storeId && e.detail.storeId !== storeId) return;
-    triggerCreate();
+    root.dispatchEvent(new CustomEvent("qrx:create-request"));
   });
   try {
-    let all = await fetchJson("/api/qr-experiences");
+    const listParams = new URLSearchParams();
+    if (storeId) listParams.set("store_id", String(storeId));
+    const listUrl = listParams.toString()
+      ? `/api/qr-experiences?${listParams}`
+      : "/api/qr-experiences";
+    let all = await fetchJson(listUrl);
     let categories = null;
 
     const loadTemplates = async () => {
@@ -1098,23 +1019,23 @@ export async function mountQrExperiencesPage(root, opts = {}) {
       <div class="bos-toolbar-inline qrx-toolbar" style="margin-bottom:12px;display:flex;gap:12px;flex-wrap:wrap;align-items:center">
         <input type="search" class="bos-input merchant-search" id="qrx-search" placeholder="Search experiences…" style="flex:1;min-width:200px;max-width:320px" value="${escapeHtml(searchQ)}">
         <label class="qrx-select-all checkbox-label"><input type="checkbox" id="qrx-select-all"> Select all</label>
-        ${button({ variant: "primary", label: "Add customer QR", id: "qrx-create-top", sm: true })}
+        ${button({ variant: "primary", label: "Add landing page", id: "qrx-create-top", sm: true })}
       </div>`;
 
     root.innerHTML = embedded ? `
       <div id="qrx-embedded">
-        ${storeLabel ? `<p class="qrx-store-filter cp-muted">Showing customer QR for <strong>${escapeHtml(storeLabel)}</strong></p>` : ""}
+        ${storeLabel ? `<p class="qrx-store-filter cp-muted">Landing pages for <strong>${escapeHtml(storeLabel)}</strong></p>` : ""}
         ${qrxToolbar}
         <div id="qrx-filters" style="margin-bottom:16px"></div>
         <div id="qrx-list"></div>
         <aside id="qrx-detail" class="bos-side-panel hidden"></aside>
       </div>` : `<div class="merchant-page">
       ${pageHeader({
-        title: "Customer QR",
+        title: "Landing QR",
         subtitle: storeLabel
-          ? `QR codes customers scan at ${storeLabel}.`
-          : "QR codes customers scan — menu, feedback, booking, and more.",
-        actionsHtml: button({ variant: "primary", label: "Add customer QR", id: "qrx-create-top-header", sm: true }),
+          ? `Pages customers see first at ${storeLabel}.`
+          : "Pages customers see first — feedback, surveys, and optional shop link.",
+        actionsHtml: button({ variant: "primary", label: "Add landing page", id: "qrx-create-top-header", sm: true }),
       })}
       ${qrxToolbar}
       <div id="qrx-filters" style="margin-bottom:16px"></div>
@@ -1259,6 +1180,30 @@ export async function mountQrExperiencesPage(root, opts = {}) {
         },
       });
     };
+
+    const triggerCreate = () => {
+      if (!storeId && !storeMeta?.id) {
+        notifyError("Select a store first.");
+        return;
+      }
+      openCustomerQrWizard({
+        storeId: storeId || storeMeta.id,
+        storeSlug: storeMeta?.slug,
+        storeName: storeMeta?.name,
+        landingOnly: Boolean(embedded && storeId),
+        onDone: async (result) => {
+          if (result.kind === "landing" && result.id) {
+            await refresh();
+            const exp = await fetchJson(`/api/qr-experiences/${result.id}`);
+            openBuilderFor(exp);
+            return;
+          }
+          if (result.redirect) window.location.href = result.redirect;
+        },
+      });
+    };
+
+    root.addEventListener("qrx:create-request", triggerCreate);
 
     const openDetail = async (id, detailTab = "overview") => {
       const exp = await fetchJson(`/api/qr-experiences/${id}`);

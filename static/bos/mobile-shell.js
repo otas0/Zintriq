@@ -61,11 +61,26 @@ function initNativePlugins() {
 }
 
 function registerServiceWorker() {
-  if (!("serviceWorker" in navigator) || isMobileApp()) return;
-  navigator.serviceWorker.register("/sw.js", { scope: "/" }).catch(() => {});
+  // Only installed PWA / standalone — not regular browser tabs (avoids hijacking /places, /store, etc.)
+  if (!("serviceWorker" in navigator)) return;
+  if (!window.matchMedia("(display-mode: standalone)").matches && window.navigator.standalone !== true) {
+    return;
+  }
+  navigator.serviceWorker.register("/sw.js", { scope: "/app/" }).catch(() => {});
+}
+
+function unregisterDevServiceWorkers() {
+  if (!("serviceWorker" in navigator)) return;
+  const host = window.location.hostname;
+  if (host !== "localhost" && host !== "127.0.0.1") return;
+  navigator.serviceWorker.getRegistrations().then((regs) => {
+    regs.forEach((reg) => reg.unregister());
+  }).catch(() => {});
 }
 
 export function initMobileShell() {
+  unregisterDevServiceWorkers();
+
   if (!isMobileApp()) {
     registerServiceWorker();
     return;

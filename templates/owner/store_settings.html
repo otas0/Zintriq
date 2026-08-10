@@ -1,14 +1,13 @@
 {% extends 'owner_base.html' %}
-{% set active_tab = 'settings' %}
+{% from 'owner/_storefront_nav.html' import storefront_nav %}
+{% set active_tab = 'storefront' %}
 {% block title %}Store settings — {{ store.name }}{% endblock %}
 {% block os_header %}
 <h1 class="os-page-title">Store settings</h1>
 <p class="os-page-subtitle">Update details, hours, and business information customers see on your storefront.</p>
 {% endblock %}
-{% block os_actions %}
-<a class="os-btn os-btn-ghost" href="{{ url_for('store_preview', slug=store.slug) }}" target="_blank" rel="noopener">Preview ↗</a>
-{% endblock %}
 {% block owner_content %}
+{{ storefront_nav(store, 'settings') }}
 <form class="panel os-card os-form" method="post" enctype="multipart/form-data">
   <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
   <input type="hidden" name="action" value="save">
@@ -18,6 +17,28 @@
   </div>
   <div class="os-field"><label class="os-label">Description</label><textarea class="os-textarea" name="description">{{ store.description or '' }}</textarea></div>
   <div class="os-field"><label class="os-label">Address</label><textarea class="os-textarea" name="address" placeholder="Street, city, postal code">{{ store.address or '' }}</textarea></div>
+  <div class="os-field">
+    <label class="checkbox-label">
+      <input type="checkbox" name="discoverable" value="1"{% if (store['discoverable'] if 'discoverable' in store.keys() else 0) %} checked{% endif %}>
+      List in Discover
+    </label>
+    <p class="os-panel-desc">When enabled, your active storefront can appear on the public <a href="{{ discover_url }}" target="_blank" rel="noopener">Discover</a> page for nearby shoppers.</p>
+  </div>
+
+  <section class="os-card os-card-padded ins-discover-readiness">
+    <h2 class="os-card-title">Discover listing</h2>
+    <p class="os-panel-desc">{{ discover_readiness.completed }}/{{ discover_readiness.total }} ready{% if discover_readiness.ready %} — you are listed when active{% else %} — complete the checklist below{% endif %}</p>
+    <ul class="ins-discover-checklist">
+      {% for check in discover_readiness.checks %}
+      <li class="ins-discover-check{% if check.ok %} is-done{% endif %}">
+        <span class="ins-discover-check__icon" aria-hidden="true">{% if check.ok %}✓{% else %}○{% endif %}</span>
+        <span>{{ check.label }}</span>
+      </li>
+      {% endfor %}
+    </ul>
+    <p class="os-panel-desc">Add your address and save — we geocode it for the map. Shoppers who find you on Discover can send requests that appear in <a href="{{ url_for('manage_store_inquiries', slug=store.slug) }}">Customer requests</a>.</p>
+  </section>
+
   <div class="os-field"><label class="os-label">Contact</label><input class="os-input" name="contact" value="{{ store.contact or '' }}" placeholder="Phone, email, or social"></div>
   <p class="os-panel-desc">Product deals &amp; promotions: <a href="{{ url_for('manage_store_deals', slug=store.slug) }}">Manage deals →</a></p>
 

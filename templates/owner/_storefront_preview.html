@@ -1,9 +1,13 @@
-{# Live customer storefront preview — owner manage / deals #}
-<aside class="sf-owner-preview" aria-label="Customer preview">
-  <div class="sf-owner-preview__head">
+{# Collapsible customer preview dock — lazy-loads iframe on first open #}
+<aside class="sf-owner-preview-dock" id="sf-preview-dock" hidden aria-label="Customer preview">
+  <div class="sf-owner-preview-dock__head">
     <strong>Live preview</strong>
-    <a class="sf-owner-preview__open" href="{{ url_for('store_preview', slug=store.slug) }}" target="_blank" rel="noopener">Open ↗</a>
+    <div class="sf-owner-preview-dock__actions">
+      <a class="sf-owner-preview-dock__open" href="{{ url_for('store_preview', slug=store.slug) }}" target="_blank" rel="noopener">Open ↗</a>
+      <button type="button" class="sf-owner-preview-dock__close" id="sf-preview-close" aria-label="Close preview">×</button>
+    </div>
   </div>
-  <iframe class="sf-owner-preview__frame" title="Customer storefront preview"
-          src="{{ url_for('store_preview', slug=store.slug) }}?view=shop" loading="lazy"></iframe>
+  <iframe class="sf-owner-preview-dock__frame" id="sf-preview-frame" title="Customer storefront preview"
+          data-src="{{ url_for('store_preview', slug=store.slug) }}?view={{ preview_view|default('shop') }}"></iframe>
 </aside>
+<div class="sf-owner-preview-backdrop" id="sf-preview-backdrop" hidden aria-hidden="true"></div>

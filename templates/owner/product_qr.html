@@ -1,5 +1,5 @@
 {% extends 'owner_base.html' %}
-{% from 'owner/_qr_capabilities.html' import qr_capabilities %}
+{% from 'owner/_customer_qr_nav.html' import customer_qr_nav %}
 {% set active_tab = 'qr' %}
 {% block title %}Product QR — {{ store.name }}{% endblock %}
 {% block os_header %}
@@ -10,7 +10,7 @@
 <a class="os-btn os-btn-ghost" href="{{ url_for('export_product_qr', slug=store.slug) }}">Export CSV</a>
 {% endblock %}
 {% block owner_content %}
-{{ qr_capabilities(store, 'product_info') }}
+{{ customer_qr_nav(store, 'product') }}
 
 <section class="os-card os-card-padded">
   <h2 class="os-card-title">Create product QR</h2>

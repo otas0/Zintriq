@@ -1,13 +1,13 @@
 {% extends 'owner_base.html' %}
-{% from 'owner/_qr_capabilities.html' import qr_capabilities %}
+{% from 'owner/_customer_qr_nav.html' import customer_qr_nav %}
 {% set active_tab = 'qr' %}
 {% block title %}Event Passes — {{ store.name }}{% endblock %}
 {% block os_header %}
-<h1 class="os-page-title">Event Passes</h1>
+<h1 class="os-page-title">Event Pass</h1>
 <p class="os-page-subtitle">Create events, generate attendee QR passes, and check in guests.</p>
 {% endblock %}
 {% block owner_content %}
-{{ qr_capabilities(store, 'event_pass') }}
+{{ customer_qr_nav(store, 'event') }}
 
 <section class="os-card os-card-padded">
   <h2 class="os-card-title">Create event</h2>

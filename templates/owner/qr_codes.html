@@ -1,15 +1,18 @@
 {% extends 'owner_base.html' %}
-{% from 'owner/_qr_capabilities.html' import qr_capabilities %}
+{% from 'owner/_customer_qr_nav.html' import customer_qr_nav %}
 {% set active_tab = 'qr' %}
-{% block title %}QR codes — {{ store.name }}{% endblock %}
+{% block title %}Shop QR — {{ store.name }}{% endblock %}
 {% block os_header %}
-<h1 class="os-page-title">QR codes</h1>
-<p class="os-page-subtitle">Storefront links and pass types for this store.</p>
+<h1 class="os-page-title">Shop QR</h1>
+<p class="os-page-subtitle">Codes that open your storefront menu directly.</p>
+{% endblock %}
+{% block os_actions %}
+<button type="button" class="os-btn os-btn-primary os-btn-sm" id="customer-qr-add">Add shop QR</button>
 {% endblock %}
 {% block owner_content %}
-{{ qr_capabilities(store, 'storefront') }}
+{{ customer_qr_nav(store, 'shop') }}
 <section class="os-card os-card-padded">
-  <h2 class="os-card-title">Create QR code</h2>
+  <h2 class="os-card-title">Create shop QR</h2>
   <form method="post" class="os-actions-row">
     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
     <input type="hidden" name="action" value="create">
@@ -40,5 +43,15 @@
   </div>
 </section>
 <link rel="stylesheet" href="{{ url_for('static', filename='event-passes.css') }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='bos/polish.css') }}">
+<script>
+  window.CUSTOMER_QR_BOOT = {
+    storeId: {{ store.id }},
+    storeSlug: {{ store.slug | tojson }},
+    storeName: {{ store.name | tojson }},
+    shopOnly: true
+  };
+</script>
+<script type="module" src="{{ url_for('static', filename='owner-customer-qr.js') }}"></script>
 <script src="{{ url_for('static', filename='owner.js') }}"></script>
 {% endblock %}

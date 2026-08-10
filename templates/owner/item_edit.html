@@ -13,13 +13,14 @@
   <div class="os-field"><label class="os-label">Item name *</label><input class="os-input" name="name" required value="{{ item.name }}"></div>
   <div class="os-grid-2">
     <div class="os-field"><label class="os-label">Price *</label><input class="os-input" name="price" required type="number" min="0" step="0.01" value="{{ item.price }}"></div>
+    <div class="os-field"><label class="os-label">Unit</label><input class="os-input" name="unit" value="{{ item.unit or '' }}" placeholder="e.g. 900 ml"></div>
+  </div>
+  <div class="os-grid-2">
     <div class="os-field"><label class="os-label">SKU</label><input class="os-input" name="sku" value="{{ item.sku or '' }}"></div>
-  </div>
-  <div class="os-grid-2">
     <div class="os-field"><label class="os-label">Inventory</label><input class="os-input" name="inventory" type="number" min="0" value="{{ item.inventory if item.inventory is not none else '' }}"></div>
-    <div class="os-field"><label class="os-label">Display order</label><input class="os-input" name="display_order" type="number" min="0" value="{{ item.display_order or 0 }}"></div>
   </div>
   <div class="os-grid-2">
+    <div class="os-field"><label class="os-label">Display order</label><input class="os-input" name="display_order" type="number" min="0" value="{{ item.display_order or 0 }}"></div>
     <div class="os-field"><label class="os-label">Group</label>
       <select class="os-select" name="group_id">
         <option value="">Default</option>

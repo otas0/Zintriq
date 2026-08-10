@@ -1,0 +1,31 @@
+{% extends 'os_base.html' %}
+{% set os_nav = 'stores' %}
+{% block title %}Create place — Business OS{% endblock %}
+{% block os_header %}
+<h1 class="os-page-title">Create place directory</h1>
+<p class="os-page-subtitle">A single QR that lists every shop in your venue.</p>
+{% endblock %}
+{% block os_content %}
+<section class="os-card os-card-padded place-owner-form">
+  <form method="post" class="os-form">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <label class="os-field">
+      <span class="os-label">Place name *</span>
+      <input class="os-input" name="name" required placeholder="e.g. Orchard Central Food Hall">
+    </label>
+    <label class="os-field">
+      <span class="os-label">Address</span>
+      <input class="os-input" name="address" placeholder="Street, city">
+    </label>
+    <label class="os-field">
+      <span class="os-label">Description</span>
+      <textarea class="os-input" name="description" rows="3" placeholder="Short intro for visitors"></textarea>
+    </label>
+    <div class="os-form-actions">
+      <a class="os-btn os-btn-ghost" href="{{ url_for('manage_places_list') }}">Cancel</a>
+      <button class="os-btn os-btn-primary" type="submit">Create place</button>
+    </div>
+  </form>
+</section>
+<link rel="stylesheet" href="{{ url_for('static', filename='place.css') }}">
+{% endblock %}

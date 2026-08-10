@@ -6,6 +6,7 @@
 <p class="os-page-subtitle">Manage storefronts, items, and QR codes.</p>
 {% endblock %}
 {% block os_actions %}
+<a class="os-btn os-btn-ghost" href="{{ url_for('manage_places_list') }}">Place directories</a>
 <a class="os-btn os-btn-primary" href="{{ url_for('create_store') }}">Create store</a>
 {% endblock %}
 {% block os_content %}

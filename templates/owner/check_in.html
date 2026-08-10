@@ -1,5 +1,5 @@
 {% extends 'owner_base.html' %}
-{% from 'owner/_qr_capabilities.html' import qr_capabilities %}
+{% from 'owner/_customer_qr_nav.html' import customer_qr_nav %}
 {% set active_tab = 'qr' %}
 {% block title %}Check-in — {{ store.name }}{% endblock %}
 {% block os_header %}
@@ -10,7 +10,7 @@
 <a class="os-btn os-btn-ghost" href="{{ url_for('export_check_in', slug=store.slug) }}">Export history</a>
 {% endblock %}
 {% block owner_content %}
-{{ qr_capabilities(store, 'check_in') }}
+{{ customer_qr_nav(store, 'checkin') }}
 
 <section class="ep-dash-grid">
   <div class="ep-stat-card os-card"><span class="ep-stat-val">{{ points|length }}</span><span class="ep-stat-lbl">Check-in points</span></div>

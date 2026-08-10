@@ -258,8 +258,9 @@ def run() -> int:
         else:
             fail("Summary.active", f"status={r.status_code}")
 
-        r = api(client, "GET", "/app/qr", user_id=owner_id, ws_id=ws_id)
-        if r.status_code == 200:
+        login_client(client, owner_id, ws_id)
+        r = client.get("/app/qr", follow_redirects=False)
+        if r.status_code in (200, 302, 303, 307, 308):
             ok("Page./app/qr")
         else:
             fail("Page./app/qr", f"status={r.status_code}")

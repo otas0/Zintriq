@@ -1,0 +1,74 @@
+{% extends 'owner_base.html' %}
+{% set active_tab = 'storefront' %}
+{% block title %}Place membership — {{ store.name }}{% endblock %}
+{% block os_header %}
+<h1 class="os-page-title">Place directories</h1>
+<p class="os-page-subtitle">Join malls, food halls, and markets — get listed when the venue approves.</p>
+{% endblock %}
+{% block owner_content %}
+<div class="place-membership">
+  <section class="os-card os-card-padded">
+    <h2 class="os-card-title">Apply to a place</h2>
+    <p class="place-membership__hint">Enter the place slug from the venue URL — e.g. <code>/place/orchard-food-hall</code> → <code>orchard-food-hall</code></p>
+    <form method="post" class="os-form place-membership__apply">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <div class="place-membership__apply-row">
+        <label class="os-field">
+          <span class="os-label">Place slug</span>
+          <input class="os-input" name="place_slug" required placeholder="orchard-food-hall">
+        </label>
+        <label class="os-field">
+          <span class="os-label">Unit / floor</span>
+          <input class="os-input" name="unit_label" placeholder="#01-08">
+        </label>
+      </div>
+      <label class="os-field">
+        <span class="os-label">Note (optional)</span>
+        <textarea class="os-input" name="message" rows="2"></textarea>
+      </label>
+      <button class="os-btn os-btn-primary" type="submit">Send application</button>
+    </form>
+  </section>
+
+  {% if memberships %}
+  <section class="os-card os-card-padded">
+    <h2 class="os-card-title">Listed in</h2>
+    <ul class="place-membership__listed">
+      {% for m in memberships %}
+      <li>
+        <a href="{{ url_for('place_directory', place_slug=m.slug) }}" target="_blank" rel="noopener">
+          <strong>{{ m.name }}</strong>
+          {% if m.unit_label %}<span class="place-membership__unit">{{ m.unit_label }}</span>{% endif %}
+        </a>
+      </li>
+      {% endfor %}
+    </ul>
+  </section>
+  {% endif %}
+
+  <section class="os-card os-card-padded">
+    <h2 class="os-card-title">Applications</h2>
+    {% if applications %}
+    <ul class="place-membership__apps">
+      {% for app in applications %}
+      <li class="place-app-row material-module">
+        <div>
+          <strong>{{ app.place_name }}</strong>
+          <span class="place-app-row__slug">/place/{{ app.place_slug }}</span>
+          {% if app.unit_label %}<span class="place-app-row__unit">{{ app.unit_label }}</span>{% endif %}
+          {% if app.message %}<p class="place-app-row__msg">{{ app.message }}</p>{% endif %}
+          {% if app.status == 'rejected' and app.rejection_note %}
+          <p class="place-app-row__reject">Reason: {{ app.rejection_note }}</p>
+          {% endif %}
+        </div>
+        <span class="os-tag os-tag-sm place-app-row__status place-app-row__status--{{ app.status }}">{{ app.status }}</span>
+      </li>
+      {% endfor %}
+    </ul>
+    {% else %}
+    <p class="fb-empty-hint">No applications yet.</p>
+    {% endif %}
+  </section>
+</div>
+<link rel="stylesheet" href="{{ url_for('static', filename='place.css') }}">
+{% endblock %}

@@ -1,0 +1,37 @@
+{% extends 'os_base.html' %}
+{% set os_nav = 'stores' %}
+{% block title %}Place directories — Business OS{% endblock %}
+{% block os_header %}
+<h1 class="os-page-title">Place directories</h1>
+<p class="os-page-subtitle">One QR for malls, food courts, and markets — list every tenant shop.</p>
+{% endblock %}
+{% block os_actions %}
+<a class="os-btn os-btn-primary" href="{{ url_for('manage_places_new') }}">Create place</a>
+{% endblock %}
+{% block os_content %}
+<section class="os-card os-card-padded place-owner-list">
+  {% if places %}
+  <ul class="place-owner-list__grid">
+    {% for p in places %}
+    <li>
+      <a class="place-owner-card material-module" href="{{ url_for('manage_place_detail', place_slug=p.slug) }}">
+        <div class="place-owner-card__body">
+          <h2 class="place-owner-card__name">{{ p.name }}</h2>
+          {% if p.address %}<p class="place-owner-card__meta">{{ p.address }}</p>{% endif %}
+          <p class="place-owner-card__meta">{{ p.tenant_count }} shop{% if p.tenant_count != 1 %}s{% endif %} · /place/{{ p.slug }}{% if p.pending_applications %} · <em class="place-pending-badge">{{ p.pending_applications }} pending</em>{% endif %}</p>
+        </div>
+        <span class="place-owner-card__chev" aria-hidden="true">→</span>
+      </a>
+    </li>
+    {% endfor %}
+  </ul>
+  {% else %}
+  <div class="mq-empty">
+    <p><strong>No place directories yet</strong></p>
+    <p>Create one for a mall, food hall, or event market — then add tenant store slugs.</p>
+    <a class="os-btn os-btn-primary" href="{{ url_for('manage_places_new') }}">Create place</a>
+  </div>
+  {% endif %}
+</section>
+<link rel="stylesheet" href="{{ url_for('static', filename='place.css') }}">
+{% endblock %}

@@ -1,0 +1,40 @@
+{% extends 'os_base.html' %}
+{% set os_nav = 'stores' %}
+{% block title %}Apply — {{ place.name }}{% endblock %}
+{% block os_header %}
+<h1 class="os-page-title">List your shop at {{ place.name }}</h1>
+<p class="os-page-subtitle">Submit a request — the venue operator approves before you appear in the directory.</p>
+{% endblock %}
+{% block os_actions %}
+<a class="os-btn os-btn-ghost" href="{{ url_for('place_directory', place_slug=place.slug) }}" target="_blank" rel="noopener">View directory ↗</a>
+{% endblock %}
+{% block os_content %}
+<section class="os-card os-card-padded place-apply">
+  <form method="post" class="os-form">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <label class="os-field">
+      <span class="os-label">Your store *</span>
+      <select class="os-select" name="store_id" required>
+        <option value="">Choose a storefront…</option>
+        {% for s in stores %}
+        <option value="{{ s.id }}"{% if s.membership_status == 'listed' %} disabled{% endif %}>
+          {{ s.name }} (/store/{{ s.slug }}){% if s.membership_status == 'listed' %} — already listed{% elif s.membership_status == 'pending' %} — pending{% elif s.membership_status == 'rejected' %} — re-apply{% endif %}
+        </option>
+        {% endfor %}
+      </select>
+    </label>
+    <label class="os-field">
+      <span class="os-label">Unit / floor (optional)</span>
+      <input class="os-input" name="unit_label" placeholder="#B2-12">
+    </label>
+    <label class="os-field">
+      <span class="os-label">Note to venue (optional)</span>
+      <textarea class="os-input" name="message" rows="3" placeholder="Category, lease ref, or anything helpful"></textarea>
+    </label>
+    <div class="os-form-actions">
+      <button class="os-btn os-btn-primary" type="submit">Submit application</button>
+    </div>
+  </form>
+</section>
+<link rel="stylesheet" href="{{ url_for('static', filename='place.css') }}">
+{% endblock %}

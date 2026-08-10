@@ -1,0 +1,82 @@
+{% extends 'owner_base.html' %}
+{% from 'owner/_insights_nav.html' import insights_nav %}
+{% set active_tab = 'insights' %}
+{% block title %}Request from {{ inquiry.customer_name }} — {{ store.name }}{% endblock %}
+{% block os_header %}
+<h1 class="os-page-title">{{ inquiry.customer_name }}</h1>
+<p class="os-page-subtitle">Customer request · {{ inquiry.created_at[:16] if inquiry.created_at else '' }}{% if inquiry.source_ref %} · via {{ inquiry.source_ref|replace('_', ' ') }}{% endif %}</p>
+{% endblock %}
+{% block os_actions %}
+<span class="os-tag ins-status-tag ins-status-tag--{{ inquiry.status }}">{{ inquiry.status }}</span>
+<a class="os-btn os-btn-ghost ins-detail-back" href="{{ url_for('manage_store_inquiries', slug=store.slug) }}">← All requests</a>
+{% endblock %}
+{% block owner_content %}
+{{ insights_nav(store, insights_section, inquiry_new_count|default(0)) }}
+
+<div class="ins-detail-grid">
+  <section class="os-card os-card-padded">
+    <h2 class="fb-panel__title">Contact</h2>
+    <dl class="ins-detail-dl">
+      <div><dt>Name</dt><dd>{{ inquiry.customer_name }}</dd></div>
+      {% if inquiry.customer_email %}
+      <div><dt>Email</dt><dd><a href="mailto:{{ inquiry.customer_email }}">{{ inquiry.customer_email }}</a></dd></div>
+      {% endif %}
+      {% if inquiry.customer_phone %}
+      <div><dt>Phone</dt><dd><a href="tel:{{ inquiry.customer_phone }}">{{ inquiry.customer_phone }}</a></dd></div>
+      {% endif %}
+      {% if inquiry.item_name %}
+      <div><dt>Product</dt><dd>{{ inquiry.item_name }}</dd></div>
+      {% endif %}
+      {% if inquiry.source_ref %}
+      <div><dt>Source</dt><dd>{{ inquiry.source_ref|replace('_', ' ')|title }}</dd></div>
+      {% endif %}
+    </dl>
+    {% if inquiry.message %}
+    <h3 class="ins-detail-msg-title">Message</h3>
+    <p class="ins-detail-msg">{{ inquiry.message }}</p>
+    {% endif %}
+  </section>
+
+  <section class="os-card os-card-padded ins-detail-actions">
+    <h2 class="fb-panel__title">Actions</h2>
+    <div class="ins-detail-contact-btns">
+      {% if inquiry.customer_phone %}
+      <a class="os-btn os-btn-primary" href="tel:{{ inquiry.customer_phone }}">Call customer</a>
+      {% endif %}
+      {% if inquiry.customer_email %}
+      <a class="os-btn os-btn-primary" href="mailto:{{ inquiry.customer_email }}?subject=Re:%20{{ store.name|urlencode }}">Email customer</a>
+      {% endif %}
+    </div>
+    <form method="post" class="os-stack ins-detail-status-form">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      {% if inquiry.status != 'read' %}
+      <button class="os-btn os-btn-ghost" type="submit" name="action" value="mark_read">Mark as read</button>
+      {% endif %}
+      {% if inquiry.status != 'new' %}
+      <button class="os-btn os-btn-ghost" type="submit" name="action" value="reopen">Mark as new</button>
+      {% endif %}
+      {% if inquiry.status != 'archived' %}
+      <button class="os-btn os-btn-ghost" type="submit" name="action" value="archive">Archive</button>
+      {% endif %}
+    </form>
+    {% if store.contact %}
+    <p class="fb-empty-hint ins-detail-store-contact">Your listed contact: {{ store.contact }}</p>
+    {% endif %}
+  </section>
+</div>
+
+{% if inquiry.customer_phone or inquiry.customer_email %}
+<nav class="ins-mobile-bar" aria-label="Quick contact">
+  {% if inquiry.customer_phone %}
+  <a class="os-btn os-btn-primary" href="tel:{{ inquiry.customer_phone }}">Call</a>
+  {% endif %}
+  {% if inquiry.customer_email %}
+  <a class="os-btn os-btn-primary" href="mailto:{{ inquiry.customer_email }}">Email</a>
+  {% endif %}
+  <a class="os-btn os-btn-ghost" href="{{ url_for('manage_store_inquiries', slug=store.slug) }}">Inbox</a>
+</nav>
+{% endif %}
+
+<link rel="stylesheet" href="{{ url_for('static', filename='feedback.css') }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='insights.css') }}">
+{% endblock %}

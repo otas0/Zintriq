@@ -1,0 +1,77 @@
+{% extends 'owner_base.html' %}
+{% from 'owner/_customer_qr_nav.html' import customer_qr_nav %}
+{% set active_tab = 'qr' %}
+{% block title %}Customer QR — {{ store.name }}{% endblock %}
+{% block os_head %}
+<link rel="stylesheet" href="{{ url_for('static', filename='event-passes.css') }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='bos/polish.css') }}">
+{% endblock %}
+{% block os_header %}
+<h1 class="os-page-title">Customer QR</h1>
+<p class="os-page-subtitle">Every way customers scan in — shop, landing pages, and specialized passes.</p>
+{% endblock %}
+{% block os_actions %}
+<button type="button" class="os-btn os-btn-primary os-btn-sm" id="customer-qr-add">Add customer QR</button>
+{% endblock %}
+{% block owner_content %}
+{{ customer_qr_nav(store, 'hub') }}
+
+<section class="os-qr-section">
+  <header class="os-qr-section__head">
+    <h2 class="os-qr-section__title">Shop QR</h2>
+    <p class="os-qr-section__desc">Scan goes straight to your menu and storefront.</p>
+  </header>
+  <div class="os-cap-grid">
+    <a class="os-cap-card" href="{{ url_for('manage_qr_codes', slug=store.slug) }}">
+      <span class="os-cap-label">Shop QR</span>
+      <span class="os-cap-desc">{{ qr_count }} code{% if qr_count != 1 %}s{% endif %} · opens your catalog</span>
+    </a>
+  </div>
+</section>
+
+<section class="os-qr-section">
+  <header class="os-qr-section__head">
+    <h2 class="os-qr-section__title">Landing QR</h2>
+    <p class="os-qr-section__desc">Intro page before the shop — feedback, surveys, and optional “View shop”.</p>
+  </header>
+  <div class="os-cap-grid">
+    <a class="os-cap-card" href="{{ url_for('manage_landing_qr', slug=store.slug) }}">
+      <span class="os-cap-label">Landing pages</span>
+      <span class="os-cap-desc">{{ landing_count }} page{% if landing_count != 1 %}s{% endif %} · build &amp; publish here</span>
+    </a>
+  </div>
+</section>
+
+<section class="os-qr-section">
+  <header class="os-qr-section__head">
+    <h2 class="os-qr-section__title">Specialized QR</h2>
+    <p class="os-qr-section__desc">Product specs, events, contact cards, and check-in points.</p>
+  </header>
+  <div class="os-cap-grid os-cap-grid--wide">
+    <a class="os-cap-card" href="{{ url_for('manage_product_qr', slug=store.slug) }}">
+      <span class="os-cap-label">Product QR</span>
+      <span class="os-cap-desc">{{ product_qr_count }} product{% if product_qr_count != 1 %}s{% endif %} · spec sheets</span>
+    </a>
+    <a class="os-cap-card" href="{{ url_for('manage_event_passes', slug=store.slug) }}">
+      <span class="os-cap-label">Event Pass</span>
+      <span class="os-cap-desc">{{ event_count }} event{% if event_count != 1 %}s{% endif %} · tickets &amp; check-in</span>
+    </a>
+    <a class="os-cap-card" href="{{ url_for('manage_business_cards', slug=store.slug) }}">
+      <span class="os-cap-label">Business Card</span>
+      <span class="os-cap-desc">{{ card_count }} card{% if card_count != 1 %}s{% endif %} · digital contact</span>
+    </a>
+    <a class="os-cap-card" href="{{ url_for('manage_check_in', slug=store.slug) }}">
+      <span class="os-cap-label">Check-in</span>
+      <span class="os-cap-desc">{{ checkin_count }} point{% if checkin_count != 1 %}s{% endif %} · visitor check-in</span>
+    </a>
+  </div>
+</section>
+<script>
+  window.CUSTOMER_QR_BOOT = {
+    storeId: {{ store.id }},
+    storeSlug: {{ store.slug | tojson }},
+    storeName: {{ store.name | tojson }}
+  };
+</script>
+<script type="module" src="{{ url_for('static', filename='owner-customer-qr.js') }}"></script>
+{% endblock %}

@@ -1,16 +1,20 @@
 {% extends 'owner_base.html' %}
-{% set active_tab = 'groups' %}
-{% block title %}Item groups — {{ store.name }}{% endblock %}
+{% from 'owner/_storefront_nav.html' import storefront_nav %}
+{% set active_tab = 'storefront' %}
+{% block title %}Categories — {{ store.name }}{% endblock %}
 {% block os_header %}
-<h1 class="os-page-title">Item groups</h1>
-<p class="os-page-subtitle">Organize items into categories like Drinks, Food, or Featured.</p>
+<h1 class="os-page-title">Categories</h1>
+<p class="os-page-subtitle">Organize products into sections on your storefront.</p>
 {% endblock %}
 {% block owner_content %}
+{{ storefront_nav(store, 'groups') }}
 <section class="os-card os-card-padded">
   <h2 class="os-card-title">Create group</h2>
+  <p class="os-panel-desc" style="margin:0 0 12px">Set a number prefix (e.g. <code>08</code>) to match Uber-style category labels on your shop.</p>
   <form method="post" class="os-actions-row">
     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
     <input type="hidden" name="action" value="create">
+    <input class="os-input" style="width:56px" name="prefix" placeholder="08" maxlength="8" title="Number prefix (optional)">
     <input class="os-input" style="flex:1;max-width:280px" name="name" required placeholder="e.g. Drinks">
     <button class="os-btn os-btn-primary" type="submit">Create</button>
   </form>
@@ -29,8 +33,9 @@
         <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
         <input type="hidden" name="action" value="rename">
         <input type="hidden" name="group_id" value="{{ group.id }}">
+        <input class="os-input" style="width:56px" name="prefix" value="{{ group.prefix or '' }}" placeholder="01" maxlength="8" title="Number prefix (e.g. 08)">
         <input class="os-input" style="width:140px" name="name" value="{{ group.name }}" required>
-        <button class="os-btn os-btn-ghost os-btn-sm" type="submit">Rename</button>
+        <button class="os-btn os-btn-ghost os-btn-sm" type="submit">Save</button>
       </form>
       <form method="post" class="confirm-form" data-confirm="Delete group &quot;{{ group.name }}&quot;?">
         <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">

@@ -25,4 +25,28 @@ document.addEventListener('DOMContentLoaded', () => {
       setTimeout(() => toast.remove(), 300);
     }, 4000);
   });
+
+  const switcher = document.getElementById('os-store-switcher');
+  const switcherBtn = document.getElementById('os-store-switcher-btn');
+  const switcherMenu = document.getElementById('os-store-switcher-menu');
+  const closeSwitcher = () => {
+    switcherMenu?.setAttribute('hidden', '');
+    switcherBtn?.setAttribute('aria-expanded', 'false');
+  };
+  switcherBtn?.addEventListener('click', (event) => {
+    event.stopPropagation();
+    const open = switcherMenu?.hasAttribute('hidden');
+    if (open) {
+      switcherMenu?.removeAttribute('hidden');
+      switcherBtn?.setAttribute('aria-expanded', 'true');
+    } else {
+      closeSwitcher();
+    }
+  });
+  document.addEventListener('click', (event) => {
+    if (switcher && !switcher.contains(event.target)) closeSwitcher();
+  });
+  document.addEventListener('keydown', (event) => {
+    if (event.key === 'Escape') closeSwitcher();
+  });
 });

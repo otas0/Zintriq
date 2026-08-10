@@ -56,7 +56,7 @@ function renderPopularExperiences(items) {
     ${list.map((x) => `
       <li class="bos-action-item">
         <div><strong>${escapeHtml(x.name)}</strong><br><span class="cp-muted">${x.interactions} interaction${x.interactions === 1 ? "" : "s"}</span></div>
-        ${button({ variant: "ghost", label: "View QR", tag: "a", href: "/app/qr", sm: true })}
+        ${button({ variant: "ghost", label: "Manage", tag: "a", href: "/app/store#experiences", sm: true })}
       </li>`).join("")}
   </ul>`;
 }
@@ -147,7 +147,7 @@ function renderCustomerDrawer(customer) {
 /** @param {HTMLElement} root */
 export async function mountCustomersPage(root) {
   root.innerHTML = loadingState();
-  setPageActions(button({ variant: "primary", label: "Create QR Experience", tag: "a", href: "/app/qr", sm: true }));
+  setPageActions(button({ variant: "primary", label: "Customer QR", tag: "a", href: "/app/store#experiences", sm: true }));
 
   let filterType = "";
   let searchQ = "";
@@ -171,7 +171,7 @@ export async function mountCustomersPage(root) {
 
       <div class="bos-panel-grid" style="margin-bottom:20px;display:grid;grid-template-columns:1fr 1fr;gap:16px">
         <section class="bos-panel">
-          ${sectionHeader({ title: "Popular QR Experiences" })}
+          ${sectionHeader({ title: "Popular landing pages" })}
           ${renderPopularExperiences(dashboard.popular_experiences)}
         </section>
         <section class="bos-panel">
@@ -198,8 +198,8 @@ export async function mountCustomersPage(root) {
             actionsHtml: button({ variant: "ghost", label: "View", attrs: `data-open-customer="${c.id}"`, sm: true }),
           })).join("") : emptyState({
             title: "No customer interactions yet",
-            text: "When customers scan your QR Experiences and leave feedback, book, or check in, they appear here.",
-            actionHtml: button({ variant: "primary", label: "Create QR Experience", tag: "a", href: "/app/qr" }),
+            text: "When customers scan your QR codes and leave feedback, book, or check in, they appear here.",
+            actionHtml: button({ variant: "primary", label: "Customer QR", tag: "a", href: "/app/store#experiences" }),
           })}
         </div>
       </section>

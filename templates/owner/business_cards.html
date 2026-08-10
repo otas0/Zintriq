@@ -1,13 +1,13 @@
 {% extends 'owner_base.html' %}
-{% from 'owner/_qr_capabilities.html' import qr_capabilities %}
+{% from 'owner/_customer_qr_nav.html' import customer_qr_nav %}
 {% set active_tab = 'qr' %}
 {% block title %}Business Cards — {{ store.name }}{% endblock %}
 {% block os_header %}
-<h1 class="os-page-title">Business Cards</h1>
+<h1 class="os-page-title">Business Card</h1>
 <p class="os-page-subtitle">Digital contact cards with QR codes for your team.</p>
 {% endblock %}
 {% block owner_content %}
-{{ qr_capabilities(store, 'business_card') }}
+{{ customer_qr_nav(store, 'card') }}
 
 <section class="os-card os-card-padded">
   <h2 class="os-card-title">Create business card</h2>

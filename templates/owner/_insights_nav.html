@@ -1,0 +1,9 @@
+{% macro insights_nav(store, section, new_count=0) %}
+<nav class="fb-subnav ins-subnav" aria-label="Insights sections">
+  <a href="{{ url_for('manage_store_insights', slug=store.slug) }}" class="fb-subnav__item{% if section == 'overview' %} is-active{% endif %}">Overview</a>
+  <a href="{{ url_for('manage_store_inquiries', slug=store.slug) }}" class="fb-subnav__item{% if section == 'requests' %} is-active{% endif %}">
+    Customer requests{% if new_count %}<span class="ins-nav-badge">{{ new_count }}</span>{% endif %}
+  </a>
+  <a href="{{ url_for('manage_feedback_overview', slug=store.slug) }}" class="fb-subnav__item{% if section == 'feedback' %} is-active{% endif %}">Feedback</a>
+</nav>
+{% endmacro %}

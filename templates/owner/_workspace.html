@@ -1,38 +1,21 @@
-<div class="material-sheet workspace" id="workspace"
+<div class="material-sheet workspace workspace--list-only" id="workspace"
      data-csrf="{{ csrf_token() }}"
      data-mode="{{ workspace_mode }}"
      data-focus-group="{{ focus_group_id|default('') }}">
-  <aside class="material-panel workspace-sidebar">
-  <div class="workspace-sidebar-head">
-    <h2>Filters</h2>
-  </div>
-
-    <section class="sidebar-section">
-      <h3>Smart views</h3>
-      <nav class="sidebar-nav" id="smart-views">
-        <button type="button" class="sidebar-link active" data-view="all">All stores <span class="count" data-count="all"></span></button>
-        <button type="button" class="sidebar-link" data-view="active">Active <span class="count" data-count="active"></span></button>
-        <button type="button" class="sidebar-link" data-view="archived">Archived <span class="count" data-count="archived"></span></button>
-        <button type="button" class="sidebar-link" data-view="ungrouped">Ungrouped <span class="count" data-count="ungrouped"></span></button>
-        <button type="button" class="sidebar-link" data-view="recent">Recently updated</button>
-      </nav>
-    </section>
-
-    <section class="sidebar-section">
-      <h3>Groups</h3>
-      <nav class="sidebar-nav" id="group-list"></nav>
-    </section>
-
-    <section class="sidebar-section">
-      <h3>Labels</h3>
-      <nav class="sidebar-nav" id="label-list"></nav>
-    </section>
-  </aside>
-
-  <main class="workspace-main">
+  <main class="workspace-main workspace-main--full">
     <header class="material-panel workspace-toolbar">
-      <div class="search-wrap">
-        <input type="search" id="workspace-search" class="os-input" placeholder="Search stores, groups, labels, QR, address…" autocomplete="off">
+      <div class="workspace-toolbar__search">
+        <input type="search" id="workspace-search" class="os-input" placeholder="Search stores…" autocomplete="off">
+        <div class="workspace-toolbar__filters">
+          <nav class="workspace-status-filters" id="workspace-status-filters" aria-label="Store status">
+            <button type="button" class="workspace-status-chip active" data-view="all">All</button>
+            <button type="button" class="workspace-status-chip" data-view="active">Active</button>
+            <button type="button" class="workspace-status-chip" data-view="archived">Archived</button>
+            <button type="button" class="workspace-status-chip workspace-status-chip--muted" data-view="ungrouped">Ungrouped</button>
+            <button type="button" class="workspace-status-chip workspace-status-chip--muted" data-view="recent">Recent</button>
+          </nav>
+          <a class="workspace-organize-link" href="{{ url_for('bos.store_organize') }}">Groups &amp; labels</a>
+        </div>
       </div>
       <div class="toolbar-actions">
         <label class="checkbox-label"><input type="checkbox" id="workspace-select-all"> Select all</label>
@@ -50,15 +33,22 @@
 
 <div class="material-panel workspace-action-bar hidden" id="action-bar">
   <span class="action-bar-count" id="action-bar-count">0 selected</span>
-  <div class="action-bar-buttons">
+  <div class="action-bar-primary">
+    <a class="outline small action-bar-manage hidden" id="action-bar-manage" href="#">Manage</a>
     <button type="button" class="outline small" data-batch="archive">Archive</button>
-    <button type="button" class="outline small" data-batch="activate">Activate</button>
-    <button type="button" class="outline small" data-popover="move-group">Move</button>
-    <button type="button" class="outline small" data-popover="labels">Labels</button>
-    <button type="button" class="outline small" data-batch="duplicate">Duplicate</button>
-    <button type="button" class="outline small" data-batch="export">Export</button>
-    <button type="button" class="danger-button small" data-batch="delete">Delete</button>
+    <div class="action-bar-more">
+      <button type="button" class="outline small" id="action-bar-more-btn" aria-expanded="false" aria-haspopup="menu">More ▾</button>
+      <div class="action-bar-more-menu hidden" id="action-bar-more-menu" role="menu">
+        <button type="button" role="menuitem" data-batch="activate">Activate</button>
+        <button type="button" role="menuitem" data-popover="move-group">Move to group</button>
+        <button type="button" role="menuitem" data-popover="labels">Labels</button>
+        <button type="button" role="menuitem" data-batch="duplicate">Duplicate</button>
+        <button type="button" role="menuitem" data-batch="export">Export</button>
+        <button type="button" role="menuitem action-bar-more-danger" data-batch="delete">Delete</button>
+      </div>
+    </div>
   </div>
+  <button type="button" class="action-bar-clear" id="action-bar-clear" aria-label="Clear selection">×</button>
 </div>
 
 <aside class="material-overlay workspace-drawer hidden" id="store-drawer" aria-hidden="true">
