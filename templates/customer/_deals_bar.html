@@ -7,7 +7,7 @@
       <button type="button" class="sf-deals-bar__arrow" id="sf-deals-prev" aria-label="Previous deals">‹</button>
       <button type="button" class="sf-deals-bar__arrow" id="sf-deals-next" aria-label="Next deals">›</button>
     </div>
-    <a class="sf-deals-bar__see-all" href="{{ url_for('store_preview' if preview_mode else 'storefront', slug=store.slug, view='deals') }}">See all</a>
+    <a class="sf-deals-bar__see-all" href="{{ url_for('store_preview' if preview_mode else 'storefront', slug=store.slug, view='deals') }}">See all →</a>
   </div>
   <div class="sf-deals-bar__track" id="sf-deals-track">
     {% for deal in deals %}
@@ -29,6 +29,7 @@
           <s>${{ '%.2f'|format(deal.compare_at_price) }}</s>
         </p>
         <p class="sf-tile__name">{{ deal.item_name }}</p>
+        {% if deal.item_unit %}<p class="sf-tile__unit">{{ deal.item_unit }}</p>{% endif %}
       </div>
     </a>
     {% endfor %}

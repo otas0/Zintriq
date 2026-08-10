@@ -1,0 +1,82 @@
+{% extends 'customer_base.html' %}
+{% block title %}Your places{% endblock %}
+{% block customer_head %}
+<link rel="stylesheet" href="{{ url_for('static', filename='guest.css') }}">
+{% endblock %}
+{% block customer_header_actions %}
+{% if guest_recent_count %}<span class="os-tag os-tag-sm">{{ guest_recent_count }}</span>{% endif %}
+{% endblock %}
+{% block content %}
+<section class="guest-places mq-section">
+  <header class="guest-places__head">
+    <p class="mq-hero__eyebrow">My Places</p>
+    <h1 class="guest-places__title">Shops you've visited</h1>
+    <p class="guest-places__lead">Stores you opened from QR codes or links — no account needed.</p>
+    <p class="guest-places__discover-link"><a href="{{ url_for('guest_discover') }}">Discover nearby shops →</a></p>
+  </header>
+
+  <aside class="guest-remember material-module" id="remember">
+    {% if guest_remembered_email %}
+    <div class="guest-remember__saved">
+      <p class="guest-remember__label">Remembered on this device</p>
+      <p class="guest-remember__email">{{ guest_remembered_email }}</p>
+      <p class="guest-remember__hint">Open the email link on another phone or browser to bring your places back.</p>
+    </div>
+    {% else %}
+    <div class="guest-remember__form-wrap">
+      <p class="guest-remember__label">Remember me</p>
+      <p class="guest-remember__hint">Email yourself a link to restore these shops on a new device — no password.</p>
+      <form class="guest-remember__form" method="post" action="{{ url_for('guest_remember_request') }}">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <label class="guest-remember__field">
+          <span class="guest-remember__field-label">Email</span>
+          <input class="guest-remember__input" type="email" name="email" required autocomplete="email"
+                 placeholder="you@example.com"
+                 value="{{ guest_contact.customer_email if guest_contact is defined and guest_contact.customer_email else '' }}">
+        </label>
+        <button class="mq-btn mq-btn-primary guest-remember__submit" type="submit">Email me a link</button>
+      </form>
+    </div>
+    {% endif %}
+  </aside>
+
+  {% if places %}
+  <ul class="guest-places__list">
+    {% for place in places %}
+    <li>
+      <a class="guest-place-card material-module" href="{{ place.storefront_url }}">
+        <div class="guest-place-card__logo">
+          {% if place.logo_url %}
+          <img src="{{ place.logo_url }}" alt="">
+          {% else %}
+          <span>{{ place.name[0]|upper }}</span>
+          {% endif %}
+        </div>
+        <div class="guest-place-card__body">
+          <h2 class="guest-place-card__name">{{ place.name }}</h2>
+          {% if place.hours_line %}
+          <p class="guest-place-card__meta">
+            {% if place.is_open is not none %}
+            <span class="guest-place-card__status guest-place-card__status--{% if place.is_open %}open{% else %}closed{% endif %}">
+              {% if place.is_open %}Open{% else %}Closed{% endif %}
+            </span>
+            {% endif %}
+            <span>{{ place.hours_line }}</span>
+          </p>
+          {% endif %}
+          {% if place.description %}<p class="guest-place-card__desc">{{ place.description }}</p>{% endif %}
+          <p class="guest-place-card__visited">Last visit {{ place.last_visited_at[:16] if place.last_visited_at else '' }}</p>
+        </div>
+        <span class="guest-place-card__chev" aria-hidden="true">→</span>
+      </a>
+    </li>
+    {% endfor %}
+  </ul>
+  {% else %}
+  <div class="mq-empty guest-places__empty">
+    <p><strong>No places yet</strong></p>
+    <p>Scan a shop QR code or open a store link — it will show up here for easy return visits.</p>
+  </div>
+  {% endif %}
+</section>
+{% endblock %}

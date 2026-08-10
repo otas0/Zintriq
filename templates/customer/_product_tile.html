@@ -1,6 +1,6 @@
 {# Uber-style vertical product tile — customer storefront only #}
 {# Required: item, href. Optional: deal #}
-<a class="sf-tile" href="{{ href }}" data-search="{{ item.name|lower }} {{ (item.description or '')|lower }}">
+<a class="sf-tile" href="{{ href }}" data-search="{{ item.name|lower }} {{ (item.description or '')|lower }} {{ (item.unit or '')|lower }}">
   <div class="sf-tile__media">
     {% if deal %}<span class="sf-tile__badge">{{ deal.label }}</span>{% endif %}
     {% if item.image_url %}
@@ -20,5 +20,6 @@
       {% endif %}
     </p>
     <p class="sf-tile__name">{{ item.name }}</p>
+    {% if item.unit %}<p class="sf-tile__unit">{{ item.unit }}</p>{% endif %}
   </div>
 </a>

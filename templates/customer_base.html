@@ -10,6 +10,7 @@
   <link rel="stylesheet" href="{{ url_for('static', filename='materials.css') }}">
   <link rel="stylesheet" href="{{ url_for('static', filename='system.css') }}">
   <link rel="stylesheet" href="{{ url_for('static', filename='marketing.css') }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='guest.css') }}">
   {% block customer_head %}{% endblock %}
 </head>
 <body class="material-canvas mq-app mq-density-customer mq-public">
@@ -23,13 +24,39 @@
         <span class="mq-shell-brand-mark">M</span>
         <span>MarketQR</span>
       </a>
-      {% block customer_header_actions %}{% endblock %}
+      <div class="mq-public-header__actions">
+        <a class="mq-public-header__guest-link" href="{{ url_for('guest_discover') }}">Discover</a>
+        <a class="mq-public-header__guest-link" href="{{ url_for('guest_recent_places') }}">
+          Your places{% if guest_recent_count|default(0) > 0 %}<span class="guest-link-count">{{ guest_recent_count }}</span>{% endif %}
+        </a>
+        {% block customer_header_actions %}{% endblock %}
+      </div>
     </div>
   </header>
+
+  {% with messages = get_flashed_messages(with_categories=true) %}
+    {% if messages %}
+    <div class="mq-flash-wrap">
+      {% for category, message in messages %}
+      <div class="material-feedback mq-flash mq-flash-{{ category }}" role="status">{{ message }}</div>
+      {% endfor %}
+    </div>
+    {% endif %}
+  {% endwith %}
 
   <main class="material-sheet mq-shell-main">{% block content %}{% endblock %}</main>
   <footer class="mq-public-footer"><strong>MarketQR</strong> · Powered by MarketQR</footer>
   <script src="{{ url_for('static', filename='marketing.js') }}"></script>
+  <script>
+  (function () {
+    if (!("serviceWorker" in navigator)) return;
+    var h = location.hostname;
+    if (h !== "localhost" && h !== "127.0.0.1") return;
+    navigator.serviceWorker.getRegistrations().then(function (regs) {
+      regs.forEach(function (reg) { reg.unregister(); });
+    });
+  })();
+  </script>
   {% block customer_scripts %}{% endblock %}
 </body>
 </html>

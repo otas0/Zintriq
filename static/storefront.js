@@ -38,6 +38,25 @@ document.addEventListener("DOMContentLoaded", () => {
     hoursToggle.textContent = open ? "−" : "+";
   });
 
+  const sidebarToggle = document.getElementById("sf-sidebar-toggle");
+  const sidebarDetails = document.getElementById("sf-sidebar-details");
+  sidebarToggle?.addEventListener("click", () => {
+    const open = sidebarDetails?.classList.toggle("is-open");
+    sidebarToggle.setAttribute("aria-expanded", open ? "true" : "false");
+  });
+
+  document.querySelectorAll(".sf-catalog__track-wrap").forEach((wrap) => {
+    const track = wrap.querySelector(".sf-catalog__track");
+    if (!track) return;
+    const scrollBy = () => Math.min(track.clientWidth * 0.85, 380);
+    wrap.querySelectorAll(".sf-catalog__scroll").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        const dir = Number(btn.dataset.scroll || 0);
+        track.scrollBy({ left: dir * scrollBy(), behavior: "smooth" });
+      });
+    });
+  });
+
   const track = document.getElementById("sf-deals-track");
   const prev = document.getElementById("sf-deals-prev");
   const next = document.getElementById("sf-deals-next");
@@ -57,6 +76,34 @@ document.addEventListener("DOMContentLoaded", () => {
       history.replaceState(null, "", `#${id}`);
     });
   });
+
+  function bindCategoryScrollSpy(catNav) {
+    if (!catNav) return;
+    const catLinks = [...catNav.querySelectorAll(".sf-categories__link[href^='#']")];
+    if (!catLinks.length || !("IntersectionObserver" in window)) return;
+
+    const sectionIds = catLinks.map((l) => l.getAttribute("href")?.slice(1)).filter(Boolean);
+    const sections = sectionIds.map((id) => document.getElementById(id)).filter(Boolean);
+    const setActive = (id) => {
+      document.querySelectorAll(".sf-categories__link[href^='#']").forEach((link) => {
+        const match = link.getAttribute("href") === `#${id}`;
+        link.classList.toggle("is-scroll-active", match);
+      });
+    };
+    const observer = new IntersectionObserver(
+      (entries) => {
+        const visible = entries.filter((e) => e.isIntersecting).sort((a, b) => b.intersectionRatio - a.intersectionRatio);
+        if (visible[0]?.target?.id) {
+          setActive(visible[0].target.id);
+        }
+      },
+      { rootMargin: "-30% 0px -55% 0px", threshold: [0, 0.25, 0.5] },
+    );
+    sections.forEach((section) => observer.observe(section));
+  }
+
+  bindCategoryScrollSpy(document.getElementById("sf-categories"));
+  bindCategoryScrollSpy(document.getElementById("sf-categories-mobile"));
 
   const searchInput = document.getElementById("sf-search");
   if (searchInput) {
@@ -92,6 +139,16 @@ document.addEventListener("DOMContentLoaded", () => {
         const km = haversineKm(pos.coords.latitude, pos.coords.longitude, storeLat, storeLng);
         distanceEl.textContent = formatDistance(km);
         distanceEl.classList.remove("hidden");
+
+        document.querySelectorAll(".sf-brand-hub__link[data-store-lat][data-store-lng]").forEach((link) => {
+          const lat = parseFloat(link.dataset.storeLat || "");
+          const lng = parseFloat(link.dataset.storeLng || "");
+          const slot = link.querySelector(".sf-brand-hub__distance--live");
+          if (!slot || !Number.isFinite(lat) || !Number.isFinite(lng)) return;
+          const d = haversineKm(pos.coords.latitude, pos.coords.longitude, lat, lng);
+          slot.textContent = formatDistance(d);
+          slot.classList.remove("sf-brand-hub__distance--live");
+        });
       },
       () => {},
       { enableHighAccuracy: false, timeout: 8000, maximumAge: 300000 },

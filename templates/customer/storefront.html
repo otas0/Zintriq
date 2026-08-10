@@ -27,31 +27,54 @@
     {% include 'customer/_store_profile.html' %}
 
     <div class="sf-main">
-      <div class="sf-search-wrap">
+      <div class="sf-search-wrap sf-search-wrap--sticky">
         <label class="sf-search">
           <span class="sf-search__icon" aria-hidden="true">⌕</span>
           <input class="sf-search__input" type="search" id="sf-search" placeholder="Search products…" autocomplete="off">
         </label>
       </div>
 
+      {% set category_nav_variant = 'mobile' %}
+      {% include 'customer/_store_categories.html' %}
+
       {% include 'customer/_deals_bar.html' %}
+
+      {% if group_in_url and store_view == 'shop' and catalog_sections|length == 1 %}
+      <p class="sf-back-shop">
+        <a href="{{ url_for('store_preview' if preview_mode else 'storefront', slug=store.slug, view='shop') }}">← All categories</a>
+      </p>
+      {% endif %}
 
       {% if catalog_sections %}
       <div class="sf-catalog">
         {% for section in catalog_sections %}
-        <section class="sf-catalog__section" id="sf-cat-{{ section.id }}" aria-labelledby="sf-cat-head-{{ section.id }}">
+        <section class="sf-catalog__section" id="sf-cat-{{ section.id }}" aria-labelledby="sf-cat-head-{{ section.id }}" data-section-id="{{ section.id }}">
           <div class="sf-catalog__head" id="sf-cat-head-{{ section.id }}">
-            {% if section.num %}<span class="sf-catalog__num">{{ section.num }}.</span>{% endif %}
-            <h2 class="sf-catalog__title">{{ section.name }}</h2>
-            <span class="sf-catalog__count">{{ section['items']|length }}</span>
+            <div class="sf-catalog__head-main">
+              {% if section.num %}<span class="sf-catalog__num">{{ section.num }}.</span>{% endif %}
+              <h2 class="sf-catalog__title">{{ section.name }}</h2>
+              <span class="sf-catalog__count">{{ section['items']|length }}</span>
+            </div>
+            {% if not group_in_url and section.id not in ('all', 'deals') and section['items']|length > 3 %}
+            {% set group_param = 'default' if section.id == 'default' else section.id|string %}
+            <a class="sf-catalog__see-all" href="{{ url_for('store_preview' if preview_mode else 'storefront', slug=store.slug, group=group_param, view='shop') }}">See all →</a>
+            {% endif %}
           </div>
-          <div class="sf-catalog__track">
+          <div class="sf-catalog__track-wrap">
+            {% if section['items']|length > 2 %}
+            <button type="button" class="sf-catalog__scroll sf-catalog__scroll--prev" aria-label="Scroll {{ section.name }} left" data-scroll="-1">‹</button>
+            {% endif %}
+            <div class="sf-catalog__track">
             {% for item in section['items'] %}
             {% set deal = deals_map.get(item.id) %}
             {% set back_group = ('default' if section.id == 'default' else section.id|string) if section.id not in ('all', 'deals') else none %}
             {% set href = url_for('item_preview' if preview_mode else 'customer_item_detail', slug=store.slug, item_id=item.id, group=back_group) if back_group else url_for('item_preview' if preview_mode else 'customer_item_detail', slug=store.slug, item_id=item.id) %}
             {% include 'customer/_product_tile.html' %}
             {% endfor %}
+            </div>
+            {% if section['items']|length > 2 %}
+            <button type="button" class="sf-catalog__scroll sf-catalog__scroll--next" aria-label="Scroll {{ section.name }} right" data-scroll="1">›</button>
+            {% endif %}
           </div>
         </section>
         {% endfor %}
