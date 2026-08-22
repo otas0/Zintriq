@@ -1,5 +1,5 @@
 /**
- * Business OS Platform Specification — registry mirror (JavaScript).
+ * Zintriq Platform Specification — registry mirror (JavaScript).
  *
  * Spec: docs/bos/PLATFORM_SPECIFICATION.md
  * Backend mirror: bos/platform_spec.py

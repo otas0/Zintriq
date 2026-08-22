@@ -55,11 +55,27 @@ export function getFileLabel(type) {
   return FILE_TYPES[type]?.label || FILE_TYPES.other.label;
 }
 
-export function mockPickFile() {
-  const samples = [
-    { name: "screenshot.png", size: "420 KB", mime: "image/png" },
-    { name: "invoice.pdf", size: "1.2 MB", mime: "application/pdf" },
-    { name: "notes.docx", size: "88 KB", mime: "application/doc" },
-  ];
-  return samples[Math.floor(Math.random() * samples.length)];
+export function pickFileFromInput() {
+  return new Promise((resolve) => {
+    const input = document.createElement("input");
+    input.type = "file";
+    input.addEventListener("change", () => {
+      const file = input.files?.[0];
+      if (!file) {
+        resolve(null);
+        return;
+      }
+      const size =
+        file.size < 1024 * 1024
+          ? `${Math.max(1, Math.round(file.size / 1024))} KB`
+          : `${(file.size / (1024 * 1024)).toFixed(1)} MB`;
+      resolve({
+        name: file.name,
+        size,
+        mime: file.type || "",
+        url: URL.createObjectURL(file),
+      });
+    });
+    input.click();
+  });
 }

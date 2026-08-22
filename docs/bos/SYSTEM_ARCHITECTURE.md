@@ -1,4 +1,4 @@
-# Business OS — System Architecture Specification
+# Zintriq — System Architecture Specification
 
 > **Status:** Canonical architectural blueprint  
 > **Code mirrors:** `bos/architecture.py`, `static/bos/platform/system-architecture.js`  
@@ -8,7 +8,7 @@
 
 Define how every platform, module, object, shared service, and future capability is organized.
 
-Business OS behaves as **one operating system** — not a collection of independent applications.
+Zintriq behaves as **one operating system** — not a collection of independent applications.
 
 Every implementation must follow this specification.
 
@@ -31,7 +31,7 @@ Business logic must never be tightly coupled to UI.
 ## High-Level Architecture
 
 ```
-Business OS
+Zintriq
 
 Foundation
 │   Domain · Objects · Events · Permissions · Search · Notifications · Files · Settings
@@ -87,7 +87,7 @@ Reusable system capabilities. **No business-specific logic.**
 
 ### Core Layer
 
-How Business OS operates. **Every platform depends on Core.**
+How Zintriq operates. **Every platform depends on Core.**
 
 | Capability | Spec | Implementation |
 |------------|------|----------------|

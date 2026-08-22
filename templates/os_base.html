@@ -2,9 +2,10 @@
 <html lang="en">
 <head>
   <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>{% block title %}MarketQR{% endblock %}</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>{% block title %}Zintriq{% endblock %}</title>
   <meta name="csrf-token" content="{{ csrf_token() }}">
+  {% include 'partials/favicon_links.html' %}
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/geist@1.3.1/dist/fonts/geist-sans/style.min.css">
   <link rel="stylesheet" href="{{ url_for('static', filename='bos/components.css') }}">
   <link rel="stylesheet" href="{{ url_for('static', filename='os.css') }}">
@@ -14,28 +15,32 @@
   <div class="os-app">
     <aside class="material-panel os-sidebar" id="os-sidebar" aria-label="Main navigation">
       <div class="os-sidebar-top">
-        <a class="os-brand" href="{{ url_for('bos.store') }}">
-          <span class="os-brand-mark">B</span>
-          <span class="os-brand-text">Business OS</span>
+        <a class="os-brand" href="{{ url_for('bos.store') }}" aria-label="zintriq">
+          {% with variant='light', class='os-brand__logo zintriq-logo', width=168, height=44 %}
+          {% include 'partials/brand_logo.html' %}
+          {% endwith %}
         </a>
         <button type="button" class="os-sidebar-close" id="os-sidebar-close" aria-label="Close menu">×</button>
       </div>
       <nav class="os-nav">
         <a href="{{ url_for('bos.store') }}" class="os-nav-item{% if os_nav == 'stores' %} is-active{% endif %}">
-          <span class="os-nav-icon">▣</span> Stores &amp; QR
+          Stores &amp; QR
         </a>
         <a href="{{ url_for('bos.team') }}" class="os-nav-item{% if os_nav == 'team' %} is-active{% endif %}">
-          <span class="os-nav-icon">◈</span> Team
+          Team
         </a>
         <a href="{{ url_for('bos.settings') }}" class="os-nav-item{% if os_nav == 'settings' %} is-active{% endif %}">
-          <span class="os-nav-icon">⚙</span> Settings
+          Settings
+        </a>
+        <a href="{{ url_for('business_help_home') }}" class="os-nav-item{% if os_nav == 'help' %} is-active{% endif %}">
+          Help
         </a>
       </nav>
       {% block os_sidebar_extra %}{% endblock %}
       <div class="os-sidebar-foot">
         {% if current_user %}<p class="os-user">{{ current_user.email }}</p>{% endif %}
         <a href="{{ url_for('account') }}" class="os-nav-item{% if os_nav == 'account' %} is-active{% endif %}">
-          <span class="os-nav-icon">👤</span> Account
+          Account
         </a>
         <form method="post" action="{{ url_for('logout') }}">
           <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">

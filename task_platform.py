@@ -1,4 +1,4 @@
-"""Task Platform — universal execution layer for Business OS."""
+"""Task Platform — universal execution layer for Zintriq."""
 
 from __future__ import annotations
 

@@ -1,4 +1,4 @@
-/** StatusBadge — standard status display across Business OS. */
+/** StatusBadge — standard status display across Zintriq. */
 
 import { esc } from "./_utils.js";
 

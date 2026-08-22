@@ -40,6 +40,15 @@
         <div class="os-image-preview" id="add-item-image-preview"><span>No image selected</span></div>
       </div>
       <div class="os-field"><label class="os-label">Description</label><textarea class="os-textarea" name="description" rows="3" placeholder="Short description for customers"></textarea></div>
+      {% if store_checkout_enabled|default(false) %}
+      <div class="os-field os-field--check">
+        <label class="os-check">
+          <input type="checkbox" name="allow_cart" value="1">
+          Allow add to cart
+        </label>
+        <p class="os-label-hint">When checked, customers can add this item to their cart and pay online.</p>
+      </div>
+      {% endif %}
       <div class="os-modal__actions">
         <button class="os-btn os-btn-ghost" type="button" data-modal-close>Cancel</button>
         <button class="os-btn os-btn-primary" type="submit">Add product</button>

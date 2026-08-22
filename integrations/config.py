@@ -1,4 +1,4 @@
-"""Business OS — Integration layer configuration (environment-driven)."""
+"""Zintriq — Integration layer configuration (environment-driven)."""
 
 from __future__ import annotations
 

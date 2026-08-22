@@ -1,5 +1,5 @@
 /**
- * Business OS System Architecture — layer registry (JavaScript mirror).
+ * Zintriq System Architecture — layer registry (JavaScript mirror).
  *
  * Spec: docs/bos/SYSTEM_ARCHITECTURE.md
  * Backend mirror: bos/architecture.py

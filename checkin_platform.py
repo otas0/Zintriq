@@ -1,4 +1,4 @@
-"""Check-in Platform — customer arrival and service start for Business OS."""
+"""Check-in Platform — customer arrival and service start for Zintriq."""
 
 from __future__ import annotations
 

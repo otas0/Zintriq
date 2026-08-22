@@ -1,8 +1,8 @@
-# Business OS — UX Audit & Refactoring Report
+# Zintriq — UX Audit & Refactoring Report
 
 Version: 1.0 · August 2026
 
-This document audits the **existing** Business OS implementation against the QR-first merchant platform spec. It records current state, problems, and changes applied or recommended — without rebuilding pages from scratch.
+This document audits the **existing** Zintriq implementation against the QR-first merchant platform spec. It records current state, problems, and changes applied or recommended — without rebuilding pages from scratch.
 
 ---
 
@@ -29,7 +29,7 @@ This document audits the **existing** Business OS implementation against the QR-
 
 | | |
 |---|---|
-| **Purpose** | Shell for all Business OS pages — merchant context always visible |
+| **Purpose** | Shell for all Zintriq pages — merchant context always visible |
 | **Components** | `templates/bos/shell.html`, `partials/toolbar.html`, `partials/sidebar.html`, `static/bos/core/shell.js`, `workspace-switcher.js` |
 | **Data source** | `/api/workspaces`, session `active_workspace_id` |
 | **User flow** | Sign in → land on Home → switch workspace from top bar → navigate sidebar |

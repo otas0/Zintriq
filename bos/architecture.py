@@ -1,4 +1,4 @@
-"""Business OS System Architecture — layer registry and dependency map.
+"""Zintriq System Architecture — layer registry and dependency map.
 
 Human-readable spec: docs/bos/SYSTEM_ARCHITECTURE.md
 Frontend mirror: static/bos/platform/system-architecture.js

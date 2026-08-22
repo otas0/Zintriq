@@ -1,10 +1,10 @@
-# Business OS — MVP Database Schema
+# Zintriq — MVP Database Schema
 
 Version 1.0 · QR Experience core
 
 ## Philosophy
 
-Business OS MVP stores only what is needed for:
+Zintriq MVP stores only what is needed for:
 
 ```
 User → Workspace → QR Experience → Customer Interaction → Response

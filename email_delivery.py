@@ -26,8 +26,9 @@ def send_transactional_email(
     port = int(os.environ.get("SMTP_PORT", "587"))
     user = os.environ.get("SMTP_USER", "").strip()
     password = os.environ.get("SMTP_PASSWORD", "")
-    from_addr = os.environ.get("SMTP_FROM", user or "noreply@marketqr.local").strip()
+    from_addr = os.environ.get("SMTP_FROM", user or "noreply@zintriq.local").strip()
     use_tls = os.environ.get("SMTP_USE_TLS", "1").strip().lower() not in ("0", "false", "no")
+    use_ssl = os.environ.get("SMTP_USE_SSL", "").strip().lower() in ("1", "true", "yes")
 
     msg = EmailMessage()
     msg["Subject"] = subject
@@ -37,10 +38,16 @@ def send_transactional_email(
     if html_body:
         msg.add_alternative(html_body, subtype="html")
 
-    with smtplib.SMTP(host, port, timeout=30) as smtp:
-        if use_tls:
-            smtp.starttls()
-        if user:
-            smtp.login(user, password)
-        smtp.send_message(msg)
+    if use_ssl:
+        with smtplib.SMTP_SSL(host, port, timeout=30) as smtp:
+            if user:
+                smtp.login(user, password)
+            smtp.send_message(msg)
+    else:
+        with smtplib.SMTP(host, port, timeout=30) as smtp:
+            if use_tls:
+                smtp.starttls()
+            if user:
+                smtp.login(user, password)
+            smtp.send_message(msg)
     return True

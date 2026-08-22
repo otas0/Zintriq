@@ -1,0 +1,73 @@
+{% extends 'bos/shell.html' %}
+{% set module_id = 'help' %}
+{% block bos_title %}Help — Zintriq{% endblock %}
+{% block bos_head %}
+<link rel="stylesheet" href="{{ url_for('static', filename='customer-help.css') }}">
+{% endblock %}
+{% block bos_content %}
+<section class="help-page merchant-page">
+  <header class="merchant-page-head bos-ui-page-header help-page__head">
+    <div class="merchant-page-head__text">
+      <h1 class="merchant-page-head__title help-page__title">Help</h1>
+      <p class="merchant-page-head__subtitle help-page__lead">Guides for stores, QR codes, storefronts, and Zintriq.</p>
+    </div>
+  </header>
+
+  <nav class="help-cats" aria-label="Help categories">
+    {% for cat in categories %}
+    <a class="help-cats__pill{% if active_category == cat.id %} is-active{% endif %}"
+       href="{{ url_for('business_help_home', category=cat.id if cat.id != 'all' else none) }}">{{ cat.label }}</a>
+    {% endfor %}
+  </nav>
+
+  <section class="help-section" aria-labelledby="biz-help-topics-title">
+    <h2 class="help-section__title" id="biz-help-topics-title">All topics</h2>
+    <ul class="help-topics">
+      {% for topic in topics %}
+      <li>
+        <a class="help-topic-row material-module" href="{{ url_for('business_help_topic_view', slug=topic.slug) }}">
+<span class="help-topic-row__body">
+            <span class="help-topic-row__title">{{ topic.title }}</span>
+            <span class="help-topic-row__summary">{{ topic.summary }}</span>
+          </span>
+          <span class="help-topic-row__chev" aria-hidden="true">›</span>
+        </a>
+      </li>
+      {% endfor %}
+    </ul>
+  </section>
+
+  <section class="help-section help-section--support" aria-labelledby="biz-help-support-title">
+    <h2 class="help-section__title" id="biz-help-support-title">More help</h2>
+    <ul class="help-topics">
+      <li>
+        <a class="help-topic-row material-module" href="{{ url_for('bos.store') }}">
+<span class="help-topic-row__body">
+            <span class="help-topic-row__title">Stores</span>
+            <span class="help-topic-row__summary">Open your store dashboard</span>
+          </span>
+          <span class="help-topic-row__chev" aria-hidden="true">›</span>
+        </a>
+      </li>
+      <li>
+        <a class="help-topic-row material-module" href="{{ url_for('account') }}">
+<span class="help-topic-row__body">
+            <span class="help-topic-row__title">Account</span>
+            <span class="help-topic-row__summary">Profile, password, and security</span>
+          </span>
+          <span class="help-topic-row__chev" aria-hidden="true">›</span>
+        </a>
+      </li>
+      <li>
+        <a class="help-topic-row material-module" href="{{ url_for('customer_help_home') }}">
+<span class="help-topic-row__body">
+            <span class="help-topic-row__title">Customer Help</span>
+            <span class="help-topic-row__summary">Guides for shoppers — separate from business</span>
+          </span>
+          <span class="help-topic-row__chev" aria-hidden="true">›</span>
+        </a>
+      </li>
+    </ul>
+  </section>
+</section>
+{% endblock %}

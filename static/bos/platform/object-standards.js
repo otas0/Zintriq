@@ -1,5 +1,5 @@
 /**
- * Business OS Object Standards — universal behavior registry (JavaScript mirror).
+ * Zintriq Object Standards — universal behavior registry (JavaScript mirror).
  *
  * Spec: docs/bos/OBJECT_STANDARDS.md
  * Backend mirror: bos/object_standards.py

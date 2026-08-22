@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-EXTERNAL_CATEGORIES = ("scheduling", "payments", "documentation", "reputation")
+EXTERNAL_CATEGORIES = ("payments", "reputation")
 
 
 def list_available_plugins(conn) -> list[dict]:

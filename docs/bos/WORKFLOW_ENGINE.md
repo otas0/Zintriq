@@ -1,4 +1,4 @@
-# Business OS — Workflow Engine Specification
+# Zintriq — Workflow Engine Specification
 
 > **Status:** Canonical workflow model  
 > **Code:** `bos/workflows.py`, `workflow_platform.py`, `static/bos/platform/workflow-engine.js`  
@@ -6,7 +6,7 @@
 
 ## Objective
 
-Define a universal workflow model. Business OS manages how work flows across objects — not as isolated platform features.
+Define a universal workflow model. Zintriq manages how work flows across objects — not as isolated platform features.
 
 Every business process is a **workflow**: trigger → conditions → actions → completion.
 

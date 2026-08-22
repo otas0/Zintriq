@@ -1,4 +1,4 @@
-# Business OS — MVP UX Refactoring Implementation Plan
+# Zintriq — MVP UX Refactoring Implementation Plan
 
 Version: 1.0 · August 2026
 

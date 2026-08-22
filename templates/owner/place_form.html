@@ -1,13 +1,13 @@
 {% extends 'os_base.html' %}
 {% set os_nav = 'stores' %}
-{% block title %}Create place — Business OS{% endblock %}
+{% block title %}Create place — Zintriq{% endblock %}
 {% block os_header %}
 <h1 class="os-page-title">Create place directory</h1>
 <p class="os-page-subtitle">A single QR that lists every shop in your venue.</p>
 {% endblock %}
 {% block os_content %}
 <section class="os-card os-card-padded place-owner-form">
-  <form method="post" class="os-form">
+  <form method="post" class="os-form" enctype="multipart/form-data">
     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
     <label class="os-field">
       <span class="os-label">Place name *</span>
@@ -21,6 +21,19 @@
       <span class="os-label">Description</span>
       <textarea class="os-input" name="description" rows="3" placeholder="Short intro for visitors"></textarea>
     </label>
+    <div class="os-image-block">
+      <h2 class="os-card-title">Cover image</h2>
+      <p class="os-panel-desc">Wide banner on the public directory and Markets &amp; venues cards.</p>
+      <div class="os-field">
+        <label class="os-label">Image URL <span class="os-label-hint">(optional if uploading)</span></label>
+        <input class="os-input" name="cover_image" id="place-cover-url" type="url" placeholder="https://…">
+      </div>
+      <div class="os-field">
+        <label class="os-label">Or upload image</label>
+        <input name="cover_file" type="file" accept="image/jpeg,image/png,image/webp,image/gif" data-preview="place-cover-preview">
+      </div>
+      <div class="os-image-preview" id="place-cover-preview"><span>No cover selected</span></div>
+    </div>
     <div class="os-form-actions">
       <a class="os-btn os-btn-ghost" href="{{ url_for('manage_places_list') }}">Cancel</a>
       <button class="os-btn os-btn-primary" type="submit">Create place</button>
@@ -28,4 +41,7 @@
   </form>
 </section>
 <link rel="stylesheet" href="{{ url_for('static', filename='place.css') }}">
+{% endblock %}
+{% block os_scripts %}
+<script src="{{ url_for('static', filename='owner.js') }}"></script>
 {% endblock %}

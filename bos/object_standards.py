@@ -1,4 +1,4 @@
-"""Business OS Object Standards — universal behavior for every business object.
+"""Zintriq Object Standards — universal behavior for every business object.
 
 Human-readable spec: docs/bos/OBJECT_STANDARDS.md
 Frontend mirror: static/bos/platform/object-standards.js

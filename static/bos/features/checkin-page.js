@@ -1,4 +1,4 @@
-/** Business OS — Check-in Platform Foundation. */
+/** Zintriq — Check-in Platform Foundation. */
 
 import { statusBadge } from "../components/index.js";
 import { showToast, openDrawer, closeDrawer, apiPost } from "../services/api.js";

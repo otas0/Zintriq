@@ -1,3 +1,4 @@
+.dev_secret_key
 .env.local
 .DS_Store
 node_modules/
@@ -14,3 +15,6 @@ marketqr.db-shm
 marketqr.db-wal
 static/uploads/*
 !static/uploads/.gitkeep
+
+.tmp_logo_fix/
+scripts/.cache/

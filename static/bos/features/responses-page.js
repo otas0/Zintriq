@@ -1,4 +1,4 @@
-/** Business OS MVP — Responses page (uses component library). */
+/** Zintriq MVP — Responses page (uses component library). */
 
 import { fetchJson, wsQuery } from "../services/bos-api.js";
 import { openDrawer } from "../services/api.js";

@@ -1,5 +1,5 @@
 /**
- * Business OS Data Architecture — principles registry (JavaScript mirror).
+ * Zintriq Data Architecture — principles registry (JavaScript mirror).
  *
  * Spec: docs/bos/DATA_ARCHITECTURE.md
  * Backend: bos/data_architecture.py
@@ -72,7 +72,7 @@ export const DERIVED_STORES = [
   { id: "event_analytics", label: "Analytics Counters", sources: ["domain_events"], rebuild: "Re-aggregate from events" },
   { id: "workspace_search", label: "Search Results", sources: ["customer", "store", "feedback"], rebuild: "Live SQL query" },
   { id: "customer_activities", label: "Customer Timeline", sources: ["domain_events"], rebuild: "Event projection" },
-  { id: "bos_local_store", label: "BOS Mock Store", sources: ["seed.js"], rebuild: "Migrate to API", maturity: "partial" },
+  { id: "bos_local_store", label: "BOS local UI cache", sources: ["seed.js"], rebuild: "Notifications & drawer prefs only", maturity: "partial" },
 ];
 
 export const SYNC_MECHANISM = "event_bus";

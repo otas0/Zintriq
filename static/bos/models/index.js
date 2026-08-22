@@ -1,5 +1,5 @@
 /**
- * Business OS universal object model (Phase 3 platform foundation).
+ * Zintriq universal object model (Phase 3 platform foundation).
  * @module bos/models
  */
 

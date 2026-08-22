@@ -1,0 +1,48 @@
+{% extends 'customer_base.html' %}
+{% block title %}Finish setup — Zintriq{% endblock %}
+{% block content %}
+<section class="ig-profile ig-profile--setup">
+  <div class="ig-profile__hero">
+    <div class="ig-profile__avatar" aria-hidden="true"></div>
+    <h1 class="ig-profile__name">Finish your profile</h1>
+    <p class="ig-profile__bio">Pick a username and optional photo — Instagram-style, but for shopping.</p>
+  </div>
+
+  <form class="guest-account__form material-module" id="account-setup-form" method="post" action="{{ url_for('customer_onboarding_google_complete') }}" enctype="multipart/form-data">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <div class="mq-field">
+      <label class="mq-label">Username</label>
+      <input class="mq-input" name="username" id="setup-username" value="{{ suggested_username }}" required pattern="[a-z][a-z0-9_.]{2,29}">
+      <p class="ig-auth__hint" id="setup-username-hint"></p>
+    </div>
+    <div class="mq-field">
+      <label class="mq-label">Display name</label>
+      <input class="mq-input" name="display_name" autocomplete="name" placeholder="Optional">
+    </div>
+    <div class="mq-field">
+      <label class="mq-label">Profile photo</label>
+      <input class="mq-input" name="avatar" type="file" accept="image/jpeg,image/png,image/webp,image/gif">
+    </div>
+    <button class="mq-btn mq-btn-primary" type="submit">Save &amp; continue</button>
+  </form>
+</section>
+{% endblock %}
+
+{% block customer_scripts %}
+<script type="module">
+const input = document.getElementById("setup-username");
+const hint = document.getElementById("setup-username-hint");
+let timer;
+input?.addEventListener("input", () => {
+  clearTimeout(timer);
+  timer = setTimeout(async () => {
+    const q = input.value.trim().toLowerCase();
+    if (!q) { hint.textContent = ""; return; }
+    const res = await fetch(`/account/username/check?q=${encodeURIComponent(q)}`);
+    const data = await res.json();
+    hint.textContent = data.available ? `@${data.username} is available` : (data.error || "Taken");
+    hint.className = "ig-auth__hint " + (data.available ? "ig-auth__hint--ok" : "ig-auth__hint--bad");
+  }, 350);
+});
+</script>
+{% endblock %}

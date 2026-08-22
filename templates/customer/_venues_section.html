@@ -1,0 +1,32 @@
+{# Markets & venues block — grid when few items, horizontal rail when many #}
+{% if venues %}
+<section class="ch-venues-block ch-animate-in" aria-labelledby="{{ section_id|default('ch-venues-title') }}">
+  <div class="ch-home__section-head ch-venue-section__head">
+    <h2 class="ch-home__section-title" id="{{ section_id|default('ch-venues-title') }}">Markets &amp; venues</h2>
+    <div class="ch-venue-section__actions">
+      <a class="ch-home__section-link" href="{{ url_for('guest_venues') }}">See all</a>
+      {% if venues|length > 2 %}
+      <div class="ch-venue-rail-nav" hidden>
+        <button type="button" class="ch-venue-rail-nav__btn" data-venue-rail-prev aria-label="Scroll venues left">‹</button>
+        <button type="button" class="ch-venue-rail-nav__btn" data-venue-rail-next aria-label="Scroll venues right">›</button>
+      </div>
+      {% endif %}
+    </div>
+  </div>
+  {% if venues|length <= 2 %}
+  <div class="ch-venue-grid">
+    {% for venue in venues %}
+    {% include 'customer/_venue_card.html' %}
+    {% endfor %}
+  </div>
+  {% else %}
+  <div class="ch-venue-rail-wrap">
+    <div class="ch-venue-rail ch-home__rail" data-venue-rail>
+      {% for venue in venues %}
+      {% include 'customer/_venue_card.html' %}
+      {% endfor %}
+    </div>
+  </div>
+  {% endif %}
+</section>
+{% endif %}

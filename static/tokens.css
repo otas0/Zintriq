@@ -1,34 +1,36 @@
-/* Business OS — design tokens (never hardcode in components) */
+/* Zintriq — design tokens (never hardcode in components) */
 
 :root {
   /* ── Material surfaces ── */
-  --canvas-bg: #F7F6F2;
+  --canvas-bg: #FFFFFF;
   --sheet-bg: #FFFFFF;
-  --sheet-border: #E2E2DD;
-  --panel-bg: #F0EFEA;
-  --panel-border: #E2E2DD;
+  --sheet-border: #E5E5E5;
+  --panel-bg: #FFFFFF;
+  --panel-border: #E5E5E5;
   --module-bg: #FFFFFF;
-  --module-border: #E2E2DD;
+  --module-border: #E5E5E5;
   --module-radius: 18px;
   --overlay-bg: #FFFFFF;
-  --overlay-border: #E2E2DD;
+  --overlay-border: #E5E5E5;
 
   /* ── Color language (meaning only, not hierarchy) ── */
   --color-text-primary: #111111;
-  --color-text-secondary: #5F6368;
-  --color-text-muted: #9AA0A6;
-  --color-border: #E2E2DD;
-  --color-border-strong: #C8C8C3;
+  --color-text-secondary: #3D3D3D;
+  --color-text-muted: #6B6B6B;
+  --color-border: #E5E5E5;
+  --color-border-strong: #C8C8C8;
 
-  --color-accent-orange: #FF6B35;
-  --color-accent-orange-hover: #E85A28;
+  --color-accent-orange: #FFD500;
+  --color-accent-orange-hover: #E6C000;
+  --color-accent-yellow: #FFD500;
+  --color-accent-yellow-hover: #E6C000;
   --color-accent-lime: #B7F200;
   --color-accent-blue: #3A86FF;
 
   --color-success: #18A957;
   --color-success-soft: #E8F8EF;
-  --color-warning: #F4B400;
-  --color-warning-soft: #FEF7E0;
+  --color-warning: #FFD500;
+  --color-warning-soft: #FFF8D6;
   --color-danger: #E5484D;
   --color-danger-soft: #FDECEC;
   --color-info: #3A86FF;
@@ -80,13 +82,19 @@
   --motion-hover: 120ms cubic-bezier(0.2, 0.8, 0.2, 1);
   --motion-normal: 220ms cubic-bezier(0.2, 0.8, 0.2, 1);
   --motion-drawer: 260ms cubic-bezier(0.2, 0.8, 0.2, 1);
+  --motion-smooth: cubic-bezier(0.22, 1, 0.36, 1);
+
+  /* ── Responsive breakpoints (reference in media queries) ── */
+  --mq-bp-tablet: 640px;
+  --mq-bp-desktop: 1024px;
+  --mq-bp-sidebar: 960px;
 
   /* ── Semantic overlays & focus ── */
-  --color-on-primary: #FFFFFF;
+  --color-on-primary: #111111;
   --color-scrim: rgba(17, 17, 17, 0.45);
   --color-scrim-light: rgba(17, 17, 17, 0.35);
   --color-shadow-subtle: rgba(17, 17, 17, 0.04);
-  --focus-ring-color: var(--color-accent-orange);
+  --focus-ring-color: var(--color-accent-yellow);
   --focus-ring: 0 0 0 2px var(--module-bg), 0 0 0 4px var(--focus-ring-color);
 
   /* ── Component sizing ── */
@@ -109,10 +117,10 @@
   --mq-text: var(--color-text-primary);
   --mq-text-secondary: var(--color-text-secondary);
   --mq-text-muted: var(--color-text-muted);
-  --mq-brand: var(--color-accent-orange);
-  --mq-brand-hover: var(--color-accent-orange-hover);
-  --mq-brand-soft: #FFF0EA;
-  --mq-brand-muted: var(--color-accent-orange);
+  --mq-brand: var(--color-accent-yellow);
+  --mq-brand-hover: var(--color-accent-yellow-hover);
+  --mq-brand-soft: #FFF8D6;
+  --mq-brand-muted: var(--color-accent-yellow);
   --mq-success: var(--color-success);
   --mq-success-soft: var(--color-success-soft);
   --mq-warning: var(--color-warning);
@@ -130,9 +138,9 @@
   --mq-ease: cubic-bezier(0.2, 0.8, 0.2, 1);
   --mq-duration: var(--motion-normal);
   --mq-duration-slow: var(--motion-drawer);
-  --mq-accent: var(--color-accent-orange);
-  --mq-accent-hover: var(--color-accent-orange-hover);
-  --mq-accent-soft: var(--color-info-soft);
+  --mq-accent: var(--color-accent-yellow);
+  --mq-accent-hover: var(--color-accent-yellow-hover);
+  --mq-accent-soft: var(--mq-brand-soft);
   --mq-space-1: 4px;
   --mq-space-2: var(--space-1);
   --mq-space-3: 12px;
@@ -157,9 +165,9 @@
   --os-text: var(--color-text-primary);
   --os-text-secondary: var(--color-text-secondary);
   --os-text-muted: var(--color-text-muted);
-  --os-accent: var(--color-accent-orange);
-  --os-accent-hover: var(--color-accent-orange-hover);
-  --os-accent-soft: var(--color-info-soft);
+  --os-accent: var(--color-accent-yellow);
+  --os-accent-hover: var(--color-accent-yellow-hover);
+  --os-accent-soft: var(--mq-brand-soft);
   --os-success: var(--color-success);
   --os-success-soft: var(--color-success-soft);
   --os-warning: var(--color-warning);

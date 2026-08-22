@@ -1,4 +1,4 @@
-/** Business OS — Store hub (experiences + responses + store info). */
+/** Zintriq — Store hub (experiences + responses + store info). */
 
 import { fetchJson } from "../services/bos-api.js";
 import { button, pageHeader, loadingState, emptyState, setPageActions } from "../components/index.js";

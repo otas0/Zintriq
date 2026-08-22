@@ -1,0 +1,11 @@
+<div class="legal-consent">
+  <input type="checkbox" id="{{ consent_id|default('legal_consent') }}" name="legal_consent" value="1" required>
+  <label for="{{ consent_id|default('legal_consent') }}">
+    I confirm I am at least 16 years old (or 14 if a resident of China with parental consent).
+    I have read, understood, and agree to the
+    <a href="/legal/terms" target="_blank" rel="noopener noreferrer">Terms of Service</a> and
+    <a href="/legal/privacy" target="_blank" rel="noopener noreferrer">Privacy Policy</a>.
+    I explicitly consent to the cross-border transfer of my phone number to servers located in
+    Frankfurt, Germany (EU) for account authentication, as described in the Privacy Policy.
+  </label>
+</div>

@@ -24,6 +24,9 @@
       <div><dt>Inventory</dt><dd>{{ item.inventory if item.inventory is not none else '—' }}</dd></div>
       <div><dt>Category</dt><dd>{{ group_name or '—' }}</dd></div>
       <div><dt>Order</dt><dd>{{ item.display_order }}</dd></div>
+      {% if store_checkout_enabled|default(false) %}
+      <div><dt>Add to cart</dt><dd>{% if item.allow_cart|default(0)|int == 1 %}<span class="os-tag os-tag-published">Enabled</span>{% else %}<span class="os-tag">Off</span>{% endif %}</dd></div>
+      {% endif %}
       <div><dt>Updated</dt><dd>{{ item.updated_at or '—' }}</dd></div>
     </dl>
     {% if item.internal_notes %}

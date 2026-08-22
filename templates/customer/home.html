@@ -1,0 +1,79 @@
+{% extends 'customer_base.html' %}
+{% block title %}Home — Zintriq{% endblock %}
+{% block content %}
+<section class="ch-home ch-hub-page" id="ch-home">
+
+  <div class="ch-home__scan-banner material-module material-module--interactive ch-animate-in">
+    <p class="ch-home__scan-eyebrow">In-store shopping</p>
+    <h2 class="ch-home__scan-title">Scan a QR code to open a shop</h2>
+    <p class="ch-home__scan-copy">Point your camera at a Zintriq QR code at the counter or on a product. You’ll land on that store’s menu to browse and check out on your phone.</p>
+  </div>
+
+  {% if not customer_logged_in %}
+  {% set hint_email = guest_contact.customer_email if guest_contact is defined and guest_contact.customer_email else (guest_remembered_email if guest_remembered_email else '') %}
+  {% if hint_email %}
+  <button type="button" class="ch-home__continue material-module material-module--interactive ch-animate-in" data-auth-open="login" data-auth-email="{{ hint_email }}">
+    <span class="ch-home__continue-label">Continue as</span>
+    <span class="ch-home__continue-email">{{ hint_email }}</span>
+  </button>
+  {% endif %}
+  {% endif %}
+
+  {% set places_total = recent_places_total|default(guest_recent_count|default(0)) %}
+  {% if continue_place %}
+  <a class="ch-resume-shop material-module material-module--interactive ch-animate-in" href="{{ continue_place.storefront_url }}">
+    <div class="ch-resume-shop__logo">
+      {% if continue_place.logo_url %}
+      <img src="{{ continue_place.logo_url }}" alt="">
+      {% else %}
+      <span>{{ continue_place.name[0]|upper }}</span>
+      {% endif %}
+    </div>
+    <div class="ch-resume-shop__body">
+      <span class="ch-resume-shop__eyebrow">Continue shopping</span>
+      <strong class="ch-resume-shop__name">{{ continue_place.name }}</strong>
+      {% if continue_place.is_open is not none %}
+      <span class="ch-resume-shop__status ch-resume-shop__status--{% if continue_place.is_open %}open{% else %}closed{% endif %}">
+        {% if continue_place.is_open %}Open now{% else %}Closed{% endif %}
+      </span>
+      {% endif %}
+    </div>
+    <span class="ch-resume-shop__action mq-btn mq-btn-primary mq-btn-sm">Open shop</span>
+  </a>
+  {% endif %}
+
+  {% if places_total > 0 %}
+  <a class="ch-home__places-link material-module material-module--interactive ch-animate-in" href="{{ url_for('guest_recent_places') }}">
+    <div class="ch-home__places-avatars" aria-hidden="true">
+      {% for place in recent_places[:3] %}
+      <span class="ch-home__places-avatar">
+        {% if place.logo_url %}
+        <img src="{{ place.logo_url }}" alt="">
+        {% else %}
+        {{ place.name[0]|upper }}
+        {% endif %}
+      </span>
+      {% endfor %}
+    </div>
+    <div class="ch-home__places-copy">
+      <strong>{{ places_total }} saved place{% if places_total != 1 %}s{% endif %}</strong>
+      <span>Search, sort, and manage in Places</span>
+    </div>
+    <span class="ch-home__places-chev" aria-hidden="true">›</span>
+  </a>
+  {% endif %}
+
+  {% set section_id = 'ch-home-venues-title' %}
+  {% include 'customer/_venues_section.html' %}
+
+  {% if places_total == 0 and not venues %}
+  <div class="mq-empty ch-home__empty">
+    <p><strong>No shops yet</strong></p>
+    <p>Scan a QR code in store — saved shops appear under <strong>Places</strong>.</p>
+  </div>
+  {% endif %}
+</section>
+{% endblock %}
+{% block customer_scripts %}
+{% if venues and venues|length > 2 %}<script src="{{ url_for('static', filename='customer-venue-rail.js') }}"></script>{% endif %}
+{% endblock %}

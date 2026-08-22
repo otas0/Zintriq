@@ -11,11 +11,12 @@ import socket
 import sqlite3
 import time
 from contextlib import contextmanager
+from datetime import timedelta
 from functools import wraps
 from pathlib import Path
 
 import qrcode
-from flask import Flask, abort, flash, jsonify, redirect, render_template, request, session, url_for
+from flask import Flask, abort, flash, g, has_app_context, jsonify, redirect, render_template, request, send_from_directory, session, url_for
 from werkzeug.security import check_password_hash, generate_password_hash
 
 try:
@@ -47,30 +48,165 @@ def _load_local_env() -> None:
 
 _load_local_env()
 
+_DEV_SECRET_FILE = BASE_DIR / ".dev_secret_key"
+
+
+def _dev_secret_key() -> str:
+    """Stable dev secret so sessions survive server restarts without .env.local."""
+    env = os.environ.get("SECRET_KEY")
+    if env:
+        return env
+    if _DEV_SECRET_FILE.is_file():
+        key = _DEV_SECRET_FILE.read_text(encoding="utf-8").strip()
+        if key:
+            return key
+    key = secrets.token_hex(32)
+    _DEV_SECRET_FILE.write_text(key, encoding="utf-8")
+    return key
+
+
 app = Flask(__name__)
 app.config.update(
-    SECRET_KEY=os.environ.get("SECRET_KEY", secrets.token_hex(32)),
+    SECRET_KEY=_dev_secret_key(),
     SESSION_COOKIE_HTTPONLY=True,
     SESSION_COOKIE_SAMESITE="Lax",
     SESSION_COOKIE_SECURE=os.environ.get("SESSION_COOKIE_SECURE", "false").lower() == "true",
+    SESSION_REFRESH_EACH_REQUEST=True,
     MAX_CONTENT_LENGTH=5 * 1024 * 1024,
+    PERMANENT_SESSION_LIFETIME=timedelta(days=400),
 )
 
 
+@app.get("/favicon.ico")
+def favicon():
+    resp = send_from_directory(app.static_folder, "favicon.ico", mimetype="image/vnd.microsoft.icon")
+    resp.headers["Cache-Control"] = "no-store, max-age=0, must-revalidate"
+    resp.headers["Pragma"] = "no-cache"
+    return resp
+
+
+@app.get("/apple-touch-icon.png")
+@app.get("/apple-touch-icon-precomposed.png")
+@app.get("/safari-touch-icon-yellow.png")
+def apple_touch_icon():
+    resp = send_from_directory(
+        app.static_folder, "safari-touch-icon-yellow.png", mimetype="image/png"
+    )
+    resp.headers["Cache-Control"] = "no-store, max-age=0, must-revalidate"
+    resp.headers["Pragma"] = "no-cache"
+    return resp
+
+
+@app.get("/safari-tab-icon-yellow.png")
+def safari_tab_icon():
+    resp = send_from_directory(
+        app.static_folder, "safari-tab-icon-yellow.png", mimetype="image/png"
+    )
+    resp.headers["Cache-Control"] = "no-store, max-age=0, must-revalidate"
+    resp.headers["Pragma"] = "no-cache"
+    return resp
+
+
 @contextmanager
-def db():
-    connection = sqlite3.connect(DATABASE, timeout=30)
-    connection.row_factory = sqlite3.Row
-    connection.execute("PRAGMA journal_mode=WAL")
-    connection.execute("PRAGMA busy_timeout=30000")
+def _standalone_db():
+    """One-off connection for scripts / code outside a Flask request."""
+    connection = _open_db_connection()
     try:
         yield connection
-        connection.commit()
+        _commit_with_retry(connection)
     except BaseException:
         connection.rollback()
         raise
     finally:
         connection.close()
+
+
+def _open_db_connection() -> sqlite3.Connection:
+    connection = sqlite3.connect(DATABASE, timeout=60, check_same_thread=False)
+    connection.row_factory = sqlite3.Row
+    _configure_sqlite(connection)
+    return connection
+
+
+def _request_db() -> sqlite3.Connection | None:
+    if not has_app_context():
+        return None
+    conn = g.get("_sqlite_conn")
+    if conn is None:
+        conn = _open_db_connection()
+        g._sqlite_conn = conn
+    return conn
+
+
+@contextmanager
+def db():
+    req_conn = _request_db()
+    if req_conn is not None:
+        yield req_conn
+        return
+    with _standalone_db() as connection:
+        yield connection
+
+
+@app.teardown_appcontext
+def _close_request_db(exc):
+    conn = g.pop("_sqlite_conn", None)
+    if conn is None:
+        return
+    try:
+        if exc is None:
+            _commit_with_retry(conn)
+        else:
+            conn.rollback()
+    finally:
+        conn.close()
+
+
+def _configure_sqlite(connection: sqlite3.Connection) -> None:
+    connection.execute("PRAGMA foreign_keys=ON")
+    connection.execute("PRAGMA journal_mode=WAL")
+    connection.execute("PRAGMA busy_timeout=60000")
+    connection.execute("PRAGMA synchronous=NORMAL")
+
+
+def _commit_with_retry(connection: sqlite3.Connection, *, attempts: int = 8) -> None:
+    for attempt in range(attempts):
+        try:
+            connection.commit()
+            return
+        except sqlite3.OperationalError as exc:
+            if "locked" not in str(exc).lower() or attempt >= attempts - 1:
+                raise
+            connection.rollback()
+            time.sleep(min(0.05 * (2**attempt), 1.0))
+
+
+def record_place_event_safe(
+    place_id: int,
+    event_type: str,
+    *,
+    store_id: int | None = None,
+    metadata: dict | None = None,
+) -> None:
+    """Best-effort analytics — never break the public page on lock contention."""
+    from place_platform import record_place_event
+
+    for attempt in range(6):
+        try:
+            with db() as conn:
+                record_place_event(
+                    conn,
+                    place_id,
+                    event_type,
+                    store_id=store_id,
+                    metadata=metadata,
+                )
+            return
+        except sqlite3.OperationalError as exc:
+            if "locked" not in str(exc).lower() or attempt >= 5:
+                app.logger.warning("place analytics skipped: %s", exc)
+                return
+            time.sleep(min(0.05 * (2**attempt), 1.0))
 
 
 def init_db() -> None:
@@ -346,8 +482,12 @@ def init_db() -> None:
         init_feedback_core_tables(conn)
         from qr_experience_platform import init_qr_experience_tables
         init_qr_experience_tables(conn)
+        from checkout_platform import init_checkout_tables
+        init_checkout_tables(conn)
         from bos.mvp_schema import init_mvp_schema
         init_mvp_schema(conn)
+        from customer_account_platform import migrate_customer_account_tables
+        migrate_customer_account_tables(conn)
 
 
 def csrf_token() -> str:
@@ -359,8 +499,30 @@ def csrf_token() -> str:
 def current_user():
     if not session.get("user_id"):
         return None
+    from customer_account_platform import is_shopper_only_user
+
     with db() as conn:
-        return conn.execute("SELECT id, email FROM users WHERE id = ?", (session["user_id"],)).fetchone()
+        row = conn.execute(
+            "SELECT id, email, account_kind FROM users WHERE id = ?",
+            (session["user_id"],),
+        ).fetchone()
+        if not row:
+            session.pop("user_id", None)
+            return None
+        if is_shopper_only_user(conn, row):
+            session.pop("user_id", None)
+            return None
+    return {"id": row["id"], "email": row["email"]}
+
+
+def _preserve_guest_session_keys(flask_session) -> dict:
+    from session_remember import REMEMBER_SESSION_KEY
+
+    return {
+        k: flask_session[k]
+        for k in ("visitor_key", REMEMBER_SESSION_KEY)
+        if k in flask_session
+    }
 
 
 def owner_stores_for_nav(owner_id: int) -> list:
@@ -388,23 +550,47 @@ def inject_globals():
         "current_user": user,
         "active_app_nav": active_app_nav,
         "owner_stores_nav": owner_stores_nav,
+        "can_switch_to_personal": _can_switch_to_personal(user),
     }
+
+
+def _can_switch_to_personal(user) -> bool:
+    if not user:
+        return False
+    from customer_account_platform import user_can_use_personal_mode
+
+    with db() as conn:
+        return user_can_use_personal_mode(conn, int(user["id"]))
 
 
 @app.context_processor
 def inject_guest_context():
+    from customer_account_platform import current_customer_id, effective_contact_hints, user_can_use_business_mode
     from guest_platform import (
         ensure_visitor_key,
-        guest_contact_hints,
         guest_remembered_email,
+        is_customer_hub_path,
         is_customer_surface_path,
+        is_storefront_shell_path,
+        customer_nav_tab,
         recent_store_count,
+        recent_stores_for_visitor,
     )
 
     path = request.path or ""
     if not is_customer_surface_path(path):
         return {}
+    storefront_shell = is_storefront_shell_path(path)
     key = ensure_visitor_key(session)
+    customer_id = current_customer_id(session)
+    nav = customer_nav_tab(path)
+    hub_shell = is_customer_hub_path(path)
+    hub_lat = request.args.get("lat", type=float)
+    hub_lng = request.args.get("lng", type=float)
+    hub_search_q = (request.args.get("q") or "").strip()
+    hub_intro = path == "/home" and hub_shell
+    onboarding_mode = ("member" if customer_id else "guest") if hub_intro else None
+    onboarding_open = onboarding_mode == "guest" if hub_intro else False
     try:
         with db() as conn:
             remembered = guest_remembered_email(conn, key)
@@ -412,11 +598,43 @@ def inject_guest_context():
             if remembered and offer:
                 session.pop("guest_remember_offer", None)
                 offer = None
+            customer = None
+            if customer_id:
+                customer = conn.execute(
+                    "SELECT id, email FROM users WHERE id = ?", (customer_id,),
+                ).fetchone()
+            if hub_intro and customer_id and onboarding_mode == "member":
+                from customer_account_platform import customer_hub_intro_seen
+
+                onboarding_open = not customer_hub_intro_seen(conn, int(customer_id))
+            hub_recent = (
+                recent_stores_for_visitor(conn, key, limit=6) if hub_shell else []
+            )
+            places_count = recent_store_count(conn, key)
+            from help_platform import HOW_IT_WORKS_STEPS
+
             return {
-                "guest_recent_count": recent_store_count(conn, key),
-                "guest_contact": guest_contact_hints(conn, key),
+                "guest_recent_count": places_count,
+                "guest_contact": effective_contact_hints(conn, key, customer_id),
                 "guest_remembered_email": remembered,
                 "guest_remember_offer": offer,
+                "current_customer": customer,
+                "customer_logged_in": customer is not None,
+                "customer_nav_tab": nav,
+                "show_customer_tabbar": hub_shell,
+                "show_onboarding_popup": hub_intro,
+                "onboarding_mode": onboarding_mode,
+                "onboarding_open": onboarding_open,
+                "onboarding_steps": HOW_IT_WORKS_STEPS,
+                "show_storefront_shell": storefront_shell,
+                "hub_user_lat": hub_lat,
+                "hub_user_lng": hub_lng,
+                "hub_search_q": hub_search_q,
+                "hub_recent_places": hub_recent,
+                "can_switch_to_business": bool(
+                    customer_id and user_can_use_business_mode(conn, int(customer_id))
+                ),
+                "active_mode": "personal",
             }
     except Exception:
         return {
@@ -424,6 +642,21 @@ def inject_guest_context():
             "guest_contact": {},
             "guest_remembered_email": None,
             "guest_remember_offer": None,
+            "current_customer": None,
+            "customer_logged_in": False,
+            "customer_nav_tab": nav,
+            "show_customer_tabbar": hub_shell,
+            "show_onboarding_popup": hub_intro,
+            "onboarding_mode": onboarding_mode,
+            "onboarding_open": onboarding_open,
+            "onboarding_steps": [],
+            "show_storefront_shell": storefront_shell,
+            "hub_user_lat": hub_lat,
+            "hub_user_lng": hub_lng,
+            "hub_search_q": hub_search_q,
+            "hub_recent_places": [],
+            "can_switch_to_business": False,
+            "active_mode": "personal",
         }
 
 
@@ -431,7 +664,10 @@ def track_guest_store_visit(conn, store_id: int, *, path: str | None = None) -> 
     from guest_platform import ensure_visitor_key, record_store_visit
 
     key = ensure_visitor_key(session)
-    record_store_visit(conn, key, store_id, path=path)
+    try:
+        record_store_visit(conn, key, store_id, path=path)
+    except sqlite3.OperationalError:
+        app.logger.warning("Could not record store visit (database busy)", exc_info=True)
     return key
 
 
@@ -446,9 +682,92 @@ def _dismiss_guest_remember_offer() -> None:
         session.pop("guest_remember_offer", None)
 
 
+@app.before_request
+def restore_customer_remember():
+    """Restore shopper session from long-lived remember cookie (survives browser restarts)."""
+    from customer_account_platform import current_customer_id, sign_in_customer, user_can_use_personal_mode
+    from session_remember import customer_id_from_remember_token, CUSTOMER_REMEMBER_COOKIE
+
+    if current_customer_id(session):
+        return
+    token = request.cookies.get(CUSTOMER_REMEMBER_COOKIE)
+    if not token:
+        return
+    uid = customer_id_from_remember_token(app.secret_key, token)
+    if not uid:
+        return
+    with db() as conn:
+        row = conn.execute("SELECT id FROM users WHERE id = ?", (uid,)).fetchone()
+        if not row or not user_can_use_personal_mode(conn, uid):
+            return
+    sign_in_customer(session, uid, csrf_fn=csrf_token, remember_device=True)
+
+
+@app.before_request
+def refresh_remembered_session():
+    from session_remember import refresh_session_persistence
+
+    refresh_session_persistence(session)
+
+
+@app.after_request
+def sync_customer_remember_cookie(response):
+    from session_remember import (
+        CUSTOMER_REMEMBER_COOKIE,
+        REMEMBER_SESSION_KEY,
+        customer_remember_cookie_kwargs,
+        customer_remember_token,
+    )
+
+    uid = session.get("customer_user_id")
+    remember = session.get(REMEMBER_SESSION_KEY)
+    cookie_kwargs = customer_remember_cookie_kwargs(app)
+    if uid and remember:
+        response.set_cookie(
+            CUSTOMER_REMEMBER_COOKIE,
+            customer_remember_token(app.secret_key, int(uid)),
+            **cookie_kwargs,
+        )
+    else:
+        response.delete_cookie(
+            CUSTOMER_REMEMBER_COOKIE,
+            path=cookie_kwargs["path"],
+            samesite=cookie_kwargs["samesite"],
+        )
+    return response
+
+
+@app.before_request
+def enforce_auth_separation():
+    """Keep shopper and business sessions mutually exclusive."""
+    from customer_account_platform import clear_merchant_session, current_customer_id, is_shopper_only_user
+
+    cid = current_customer_id(session)
+    uid = session.get("user_id")
+    if cid:
+        clear_merchant_session(session)
+        return
+    if not uid:
+        return
+    with db() as conn:
+        row = conn.execute("SELECT * FROM users WHERE id = ?", (int(uid),)).fetchone()
+        if row and is_shopper_only_user(conn, row):
+            session.pop("user_id", None)
+
+
 def login_required(view):
     @wraps(view)
     def wrapped(*args, **kwargs):
+        from customer_account_platform import current_customer_id, user_can_use_business_mode
+
+        cid = current_customer_id(session)
+        if cid and not session.get("user_id"):
+            with db() as conn:
+                if user_can_use_business_mode(conn, int(cid)):
+                    flash("Switch to Business mode to manage your store.", "info")
+                    return redirect(url_for("customer_account_home"))
+            flash("You are signed in to personal mode. Business tools need a business sign-in.", "error")
+            return redirect(url_for("guest_home"))
         user = current_user()
         if not user:
             flash("Please sign in to manage a storefront.", "error")
@@ -478,6 +797,11 @@ def protect_forms():
     )
     expected = session.get("csrf_token")
     if not expected or not secrets.compare_digest(submitted, expected):
+        from customer_account_platform import customer_auth_wants_json
+
+        message = "Session expired. Refresh the page and try again."
+        if customer_auth_wants_json() or request.is_json:
+            return {"ok": False, "error": message, "csrf": True}, 400
         abort(400, "Invalid form token. Please refresh and try again.")
 
 
@@ -532,6 +856,7 @@ def storefront_render_context(
     group_in_url: bool = False,
 ):
     from storefront_platform import active_deals_for_storefront, build_store_profile, category_label, deals_map_for_items
+    from checkout_platform import list_store_payment_providers, store_checkout_enabled, platform_fee_rate, store_has_cartable_items
 
     view = "deals" if view == "deals" else "shop"
     group_nav = build_item_group_nav(store["id"], published_only=True)
@@ -544,6 +869,9 @@ def storefront_render_context(
         from guest_platform import brand_hub_for_store
 
         brand_hub = brand_hub_for_store(conn, store)
+        checkout_enabled = store_checkout_enabled(conn, store)
+        checkout_providers = list_store_payment_providers(conn, store) if checkout_enabled else []
+        has_cartable_items = store_has_cartable_items(conn, store["id"]) if checkout_enabled else False
 
     catalog_sections: list[dict] = []
     active_group = None
@@ -604,6 +932,10 @@ def storefront_render_context(
         "preview_mode": preview_mode,
         "group_in_url": group_in_url,
         "brand_hub": brand_hub,
+        "checkout_enabled": checkout_enabled,
+        "checkout_providers": checkout_providers,
+        "has_cartable_items": has_cartable_items,
+        "platform_fee_rate": platform_fee_rate() if checkout_enabled else 0,
     }
 
 
@@ -629,6 +961,8 @@ def owner_items(store_id: int, group_id: str | int | None = None):
 
 
 def customer_items(store_id: int, group_id: str | int | None = None):
+    from storefront_platform import normalize_allow_cart
+
     query = "SELECT items.*, item_groups.name AS group_name FROM items LEFT JOIN item_groups ON items.group_id = item_groups.id WHERE items.store_id = ? AND items.status = 'published'"
     params: list = [store_id]
     if group_id == "default":
@@ -638,7 +972,13 @@ def customer_items(store_id: int, group_id: str | int | None = None):
         params.append(group_id)
     query += " ORDER BY items.display_order, items.id DESC"
     with db() as conn:
-        return conn.execute(query, params).fetchall()
+        rows = conn.execute(query, params).fetchall()
+    out = []
+    for row in rows:
+        item = dict(row)
+        item["allow_cart"] = normalize_allow_cart(item.get("allow_cart"))
+        out.append(item)
+    return out
 
 
 def store_qr_codes(store_id: int):
@@ -1424,13 +1764,24 @@ def lan_ip() -> str | None:
 
 @app.route("/")
 def index():
+    from customer_account_platform import current_customer_id
+
     if current_user():
         return redirect(url_for("bos.store"))
+    if current_customer_id(session):
+        return redirect(url_for("guest_home"))
     return render_template("index.html")
 
 
-def sign_in_user(user_id: int):
+def sign_in_user(user_id: int, *, remember_device: bool = True):
+    from customer_account_platform import sign_out_customer
+    from session_remember import apply_remember_device
+
+    sign_out_customer(session)
+    preserved = _preserve_guest_session_keys(session)
     session.clear()
+    session.update(preserved)
+    apply_remember_device(session, remember_device)
     session["user_id"] = user_id
     csrf_token()
 
@@ -1441,22 +1792,44 @@ def register():
         return redirect(url_for("bos.store"))
     if request.method == "POST":
         email, password, confirm = request.form.get("email", "").strip().lower(), request.form.get("password", ""), request.form.get("confirm_password", "")
-        if "@" not in email or len(email) > 254:
+        if not request.form.get("legal_consent"):
+            flash("Please accept the Terms of Service and Privacy Policy to continue.", "error")
+        elif "@" not in email or len(email) > 254:
             flash("Enter a valid email address.", "error")
         elif len(password) < 12:
             flash("Use a password with at least 12 characters.", "error")
         elif password != confirm:
             flash("Your passwords do not match.", "error")
         else:
+            from session_remember import parse_remember_device
+
             try:
                 with db() as conn:
                     # PBKDF2 is deliberately specified for compatibility with Python/OpenSSL
                     # builds that do not expose hashlib.scrypt.
-                    cursor = conn.execute("INSERT INTO users (email, password_hash) VALUES (?, ?)",
-                        (email, generate_password_hash(password, method="pbkdf2:sha256:600000")))
-                sign_in_user(cursor.lastrowid)
+                    cursor = conn.execute(
+                        "INSERT INTO users (email, password_hash, account_kind) VALUES (?, ?, ?)",
+                        (
+                            email,
+                            generate_password_hash(password, method="pbkdf2:sha256:600000"),
+                            "merchant",
+                        ),
+                    )
+                sign_in_user(cursor.lastrowid, remember_device=parse_remember_device(request.form.get("remember_device")))
                 return redirect(url_for("bos.store"))
             except sqlite3.IntegrityError:
+                with db() as conn:
+                    existing = conn.execute(
+                        "SELECT account_kind FROM users WHERE email = ?", (email,),
+                    ).fetchone()
+                from customer_account_platform import ACCOUNT_KIND_CUSTOMER, user_account_kind
+
+                if existing and user_account_kind(existing) == ACCOUNT_KIND_CUSTOMER:
+                    flash(
+                        "This email is registered for shopping. Use shopper sign-in or another email for business.",
+                        "error",
+                    )
+                    return redirect(url_for("customer_register"))
                 flash("An account with that email already exists. Please sign in.", "error")
     return render_template("register.html")
 
@@ -1469,10 +1842,18 @@ def login():
         with db() as conn:
             user = conn.execute("SELECT * FROM users WHERE email = ?", (request.form.get("email", "").strip().lower(),)).fetchone()
         if user and check_password_hash(user["password_hash"], request.form.get("password", "")):
+            from customer_account_platform import ACCOUNT_KIND_CUSTOMER, user_account_kind
+            from session_remember import parse_remember_device
+
+            remember = parse_remember_device(request.form.get("remember_device"))
+            if user_account_kind(user) == ACCOUNT_KIND_CUSTOMER:
+                flash("This is a personal account. Use Sign in from the shop menu (/account).", "error")
+                return redirect(url_for("customer_login"))
             if user["two_factor_secret"]:
                 session["pending_2fa_user_id"] = user["id"]
+                session["pending_remember_device"] = remember
                 return redirect(url_for("two_factor_login"))
-            sign_in_user(user["id"])
+            sign_in_user(user["id"], remember_device=remember)
             destination = request.args.get("next", "")
             return redirect(destination if destination.startswith("/") and not destination.startswith("//") else url_for("bos.store"))
         flash("Email or password is incorrect.", "error")
@@ -1494,12 +1875,16 @@ def firebase_login():
         user = conn.execute("SELECT * FROM users WHERE firebase_uid = ? OR email = ?", (firebase_uid, email)).fetchone()
         is_new = False
         if user:
+            from customer_account_platform import ACCOUNT_KIND_CUSTOMER, user_account_kind
+
+            if user_account_kind(user) == ACCOUNT_KIND_CUSTOMER:
+                return {"error": "This Google account is linked to a personal login."}, 400
             if not user["firebase_uid"]:
                 conn.execute("UPDATE users SET firebase_uid = ? WHERE id = ?", (firebase_uid, user["id"]))
         else:
             is_new = True
-            cursor = conn.execute("INSERT INTO users (email, password_hash, firebase_uid) VALUES (?, ?, ?)",
-                (email, generate_password_hash(secrets.token_urlsafe(32), method="pbkdf2:sha256:600000"), firebase_uid))
+            cursor = conn.execute("INSERT INTO users (email, password_hash, firebase_uid, account_kind) VALUES (?, ?, ?, ?)",
+                (email, generate_password_hash(secrets.token_urlsafe(32), method="pbkdf2:sha256:600000"), firebase_uid, "merchant"))
             user = conn.execute("SELECT * FROM users WHERE id=?", (cursor.lastrowid,)).fetchone()
         from integrations.auth.service import AuthService
         AuthService.link_user(conn, int(user["id"]), {
@@ -1508,10 +1893,14 @@ def firebase_login():
             "email": email,
             "full_name": decoded.get("name") or "",
         })
+    from session_remember import parse_remember_device
+
+    remember = parse_remember_device(payload.get("remember_device"))
     if user["two_factor_secret"]:
         session["pending_2fa_user_id"] = user["id"]
+        session["pending_remember_device"] = remember
         return {"next": url_for("two_factor_login")}
-    sign_in_user(user["id"])
+    sign_in_user(user["id"], remember_device=remember)
     intent = payload.get("intent", "login")
     if is_new and intent == "signup":
         return {"next": url_for("bos.store")}
@@ -1530,7 +1919,11 @@ def two_factor_login():
         return redirect(url_for("login"))
     if request.method == "POST":
         if valid_totp(user["two_factor_secret"], request.form.get("code", "").strip()):
-            sign_in_user(user["id"])
+            from session_remember import parse_remember_device
+
+            remember = parse_remember_device(session.pop("pending_remember_device", True))
+            sign_in_user(user["id"], remember_device=remember)
+            session.pop("pending_2fa_user_id", None)
             return redirect(url_for("bos.store"))
         flash("That verification code is not valid. Try the newest code in your app.", "error")
     return render_template("two_factor_login.html")
@@ -1592,18 +1985,31 @@ def magic_signin(token: str):
         user = conn.execute("SELECT * FROM users WHERE id = ?", (auth_token["user_id"],)).fetchone()
     if user["two_factor_secret"]:
         session["pending_2fa_user_id"] = user["id"]
+        session["pending_remember_device"] = True
         return redirect(url_for("two_factor_login"))
-    sign_in_user(user["id"])
+    sign_in_user(user["id"], remember_device=True)
     return redirect(url_for("bos.store"))
 
 
 @app.post("/logout")
 def logout():
-    session.clear(); flash("You have been signed out.", "success")
-    return redirect(url_for("index"))
+    from customer_account_platform import current_customer_id
+
+    preserved = _preserve_guest_session_keys(session)
+    customer_id = current_customer_id(session)
+    remember = session.get("_remember_device", True)
+    session.clear()
+    session.update(preserved)
+    if customer_id:
+        from session_remember import apply_remember_device
+
+        session["customer_user_id"] = customer_id
+        apply_remember_device(session, remember)
+    flash("You have been signed out of your business account.", "success")
+    return redirect(url_for("guest_home") if customer_id else url_for("index"))
 
 
-@app.route("/account", methods=["GET", "POST"])
+@app.route("/app/account", methods=["GET", "POST"])
 @login_required
 def account():
     user = current_user()
@@ -1653,7 +2059,7 @@ def account_two_factor():
             return redirect(url_for("account"))
         flash("That code is not valid. Try again with a new code from your app.", "error")
     secret = session.setdefault("two_factor_setup_secret", base64.b32encode(secrets.token_bytes(20)).decode().rstrip("="))
-    uri = f"otpauth://totp/MarketQR:{user['email']}?secret={secret}&issuer=MarketQR"
+    uri = f"otpauth://totp/Zintriq:{user['email']}?secret={secret}&issuer=Zintriq"
     return render_template("two_factor_settings.html", module_id="account", page_title="Two-factor authentication", enabled=False, secret=secret, qr_image=qr_data_uri(uri))
 
 
@@ -1738,15 +2144,24 @@ def delete_account():
             flash("Your deletion confirmation expired. Enter your password and try again.", "error")
             return redirect(url_for("account"))
         with db() as conn:
-            conn.execute("DELETE FROM items WHERE store_id IN (SELECT id FROM stores WHERE owner_id = ?)", (user["id"],))
-            conn.execute("DELETE FROM qr_codes WHERE store_id IN (SELECT id FROM stores WHERE owner_id = ?)", (user["id"],))
-            conn.execute("DELETE FROM item_groups WHERE store_id IN (SELECT id FROM stores WHERE owner_id = ?)", (user["id"],))
-            conn.execute("DELETE FROM store_label_assignments WHERE store_id IN (SELECT id FROM stores WHERE owner_id = ?)", (user["id"],))
-            conn.execute("DELETE FROM stores WHERE owner_id = ?", (user["id"],))
-            conn.execute("DELETE FROM store_labels WHERE owner_id = ?", (user["id"],))
-            conn.execute("DELETE FROM store_groups WHERE owner_id = ?", (user["id"],))
-            conn.execute("DELETE FROM auth_tokens WHERE user_id = ?", (user["id"],))
-            conn.execute("DELETE FROM users WHERE id = ?", (user["id"],))
+            uid = user["id"]
+            conn.execute("DELETE FROM items WHERE store_id IN (SELECT id FROM stores WHERE owner_id = ?)", (uid,))
+            conn.execute("DELETE FROM qr_codes WHERE store_id IN (SELECT id FROM stores WHERE owner_id = ?)", (uid,))
+            conn.execute("DELETE FROM item_groups WHERE store_id IN (SELECT id FROM stores WHERE owner_id = ?)", (uid,))
+            conn.execute("DELETE FROM store_label_assignments WHERE store_id IN (SELECT id FROM stores WHERE owner_id = ?)", (uid,))
+            conn.execute("DELETE FROM stores WHERE owner_id = ?", (uid,))
+            conn.execute("DELETE FROM store_labels WHERE owner_id = ?", (uid,))
+            conn.execute("DELETE FROM store_groups WHERE owner_id = ?", (uid,))
+            conn.execute("DELETE FROM places WHERE owner_id = ?", (uid,))
+            conn.execute("DELETE FROM place_tenant_applications WHERE applicant_user_id = ?", (uid,))
+            conn.execute("DELETE FROM workspace_invitations WHERE invited_by = ?", (uid,))
+            conn.execute(
+                "DELETE FROM workspaces WHERE organization_id IN (SELECT id FROM organizations WHERE owner_id = ?)",
+                (uid,),
+            )
+            conn.execute("DELETE FROM organizations WHERE owner_id = ?", (uid,))
+            conn.execute("DELETE FROM auth_tokens WHERE user_id = ?", (uid,))
+            conn.execute("DELETE FROM users WHERE id = ?", (uid,))
         session.clear()
         flash("Your account and storefronts have been deleted.", "success")
         return redirect(url_for("index"))
@@ -2154,9 +2569,14 @@ def manage_store(slug: str):
                     raise ValueError
                 image_url = resolve_image_field("image_url", "image_file")
                 with db() as conn:
+                    from checkout_platform import store_checkout_enabled
+
+                    checkout_on = store_checkout_enabled(conn, store)
+                    allow_cart = (1 if request.form.get("allow_cart") == "1" else 0) if checkout_on else 0
                     conn.execute(
-                        """INSERT INTO items (store_id, name, price, description, image_url, group_id, sku, inventory, status, unit, display_order)
-                           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, COALESCE((SELECT MAX(display_order) + 1 FROM items WHERE store_id = ?), 0))""",
+                        """INSERT INTO items (store_id, name, price, description, image_url, group_id, sku, inventory,
+                           status, unit, display_order, allow_cart)
+                           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, COALESCE((SELECT MAX(display_order) + 1 FROM items WHERE store_id = ?), 0), ?)""",
                         (
                             store["id"],
                             name,
@@ -2169,6 +2589,7 @@ def manage_store(slug: str):
                             request.form.get("status", "published"),
                             request.form.get("unit", "").strip() or None,
                             store["id"],
+                            allow_cart,
                         ),
                     )
                 flash("Item added to your storefront.", "success")
@@ -2192,6 +2613,10 @@ def manage_store(slug: str):
         if row:
             deals_by_item[item["id"]] = resolve_deal(row, float(item["price"]))
             deal_status_by_item[item["id"]] = deal_schedule_status(row)
+    with db() as conn:
+        from checkout_platform import store_checkout_enabled
+
+        store_checkout_enabled_flag = store_checkout_enabled(conn, store)
     return render_template(
         "owner/manage.html",
         store=store,
@@ -2203,6 +2628,7 @@ def manage_store(slug: str):
         item_groups=store_item_groups(store["id"]),
         deals_by_item=deals_by_item,
         deal_status_by_item=deal_status_by_item,
+        store_checkout_enabled=store_checkout_enabled_flag,
     )
 
 
@@ -2622,12 +3048,16 @@ def owner_item_detail(slug: str, item_id: int):
         group_name = None
         if item["group_id"]:
             group_name = conn.execute("SELECT name FROM item_groups WHERE id = ?", (item["group_id"],)).fetchone()
+        from checkout_platform import store_checkout_enabled
+
+        store_checkout_enabled_flag = store_checkout_enabled(conn, store)
     return render_template(
         "owner/item_detail.html",
         store=store,
         item=item,
         group_name=group_name["name"] if group_name else None,
         qr_codes=store_qr_codes(store["id"]),
+        store_checkout_enabled=store_checkout_enabled_flag,
     )
 
 
@@ -2653,10 +3083,16 @@ def edit_item(slug: str, item_id: int):
                     flash(str(exc), "error")
                     return redirect(url_for("edit_item", slug=slug, item_id=item_id))
                 with db() as conn:
+                    from checkout_platform import store_checkout_enabled
+
+                    if store_checkout_enabled(conn, store):
+                        allow_cart = 1 if request.form.get("allow_cart") == "1" else 0
+                    else:
+                        allow_cart = int(item["allow_cart"] or 0)
                     conn.execute(
                         """UPDATE items SET name = ?, price = ?, description = ?, image_url = ?, group_id = ?,
                            sku = ?, inventory = ?, status = ?, internal_notes = ?, display_order = ?, unit = ?,
-                           updated_at = CURRENT_TIMESTAMP WHERE id = ? AND store_id = ?""",
+                           allow_cart = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ? AND store_id = ?""",
                         (
                             name,
                             value,
@@ -2669,6 +3105,7 @@ def edit_item(slug: str, item_id: int):
                             request.form.get("internal_notes", "").strip(),
                             request.form.get("display_order", type=int) or 0,
                             request.form.get("unit", "").strip() or None,
+                            allow_cart,
                             item_id,
                             store["id"],
                         ),
@@ -2677,11 +3114,15 @@ def edit_item(slug: str, item_id: int):
                 return redirect(url_for("owner_item_detail", slug=slug, item_id=item_id))
             except ValueError:
                 flash("Use a valid non-negative price.", "error")
+    with db() as conn:
+        from checkout_platform import store_checkout_enabled
+        store_checkout_enabled_flag = store_checkout_enabled(conn, store)
     return render_template(
         "owner/item_edit.html",
         store=store,
         item=item,
         item_groups=store_item_groups(store["id"]),
+        store_checkout_enabled=store_checkout_enabled_flag,
     )
 
 
@@ -2699,11 +3140,17 @@ def item_preview(slug: str, item_id: int):
             row = conn.execute("SELECT name FROM item_groups WHERE id = ?", (item["group_id"],)).fetchone()
             group_name = row["name"] if row else None
     back_group = parse_item_group_arg(request.args.get("group"))
+    from storefront_platform import normalize_allow_cart
+
     preview_item = dict(item)
+    preview_item["allow_cart"] = normalize_allow_cart(preview_item.get("allow_cart"))
     deal = None
     with db() as conn:
+        from checkout_platform import store_checkout_enabled
         from storefront_platform import deals_map_for_items
+
         deal = deals_map_for_items(conn, store["id"]).get(item_id)
+        checkout_enabled = store_checkout_enabled(conn, store)
     return render_template(
         "customer/item_detail.html",
         store=store,
@@ -2712,6 +3159,7 @@ def item_preview(slug: str, item_id: int):
         group_name=group_name,
         preview_mode=True,
         back_group=group_query_param(back_group) if back_group else None,
+        checkout_enabled=checkout_enabled,
     )
 
 
@@ -3736,14 +4184,14 @@ def storefront_inquire(slug: str):
 
 @app.get("/place/<place_slug>")
 def place_directory(place_slug: str):
-    from place_platform import get_place_by_slug, record_place_event, stores_owned_by_user, tenants_for_place
+    from place_platform import get_place_by_slug, stores_owned_by_user, tenants_for_place
 
     with db() as conn:
         place = get_place_by_slug(conn, place_slug)
         if not place or (place.get("status") or "active") == "archived":
             abort(404)
-        record_place_event(conn, place["id"], "place_view")
         tenants = tenants_for_place(conn, place["id"], public_only=True)
+    record_place_event_safe(place["id"], "place_view")
     user = current_user()
     owned_stores = []
     if user:
@@ -3765,18 +4213,20 @@ def place_directory(place_slug: str):
 
 @app.get("/place/<place_slug>/go/<store_slug>")
 def place_tenant_go(place_slug: str, store_slug: str):
-    from place_platform import get_place_by_slug, is_place_tenant, record_place_event
+    from place_platform import get_place_by_slug, is_place_tenant
 
     with db() as conn:
         place = get_place_by_slug(conn, place_slug)
         if not place or (place.get("status") or "active") == "archived":
             abort(404)
-        store = get_store_or_404(store_slug)
+        store = conn.execute("SELECT * FROM stores WHERE slug = ?", (store_slug,)).fetchone()
+        if not store:
+            abort(404)
         if (store["status"] or "active") == "archived":
             abort(404)
         if not is_place_tenant(conn, place["id"], store["id"]):
             abort(404)
-        record_place_event(conn, place["id"], "tenant_click", store_id=store["id"])
+    record_place_event_safe(place["id"], "tenant_click", store_id=int(store["id"]))
     return redirect(
         url_for("storefront", slug=store["slug"], ref="place_directory", from_place=place_slug)
     )
@@ -3802,6 +4252,11 @@ def manage_places_new():
         if not name:
             flash("Place name is required.", "error")
             return render_template("owner/place_form.html", place=None)
+        try:
+            cover_image = resolve_image_field("cover_image", "cover_file")
+        except ValueError as exc:
+            flash(str(exc), "error")
+            return render_template("owner/place_form.html", place=None)
         with db() as conn:
             place = create_place(
                 conn,
@@ -3809,6 +4264,7 @@ def manage_places_new():
                 name=name,
                 description=request.form.get("description"),
                 address=request.form.get("address"),
+                cover_image=cover_image,
             )
         flash(f"Place directory “{place['name']}” created.", "success")
         return redirect(url_for("manage_place_detail", place_slug=place["slug"]))
@@ -3839,13 +4295,22 @@ def manage_place_detail(place_slug: str):
         action = request.form.get("action", "")
         with db() as conn:
             if action == "update":
+                try:
+                    cover_image = resolve_image_field(
+                        "cover_image",
+                        "cover_file",
+                        place.get("cover_image"),
+                    )
+                except ValueError as exc:
+                    flash(str(exc), "error")
+                    return redirect(url_for("manage_place_detail", place_slug=place_slug))
                 update_place(
                     conn,
                     place["id"],
                     name=request.form.get("name"),
                     description=request.form.get("description"),
                     address=request.form.get("address"),
-                    cover_image=request.form.get("cover_image"),
+                    cover_image=cover_image,
                 )
                 flash("Place updated.", "success")
             elif action == "add_tenant":
@@ -4076,42 +4541,42 @@ def manage_store_place_membership(slug: str):
     )
 
 
-@app.get("/discover")
-def guest_discover():
-    from discover_platform import discover_categories, discoverable_stores
-    from guest_platform import ensure_visitor_key, recent_stores_for_visitor
+@app.get("/venues")
+def guest_venues():
+    from place_platform import public_places
+
+    with db() as conn:
+        venues = public_places(conn, limit=24)
+    return render_template(
+        "customer/venues.html",
+        preview_mode=False,
+        venues=venues,
+    )
+
+
+@app.get("/home")
+def guest_home():
+    from customer_home_platform import home_feed
+    from guest_platform import ensure_visitor_key
 
     lat = request.args.get("lat", type=float)
     lng = request.args.get("lng", type=float)
-    q = (request.args.get("q") or "").strip() or None
-    category = (request.args.get("category") or "").strip() or None
-    open_only = request.args.get("open") == "1"
     visitor_key = ensure_visitor_key(session)
     with db() as conn:
-        stores = discoverable_stores(
-            conn,
-            q=q,
-            category=category,
-            open_only=open_only,
-            lat=lat,
-            lng=lng,
-        )
-        recent = recent_stores_for_visitor(conn, visitor_key, limit=6)
-        categories = discover_categories(
-            discoverable_stores(conn, lat=lat, lng=lng, limit=200)
-        )
+        feed = home_feed(conn, visitor_key, lat=lat, lng=lng)
     return render_template(
-        "customer/discover.html",
-        stores=stores,
-        categories=categories,
-        recent_places=recent,
+        "customer/home.html",
         preview_mode=False,
         user_lat=lat,
         user_lng=lng,
-        search_q=q or "",
-        active_category=category or "",
-        open_only=open_only,
+        **feed,
     )
+
+
+@app.get("/discover")
+def guest_discover():
+    """Discover browse is disabled — in-store QR scan only."""
+    return redirect(url_for("guest_home"))
 
 
 @app.get("/api/discover/stores")
@@ -4142,9 +4607,11 @@ def guest_recent_places():
     visitor_key = ensure_visitor_key(session)
     with db() as conn:
         places = recent_stores_for_visitor(conn, visitor_key)
+        places_open_count = sum(1 for p in places if p.get("is_open"))
     return render_template(
         "customer/recent_places.html",
         places=places,
+        places_open_count=places_open_count,
         preview_mode=False,
     )
 
@@ -4260,14 +4727,21 @@ def customer_item_detail(slug: str, item_id: int):
             row = conn.execute("SELECT name FROM item_groups WHERE id = ?", (item["group_id"],)).fetchone()
             group_name = row["name"] if row else None
         deal = deals_map_for_items(conn, store["id"]).get(item_id)
+        from checkout_platform import store_checkout_enabled
+        from storefront_platform import normalize_allow_cart
+
+        checkout_enabled = store_checkout_enabled(conn, store)
+    item_view = dict(item)
+    item_view["allow_cart"] = normalize_allow_cart(item_view.get("allow_cart"))
     return render_template(
         "customer/item_detail.html",
         store=store,
-        item=item,
+        item=item_view,
         deal=deal,
         group_name=group_name,
         preview_mode=False,
         back_group=group_query_param(back_group) if back_group else None,
+        checkout_enabled=checkout_enabled,
     )
 
 
@@ -4304,6 +4778,12 @@ register_qr_customer_data(app)
 
 from customer_platform import register_customer_platform
 register_customer_platform(app)
+
+from help_platform import register_help_platform
+register_help_platform(app)
+
+from business_help_platform import register_business_help_platform
+register_business_help_platform(app)
 
 from workspace_platform import register_workspace_platform
 register_workspace_platform(app)
@@ -4344,11 +4824,23 @@ register_integration_platform(app)
 from integrations.platform import register_integrations_core
 register_integrations_core(app)
 
-from google_calendar_plugin import register_google_calendar_plugin
-register_google_calendar_plugin(app)
+from payment_connect_plugin import register_payment_connect_plugin
+register_payment_connect_plugin(app)
+
+from reputation_connect_plugin import register_reputation_connect_plugin
+register_reputation_connect_plugin(app)
+
+from checkout_platform import register_checkout_platform
+register_checkout_platform(app)
 
 from mobile_platform import register_mobile_platform
 register_mobile_platform(app)
+
+from legal_platform import register_legal_platform
+register_legal_platform(app)
+
+from customer_account_platform import register_customer_account_platform
+register_customer_account_platform(app)
 
 
 @app.errorhandler(404)
@@ -4369,4 +4861,9 @@ if __name__ == "__main__":
         print(f" * Network: http://{ip}:{port}")
         if not os.environ.get("PUBLIC_BASE_URL"):
             print(f" * QR tip:  PUBLIC_BASE_URL=http://{ip}:{port} python3 app.py")
-    app.run(debug=True, host=host, port=port)
+    app.run(
+        debug=True,
+        host=host,
+        port=port,
+        use_reloader=os.environ.get("FLASK_USE_RELOADER", "").lower() in ("1", "true", "yes"),
+    )

@@ -1,5 +1,5 @@
 /**
- * Business OS Workflow Engine — registry mirror (JavaScript).
+ * Zintriq Workflow Engine — registry mirror (JavaScript).
  *
  * Spec: docs/bos/WORKFLOW_ENGINE.md
  * Backend: bos/workflows.py, workflow_platform.py

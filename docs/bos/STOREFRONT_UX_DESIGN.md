@@ -3,7 +3,7 @@
 Version: 1.0 · August 2026  
 Reference: Uber Eats merchant storefront (Welcia-style layout)
 
-This document defines **what store owners edit** in Business OS and **what customers see** when they scan a store QR — using Uber Eats as the layout and interaction reference, adapted for a QR-first Business OS (not a delivery marketplace).
+This document defines **what store owners edit** in Zintriq and **what customers see** when they scan a store QR — using Uber Eats as the layout and interaction reference, adapted for a QR-first Zintriq (not a delivery marketplace).
 
 ---
 
@@ -32,7 +32,7 @@ Product QR (`qr_products`) stays for spec sheets; priced menu lives in `items` o
 
 ## Layout comparison
 
-| Zone | Uber Eats (reference) | Business OS — Customer | Business OS — Owner preview |
+| Zone | Uber Eats (reference) | Zintriq — Customer | Zintriq — Owner preview |
 |------|----------------------|------------------------|----------------------------|
 | Top bar | Logo, location, **store search**, cart | Store name, search, contact CTA | Same + “Edit store” link |
 | Left sidebar | Logo, name, ETA, fee, rating, address, Shop/Deals/List, category list | Logo, name, hours, address, contact, **Shop / Deals**, category list | Same + inline “Edit” on each block |
@@ -223,9 +223,9 @@ CREATE TABLE store_deals (
 
 ### 7. Contact & ordering (replaces cart)
 
-Uber Eats uses **+ → cart**. Business OS MVP uses **tap card → detail → Contact owner**.
+Uber Eats uses **+ → cart**. Zintriq MVP uses **tap card → detail → Contact owner**.
 
-| Uber Eats | Business OS MVP |
+| Uber Eats | Zintriq MVP |
 |-----------|-----------------|
 | Add to cart | View product detail |
 | Checkout | Contact (phone / email / WhatsApp / form) |
@@ -235,10 +235,10 @@ Uber Eats uses **+ → cart**. Business OS MVP uses **tap card → detail → Co
 
 ---
 
-## Owner edit map (Business OS + legacy manage)
+## Owner edit map (Zintriq + legacy manage)
 
 ```
-Business OS (/app)
+Zintriq (/app)
 ├── QR Experiences     → landing before shop (optional)
 ├── Responses          → feedback from QR
 └── Settings

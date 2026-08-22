@@ -1,4 +1,4 @@
-"""Universal Customer Platform — identity layer for Business OS."""
+"""Universal Customer Platform — identity layer for Zintriq."""
 
 from __future__ import annotations
 

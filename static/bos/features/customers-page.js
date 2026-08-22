@@ -1,4 +1,4 @@
-/** Business OS — Customer Platform (API-backed identity layer). */
+/** Zintriq — Customer Platform (API-backed identity layer). */
 
 import { statusBadge, tag } from "../components/index.js";
 import { showToast, openDrawer, closeDrawer, renderActionBar, apiPost } from "../services/api.js";

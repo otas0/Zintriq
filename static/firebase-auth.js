@@ -18,8 +18,8 @@ const defaultLabels = new Map([
 document.querySelectorAll("[data-google-intent]").forEach((button) => {
   const intent = button.dataset.googleIntent || "login";
   const defaultLabel = defaultLabels.get(intent) || "Continue with Google";
-  const card = button.closest(".mq-auth-card");
-  const message = card?.querySelector("#social-error");
+  const card = button.closest(".mq-auth-card") || button.closest(".ig-auth__panel");
+  const message = card?.querySelector("#social-error, #ig-auth-social-error, .ig-auth__error[id]");
 
   button.addEventListener("click", async () => {
     if (message) message.hidden = true;
@@ -28,18 +28,32 @@ document.querySelectorAll("[data-google-intent]").forEach((button) => {
     try {
       const result = await signInWithPopup(getAuth(initializeApp(firebaseConfig)), new GoogleAuthProvider());
       const idToken = await result.user.getIdToken();
-      const response = await fetch("/auth/firebase", {
+      const authUrl = button.dataset.authUrl || "/auth/firebase";
+      const response = await fetch(authUrl, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
           "X-CSRF-Token": document.querySelector('meta[name="csrf-token"]').content,
         },
         credentials: "same-origin",
-        body: JSON.stringify({ idToken, intent }),
+        body: JSON.stringify({
+          idToken,
+          intent,
+          remember_device: (() => {
+            const panel = button.closest(".ig-auth__panel") || button.closest(".mq-auth-card");
+            const cb = panel?.querySelector('input[name="remember_device"]');
+            return cb ? cb.checked : true;
+          })(),
+        }),
       });
       const data = await response.json();
       if (!response.ok) throw new Error(data.error || "Google sign-in could not be completed.");
-      window.location.assign(data.next);
+      if (data.needs_onboarding) {
+        const { openGoogleOnboarding } = await import("./customer-auth.js");
+        openGoogleOnboarding(data.username || "");
+        return;
+      }
+      window.location.assign(data.next || "/home");
     } catch (error) {
       if (message) {
         message.textContent = error.message;

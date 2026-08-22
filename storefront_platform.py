@@ -26,6 +26,22 @@ WEEKDAY_LABELS = {
 DEFAULT_TIMEZONE = "Asia/Singapore"
 
 
+def normalize_allow_cart(value) -> int:
+    """Coerce item.allow_cart to 0/1 for templates and checkout."""
+    try:
+        return 1 if int(value or 0) else 0
+    except (TypeError, ValueError):
+        return 0
+
+
+def item_cart_enabled(item, *, checkout_enabled: bool = False) -> bool:
+    """True when checkout is on and the item is flagged for cart."""
+    if not checkout_enabled:
+        return False
+    allow = item["allow_cart"] if isinstance(item, dict) else item["allow_cart"]
+    return normalize_allow_cart(allow) == 1
+
+
 def migrate_storefront_columns(conn) -> None:
     columns = {row["name"] for row in conn.execute("PRAGMA table_info(stores)")}
     for column, definition in (
@@ -59,6 +75,8 @@ def migrate_storefront_catalog_columns(conn) -> None:
     item_columns = {row["name"] for row in conn.execute("PRAGMA table_info(items)")}
     if "unit" not in item_columns:
         conn.execute("ALTER TABLE items ADD COLUMN unit TEXT")
+    if "allow_cart" not in item_columns:
+        conn.execute("ALTER TABLE items ADD COLUMN allow_cart INTEGER NOT NULL DEFAULT 0")
 
 
 def category_label(prefix: str | None, index: int) -> str:
@@ -216,7 +234,7 @@ def resolve_deal(row: Any, item_price: float) -> dict[str, Any]:
 def list_store_deals(conn, store_id: int, *, active_only: bool = False) -> list:
     rows = conn.execute(
         """SELECT d.*, i.name AS item_name, i.price AS item_price, i.image_url, i.unit AS item_unit,
-                  i.status AS item_status
+                  i.status AS item_status, i.allow_cart AS item_allow_cart
            FROM store_deals d
            JOIN items i ON i.id = d.item_id
            WHERE d.store_id = ?
@@ -243,6 +261,9 @@ def active_deals_for_storefront(conn, store_id: int) -> list[dict[str, Any]]:
         deal["item_name"] = row["item_name"]
         deal["image_url"] = row["image_url"]
         deal["item_unit"] = row["item_unit"] if "item_unit" in row.keys() else None
+        deal["item_allow_cart"] = normalize_allow_cart(
+            row["item_allow_cart"] if "item_allow_cart" in row.keys() else 0
+        )
         deals.append(deal)
     deals.sort(key=lambda d: (not d["featured"], d["item_name"]))
     return deals
@@ -515,6 +536,38 @@ def store_rating_summary(conn, store_id: int) -> dict[str, Any]:
     }
 
 
+def store_public_reviews(conn, store_id: int, *, limit: int = 12) -> list[dict[str, Any]]:
+    """Reviews shown on the customer storefront (native + synced plugins)."""
+    rows = conn.execute(
+        """SELECT fr.id, fr.rating, fr.comment, fr.customer_name, fr.source, fr.external_platform,
+                  fr.created_at, fr.updated_at
+           FROM feedback_records fr
+           WHERE fr.store_id = ?
+             AND (
+               (fr.comment IS NOT NULL AND TRIM(fr.comment) != '')
+               OR (fr.rating IS NOT NULL AND fr.rating > 0)
+             )
+             AND COALESCE(fr.status, 'new') NOT IN ('hidden', 'spam', 'deleted')
+           ORDER BY COALESCE(fr.updated_at, fr.created_at) DESC
+           LIMIT ?""",
+        (store_id, limit),
+    ).fetchall()
+    out: list[dict[str, Any]] = []
+    for r in rows:
+        comment = (r["comment"] or "").strip()
+        name = (r["customer_name"] or "").strip() or "Customer"
+        platform = (r["external_platform"] or r["source"] or "").strip()
+        out.append({
+            "id": int(r["id"]),
+            "rating": int(r["rating"]) if r["rating"] is not None else None,
+            "comment": comment,
+            "customer_name": name,
+            "platform": platform,
+            "created_at": r["updated_at"] or r["created_at"],
+        })
+    return out
+
+
 def maps_directions_url(address: str | None) -> str | None:
     text = (address or "").strip()
     if not text:
@@ -552,7 +605,7 @@ def geocode_address(address: str | None) -> tuple[float, float] | None:
         return None
     params = urllib.parse.urlencode({"q": text, "format": "json", "limit": "1"})
     url = f"https://nominatim.openstreetmap.org/search?{params}"
-    req = urllib.request.Request(url, headers={"User-Agent": "MarketQR-Storefront/1.0"})
+    req = urllib.request.Request(url, headers={"User-Agent": "Zintriq-Storefront/1.0"})
     try:
         with urllib.request.urlopen(req, timeout=8) as resp:
             data = json.loads(resp.read().decode())
@@ -927,6 +980,7 @@ def build_store_profile(conn, store: dict | Any) -> dict[str, Any]:
     store_id = store["id"] if hasattr(store, "__getitem__") else store.id
     hours = hours_status(store)
     ratings = store_rating_summary(conn, store_id)
+    reviews = store_public_reviews(conn, store_id)
     address = (store.get("address") if isinstance(store, dict) else store["address"]) or ""
     logo_url = (store.get("logo_url") if isinstance(store, dict) else store["logo_url"]) or ""
     location = build_location_profile(store)
@@ -939,6 +993,7 @@ def build_store_profile(conn, store: dict | Any) -> dict[str, Any]:
         "background_image": (store.get("background_image") if isinstance(store, dict) else store["background_image"]) or None,
         "hours": hours,
         "ratings": ratings,
+        "reviews": reviews,
         "maps_url": maps_directions_url(address),
         "location": location,
     }

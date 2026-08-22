@@ -8,22 +8,23 @@ from datetime import datetime
 
 from flask import abort, jsonify, redirect, render_template, request, session, url_for
 
+from integration_catalog import REPUTATION_PLUGINS as CATALOG_REPUTATION
+
 FEEDBACK_SOURCES = (
-    "business_os", "qr_survey", "google_business", "yelp",
-    "tripadvisor", "tablelog", "opentable",
+    "business_os", "qr_survey",
+    *(p["slug"] for p in CATALOG_REPUTATION),
 )
 FEEDBACK_TYPES = ("review", "survey_response", "rating", "comment", "complaint", "suggestion")
 FEEDBACK_STATUSES = ("new", "read", "replied", "archived", "hidden", "flagged")
 QUESTION_TYPES = ("single_choice", "multiple_choice", "text", "rating", "nps")
 SURVEY_STATUSES = ("draft", "published", "archived")
 
-REPUTATION_PLUGINS = (
-    {"slug": "google_business", "name": "Google Business Profile", "capabilities": ("read_reviews", "reply_reviews", "read_rating")},
-    {"slug": "yelp", "name": "Yelp", "capabilities": ("read_reviews", "read_rating")},
-    {"slug": "tripadvisor", "name": "Tripadvisor", "capabilities": ("read_reviews", "read_rating")},
-    {"slug": "tablelog", "name": "Tablelog", "capabilities": ("read_reviews", "reservation_feedback")},
-    {"slug": "opentable", "name": "OpenTable", "capabilities": ("read_reviews", "read_rating")},
+REPUTATION_PLUGINS = tuple(
+    {"slug": p["slug"], "name": p["name"], "capabilities": p.get("capabilities", ())}
+    for p in CATALOG_REPUTATION
 )
+
+REMOVED_REPUTATION_SLUGS = ("google_business",)
 
 CORE_SCHEMA_SQL = """
 CREATE TABLE IF NOT EXISTS surveys (
@@ -131,10 +132,23 @@ def _migrate_feedback_records(conn) -> None:
 def init_feedback_core_tables(conn) -> None:
     conn.executescript(CORE_SCHEMA_SQL)
     _migrate_feedback_records(conn)
+    from integration_platform import purge_removed_plugins
+    purge_removed_plugins(conn)
+    for slug in REMOVED_REPUTATION_SLUGS:
+        conn.execute(
+            """DELETE FROM user_integration_connections
+               WHERE plugin_id IN (SELECT id FROM integration_plugins WHERE slug=?)""",
+            (slug,),
+        )
+        conn.execute("DELETE FROM integration_plugins WHERE slug=?", (slug,))
     for p in REPUTATION_PLUGINS:
         conn.execute(
-            """INSERT OR IGNORE INTO integration_plugins (slug, name, provider, description, category, status)
-               VALUES (?, ?, ?, ?, 'reputation', 'available')""",
+            """INSERT INTO integration_plugins (slug, name, provider, description, category, status)
+               VALUES (?, ?, ?, ?, 'reputation', 'available')
+               ON CONFLICT(slug) DO UPDATE SET
+                 name=excluded.name,
+                 description=excluded.description,
+                 updated_at=CURRENT_TIMESTAMP""",
             (p["slug"], p["name"], p["slug"], f"Sync reviews from {p['name']}"),
         )
 

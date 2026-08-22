@@ -1,4 +1,4 @@
-"""Workspace Platform — primary operating container for Business OS."""
+"""Workspace Platform — primary operating container for Zintriq."""
 
 from __future__ import annotations
 

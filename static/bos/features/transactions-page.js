@@ -1,4 +1,4 @@
-/** Business OS — Transactions / orders (API-backed). */
+/** Zintriq — Transactions / orders (API-backed). */
 
 import { statusBadge } from "../components/index.js";
 import { showToast, openDrawer, closeDrawer } from "../services/api.js";

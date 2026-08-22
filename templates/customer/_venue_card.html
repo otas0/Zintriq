@@ -1,0 +1,21 @@
+{# Uber Eats–style venue / market directory card #}
+<a class="ch-ue-venue material-module" href="{{ venue.directory_url }}">
+  <div class="ch-ue-venue__media{% if not venue.cover_image %} ch-ue-venue__media--empty{% endif %}"
+       {% if venue.cover_image %}style="background-image:url('{{ venue.cover_image }}')"{% endif %}>
+    <span class="ch-ue-venue__badge">{{ venue.tenant_count }} shop{% if venue.tenant_count != 1 %}s{% endif %}</span>
+  </div>
+  <div class="ch-ue-venue__body">
+    {% if heading == 2 %}
+    <h2 class="ch-ue-venue__name">{{ venue.name }}</h2>
+    {% else %}
+    <h3 class="ch-ue-venue__name">{{ venue.name }}</h3>
+    {% endif %}
+    <p class="ch-ue-venue__meta">
+      {% if venue.address %}<span class="ch-ue-venue__address">{{ venue.address }}</span>{% endif %}
+      <span class="ch-ue-venue__type">Market directory</span>
+    </p>
+    {% if venue.description %}
+    <p class="ch-ue-venue__desc">{{ venue.description }}</p>
+    {% endif %}
+  </div>
+</a>

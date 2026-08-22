@@ -1,0 +1,27 @@
+{% extends 'customer_base.html' %}
+{% block title %}Markets &amp; venues — Zintriq{% endblock %}
+{% block content %}
+<section class="ch-venues-page">
+  <header class="ch-venues-page__hero">
+    <h1 class="ch-venues-page__title">Markets &amp; venues</h1>
+    <p class="ch-venues-page__lead">Food halls, markets, and multi-shop directories — browse every shop in one place.</p>
+  </header>
+
+  {% if venues %}
+  <div class="ch-venue-grid">
+    {% for venue in venues %}
+    {% with heading=2 %}{% include 'customer/_venue_card.html' %}{% endwith %}
+    {% endfor %}
+  </div>
+  {% else %}
+  <div class="mq-empty ch-home__empty">
+    <p><strong>No venues listed yet</strong></p>
+    <p>When a market or food hall publishes a directory, it will appear here.</p>
+    <a class="mq-btn mq-btn-ghost" href="{{ url_for('guest_home') }}">Back to home</a>
+  </div>
+  {% endif %}
+</section>
+{% endblock %}
+{% block customer_scripts %}
+<script src="{{ url_for('static', filename='customer-motion.js') }}" defer></script>
+{% endblock %}

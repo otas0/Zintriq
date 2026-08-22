@@ -1,5 +1,5 @@
 /**
- * Business OS Domain Model — canonical registry (JavaScript mirror).
+ * Zintriq Domain Model — canonical registry (JavaScript mirror).
  *
  * Spec: docs/bos/DOMAIN_MODEL.md
  * Backend mirror: bos/domain.py

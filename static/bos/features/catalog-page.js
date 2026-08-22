@@ -1,4 +1,4 @@
-/** Business OS — Catalog (API-backed products across workspace stores). */
+/** Zintriq — Catalog (API-backed products across workspace stores). */
 
 import { statusBadge } from "../components/index.js";
 import { showToast } from "../services/api.js";

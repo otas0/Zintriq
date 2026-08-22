@@ -1,4 +1,4 @@
-/** Business OS — Feedback & Reputation Platform (QR surveys + internal feedback). */
+/** Zintriq — Feedback & Reputation Platform (QR surveys + internal feedback). */
 
 import { statusBadge } from "../components/index.js";
 import { showToast } from "../services/api.js";

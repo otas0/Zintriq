@@ -1,5 +1,5 @@
 /**
- * UI property schema for Business OS modules.
+ * UI property schema for Zintriq modules.
  *
  * Domain authority (ownership, relationships, lifecycle):
  *   static/bos/platform/domain-model.js

@@ -1,4 +1,4 @@
-/** Business OS — Experience Builder */
+/** Zintriq — Experience Builder */
 
 import { statusBadge, emptyState, loadingState, button, setPageActions, renderFilterTabs, resourceRow, qrExperienceCard, pageHeader, QRPreview } from "../components/index.js";
 import { notifySuccess, notifyError } from "../services/notify.js";

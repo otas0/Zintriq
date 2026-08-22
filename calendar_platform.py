@@ -1,4 +1,4 @@
-"""Calendar Core Platform — native operational timeline for Business OS."""
+"""Calendar Core Platform — native operational timeline for Zintriq."""
 
 from __future__ import annotations
 
@@ -765,8 +765,7 @@ def register_calendar_platform(app) -> None:
                 abort(404)
 
             if action == "keep_os":
-                from google_calendar_plugin import sync_calendar_event_to_google
-                sync_calendar_event_to_google(conn, app, user_id, int(event["id"]), "calendar.updated")
+                pass
             elif action == "keep_google":
                 conn.execute(
                     """UPDATE calendar_events SET title=?, start_time=?, end_time=?,

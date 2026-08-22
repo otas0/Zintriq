@@ -1,4 +1,4 @@
-/** Business OS — Documents (API-backed customer files). */
+/** Zintriq — Documents (API-backed customer files). */
 
 import { fetchJson, esc, wsQuery } from "../services/bos-api.js";
 

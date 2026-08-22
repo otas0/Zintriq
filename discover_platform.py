@@ -65,6 +65,7 @@ def _store_discover_payload(
         "slug": store["slug"],
         "name": store["name"],
         "logo_url": profile.get("logo_url"),
+        "cover_url": profile.get("background_image"),
         "description": (store.get("description") or "")[:120] or None,
         "address": profile.get("address"),
         "owner_name": owner_name,

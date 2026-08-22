@@ -4,6 +4,8 @@ from __future__ import annotations
 
 import hashlib
 import secrets
+import sqlite3
+import time
 from datetime import datetime
 from typing import Any
 
@@ -55,6 +57,16 @@ def _now() -> str:
     return datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S")
 
 
+def _db_retry(fn, *, attempts: int = 8):
+    for attempt in range(attempts):
+        try:
+            return fn()
+        except sqlite3.OperationalError as exc:
+            if "locked" not in str(exc).lower() or attempt >= attempts - 1:
+                raise
+            time.sleep(min(0.05 * (2**attempt), 1.0))
+
+
 def _hash_token(token: str) -> str:
     return hashlib.sha256(token.encode()).hexdigest()
 
@@ -82,8 +94,39 @@ def ensure_visitor_key(flask_session) -> str:
     return key
 
 
+def is_storefront_shell_path(path: str) -> bool:
+    """Customer store pages use a minimal in-store header (not hub/marketing nav)."""
+    return path.startswith("/store/")
+
+
 def is_customer_surface_path(path: str) -> bool:
-    return path.startswith(("/store/", "/places", "/place/", "/discover", "/e/", "/guest/"))
+    if path == "/home" or path == "/account" or path.startswith("/account/"):
+        return True
+    if path == "/venues" or path.startswith("/help"):
+        return True
+    return path.startswith(
+        ("/store/", "/places", "/place/", "/discover", "/e/", "/guest/", "/qr/")
+    )
+
+
+def is_customer_hub_path(path: str) -> bool:
+    """Shell with side/bottom nav — home, places, account, help."""
+    if path == "/home" or path == "/account" or path.startswith("/help"):
+        return True
+    if path == "/places" or path.startswith("/places/"):
+        return True
+    return False
+
+
+def customer_nav_tab(path: str) -> str | None:
+    """Bottom tab highlight for in-store customer shell."""
+    if path == "/home":
+        return "home"
+    if path == "/places" or path.startswith("/places/"):
+        return "places"
+    if path == "/account":
+        return "account"
+    return None
 
 
 def guest_remembered_email(conn, visitor_key: str) -> str | None:
@@ -270,14 +313,14 @@ def send_guest_remember_email(link: str, email: str) -> bool:
     """Email magic link when SMTP is configured."""
     from email_delivery import send_transactional_email
 
-    subject = "Save your MarketQR places"
+    subject = "Save your Zintriq places"
     text = (
-        "Open this link on any device to restore shops you've visited on MarketQR.\n\n"
+        "Open this link on any device to restore shops you've visited on Zintriq.\n\n"
         f"{link}\n\n"
         "This link expires in 15 minutes. If you didn't request it, you can ignore this email."
     )
     html = (
-        "<p>Open this link on any device to restore shops you've visited on MarketQR.</p>"
+        "<p>Open this link on any device to restore shops you've visited on Zintriq.</p>"
         f'<p><a href="{link}">{link}</a></p>'
         "<p>This link expires in 15 minutes. If you didn't request it, you can ignore this email.</p>"
     )
@@ -294,24 +337,28 @@ def record_store_visit(
     if not visitor_key or not store_id:
         return
     now = _now()
-    existing = conn.execute(
-        "SELECT visit_count FROM guest_store_visits WHERE visitor_key = ? AND store_id = ?",
-        (visitor_key, store_id),
-    ).fetchone()
-    if existing:
-        conn.execute(
-            """UPDATE guest_store_visits
-               SET visit_count = visit_count + 1, last_visited_at = ?, last_path = ?
-               WHERE visitor_key = ? AND store_id = ?""",
-            (now, path, visitor_key, store_id),
-        )
-    else:
-        conn.execute(
-            """INSERT INTO guest_store_visits
-               (visitor_key, store_id, visit_count, first_visited_at, last_visited_at, last_path)
-               VALUES (?, ?, 1, ?, ?, ?)""",
-            (visitor_key, store_id, now, now, path),
-        )
+
+    def _write() -> None:
+        existing = conn.execute(
+            "SELECT visit_count FROM guest_store_visits WHERE visitor_key = ? AND store_id = ?",
+            (visitor_key, store_id),
+        ).fetchone()
+        if existing:
+            conn.execute(
+                """UPDATE guest_store_visits
+                   SET visit_count = visit_count + 1, last_visited_at = ?, last_path = ?
+                   WHERE visitor_key = ? AND store_id = ?""",
+                (now, path, visitor_key, store_id),
+            )
+        else:
+            conn.execute(
+                """INSERT INTO guest_store_visits
+                   (visitor_key, store_id, visit_count, first_visited_at, last_visited_at, last_path)
+                   VALUES (?, ?, 1, ?, ?, ?)""",
+                (visitor_key, store_id, now, now, path),
+            )
+
+    _db_retry(_write)
 
 
 def recent_store_count(conn, visitor_key: str) -> int:

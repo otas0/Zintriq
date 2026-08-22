@@ -24,7 +24,6 @@ function mountTabBar() {
   nav.innerHTML = tabs.map((t) => {
     const active = path === t.path || path.startsWith(t.path + "/") || (t.path.includes("#") && path === t.path.split("#")[0]);
     return `<a class="bos-mobile-tabbar__link${active ? " is-active" : ""}" href="${t.path}">
-      <span class="bos-mobile-tabbar__icon" aria-hidden="true">${t.icon}</span>
       <span>${t.label}</span>
     </a>`;
   }).join("");

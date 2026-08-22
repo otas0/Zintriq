@@ -3,21 +3,24 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>{% block title %}Business OS{% endblock %}</title>
+  <title>{% block title %}Zintriq{% endblock %}</title>
   <meta name="csrf-token" content="{{ csrf_token() }}">
+  {% include 'partials/favicon_links.html' %}
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/geist@1.3.1/dist/fonts/geist-sans/style.min.css">
   <link rel="stylesheet" href="{{ url_for('static', filename='tokens.css') }}">
   <link rel="stylesheet" href="{{ url_for('static', filename='materials.css') }}">
   <link rel="stylesheet" href="{{ url_for('static', filename='system.css') }}">
   <link rel="stylesheet" href="{{ url_for('static', filename='marketing.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='legal.css') }}">
   {% block public_head %}{% endblock %}
 </head>
 <body class="material-canvas mq-app mq-density-customer mq-public">
   <header class="material-panel mq-public-header" id="mq-public-header">
     <div class="mq-public-header__inner">
-      <a class="mq-shell-brand" href="{{ url_for('index') if not current_user else url_for('bos.store') }}">
-        <span class="mq-shell-brand-mark">B</span>
-        <span>Business OS</span>
+      <a class="mq-shell-brand" href="{{ url_for('index') if not current_user else url_for('bos.store') }}" aria-label="zintriq">
+        {% with variant='light', class='mq-shell-brand__logo zintriq-logo', width=180, height=48 %}
+        {% include 'partials/brand_logo.html' %}
+        {% endwith %}
       </a>
       <nav class="mq-public-nav" aria-label="Main">
         {% if current_user %}
@@ -68,7 +71,7 @@
   <main class="material-sheet mq-public-main">{% block content %}{% endblock %}</main>
 
   <footer class="mq-public-footer">
-    <strong>Business OS</strong> · QR-powered customer experiences for physical businesses.
+    {% include 'partials/site_footer.html' %}
   </footer>
 
   <script src="{{ url_for('static', filename='marketing.js') }}"></script>

@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * Verify Business OS UX audit checklist (static analysis).
+ * Verify Zintriq UX audit checklist (static analysis).
  * Run: node scripts/verify_ux_audit.js
  */
 
@@ -38,7 +38,7 @@ function excludes(rel, needle, label) {
   else bad(label, `found in ${rel}`);
 }
 
-console.log("\nBusiness OS UX Audit Verification\n");
+console.log("\nZintriq UX Audit Verification\n");
 
 // Navigation
 excludes("static/bos/product-focus.js", 'label: "Home"', "Nav: no Home");

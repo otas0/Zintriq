@@ -1,5 +1,5 @@
 /**
- * Business OS MVP Component Library
+ * Zintriq MVP Component Library
  * ui/ · layout/ · business/ · qr/ · response/ · team/
  *
  * Build pages by composing these — do not duplicate UI patterns.

@@ -1,11 +1,11 @@
-# Business OS — Application Shell Architecture
+# Zintriq — Application Shell Architecture
 
 > **Status:** Canonical shell specification  
 > **Code:** `static/bos/core/shell.js`, `static/bos/core/shell-nav.js`
 
 ## Philosophy
 
-Business OS behaves like an **operating system**. Every module lives inside one shared shell. Navigation stays stable; only content changes.
+Zintriq behaves like an **operating system**. Every module lives inside one shared shell. Navigation stays stable; only content changes.
 
 ## Shell Layers
 

@@ -1,0 +1,202 @@
+<div id="customer-auth-root" class="ig-auth" hidden aria-hidden="true">
+  <div class="ig-auth__backdrop" data-auth-close tabindex="-1"></div>
+  <div class="ig-auth__sheet" role="dialog" aria-modal="true" aria-labelledby="ig-auth-title">
+    <button type="button" class="ig-auth__close" data-auth-close aria-label="Close">&times;</button>
+    <button type="button" class="ig-auth__back" id="ig-auth-back" hidden aria-label="Back">&larr;</button>
+
+    <div class="ig-auth__panel" data-auth-panel="login">
+      <div class="ig-auth__brand">
+        {% with variant='light', class='ig-auth__logo zintriq-logo', width=200, height=52 %}
+        {% include 'partials/brand_logo.html' %}
+        {% endwith %}
+      </div>
+      <h2 id="ig-auth-title" class="ig-auth__title">Log in</h2>
+      <p class="ig-auth__lead">Email, phone, or Google.</p>
+      <form class="ig-auth__form" id="ig-auth-login-form" novalidate>
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <input type="hidden" name="next" value="{{ request.path }}" data-auth-next>
+        <div class="ig-auth__field">
+          <input class="ig-auth__input" name="identifier" type="text" autocomplete="username" placeholder="Email or phone (+601…)" required>
+        </div>
+        <div class="ig-auth__field ig-auth__field--row">
+          <input class="ig-auth__input" name="password" type="password" autocomplete="current-password" placeholder="Password" required>
+          <a class="ig-auth__forgot" href="{{ url_for('customer_forgot_password') }}">Forgot?</a>
+        </div>
+        <p class="ig-auth__error" id="ig-auth-login-error" hidden role="alert"></p>
+        {% include 'customer/_remember_device.html' %}
+        <button class="ig-auth__submit" type="submit">Log in</button>
+      </form>
+      <p class="ig-auth__switch">
+        <button type="button" class="ig-auth__link-btn" data-auth-goto="login-code">Sign in with verification code</button>
+      </p>
+      <div class="ig-auth__divider">or</div>
+      <button class="mq-google-btn ig-auth__google" type="button" data-google-intent="login" data-auth-url="/auth/firebase/customer">
+        Continue with Google
+      </button>
+      <p id="ig-auth-social-error" class="ig-auth__error" hidden role="alert"></p>
+      <p class="ig-auth__switch">
+        Don't have an account?
+        <button type="button" class="ig-auth__link-btn" data-auth-goto="signup-start">Sign up</button>
+      </p>
+      <p class="ig-auth__business">
+        Business owner?
+        <a href="{{ url_for('login') }}">Sign in to manage your store</a>
+      </p>
+    </div>
+
+    <div class="ig-auth__panel" data-auth-panel="login-code" hidden>
+      <h2 class="ig-auth__title">Enter code</h2>
+      <p class="ig-auth__lead" id="ig-login-code-lead">We sent a 6-digit code.</p>
+      <div class="ig-auth__tabs" role="tablist">
+        <button type="button" class="ig-auth__tab is-active" data-login-channel="email">Email</button>
+        <button type="button" class="ig-auth__tab" data-login-channel="phone">Phone</button>
+      </div>
+      <form class="ig-auth__form" id="ig-login-send-form" novalidate>
+        <div class="ig-auth__field" id="ig-login-target-field">
+          <input class="ig-auth__input" name="target" type="email" autocomplete="email" placeholder="Email" required>
+        </div>
+        <p class="ig-auth__error" id="ig-login-send-error" hidden role="alert"></p>
+        <button class="ig-auth__submit" type="submit">Send code</button>
+      </form>
+      <form class="ig-auth__form" id="ig-login-code-form" hidden novalidate>
+        <div class="ig-auth__otp" id="ig-login-otp">
+          <input class="ig-auth__otp-digit" maxlength="1" inputmode="numeric" aria-label="Digit 1">
+          <input class="ig-auth__otp-digit" maxlength="1" inputmode="numeric" aria-label="Digit 2">
+          <input class="ig-auth__otp-digit" maxlength="1" inputmode="numeric" aria-label="Digit 3">
+          <input class="ig-auth__otp-digit" maxlength="1" inputmode="numeric" aria-label="Digit 4">
+          <input class="ig-auth__otp-digit" maxlength="1" inputmode="numeric" aria-label="Digit 5">
+          <input class="ig-auth__otp-digit" maxlength="1" inputmode="numeric" aria-label="Digit 6">
+        </div>
+        <p class="ig-auth__error" id="ig-login-code-error" hidden role="alert"></p>
+        {% include 'customer/_remember_device.html' %}
+        <button class="ig-auth__submit" type="submit">Verify &amp; sign in</button>
+        <button type="button" class="ig-auth__link-btn ig-auth__resend" id="ig-login-resend" disabled>Resend code</button>
+      </form>
+    </div>
+
+    <div class="ig-auth__panel" data-auth-panel="signup-start" hidden>
+      <div class="ig-auth__brand">
+        {% with variant='light', class='ig-auth__logo zintriq-logo', width=200, height=52 %}
+        {% include 'partials/brand_logo.html' %}
+        {% endwith %}
+      </div>
+      <h2 class="ig-auth__title">Create account</h2>
+      <p class="ig-auth__lead">Verify your email or phone first.</p>
+      <div class="ig-auth__tabs" role="tablist">
+        <button type="button" class="ig-auth__tab is-active" data-signup-channel="email">Email</button>
+        <button type="button" class="ig-auth__tab" data-signup-channel="phone">Phone</button>
+      </div>
+      <form class="ig-auth__form" id="ig-signup-send-form" novalidate>
+        <input type="hidden" name="next" value="{{ request.path }}" data-auth-next>
+        <div class="ig-auth__field" id="ig-signup-target-field">
+          <input class="ig-auth__input" name="target" type="email" autocomplete="email" placeholder="Email" required>
+        </div>
+        <p class="legal-phone-note" id="ig-signup-phone-note" hidden>
+          We need your phone number to verify your identity and prevent automated bots.
+          Your data is stored securely in Frankfurt, Germany (EU). We never spam you.
+          <br>
+          We need your mobile number to verify your identity and prevent automated bot registrations. Your data is securely stored in Frankfurt, Germany (EU). We will never send you spam.
+        </p>
+        <p class="ig-auth__error" id="ig-signup-send-error" hidden role="alert"></p>
+        {% with consent_id='legal_consent_auth' %}
+        {% include 'partials/legal_consent.html' %}
+        {% endwith %}
+        <button class="ig-auth__submit" type="submit">Send verification code</button>
+      </form>
+      <div class="ig-auth__divider">or</div>
+      <button class="mq-google-btn ig-auth__google" type="button" data-google-intent="signup" data-auth-url="/auth/firebase/customer">
+        Sign up with Google
+      </button>
+      <p class="ig-auth__switch">
+        Have an account?
+        <button type="button" class="ig-auth__link-btn" data-auth-goto="login">Log in</button>
+      </p>
+    </div>
+
+    <div class="ig-auth__panel" data-auth-panel="signup-code" hidden>
+      <h2 class="ig-auth__title">Enter code</h2>
+      <p class="ig-auth__lead" id="ig-signup-code-lead">We sent a 6-digit code.</p>
+      <form class="ig-auth__form" id="ig-signup-code-form" novalidate>
+        <div class="ig-auth__otp" id="ig-signup-otp">
+          <input class="ig-auth__otp-digit" maxlength="1" inputmode="numeric" aria-label="Digit 1">
+          <input class="ig-auth__otp-digit" maxlength="1" inputmode="numeric" aria-label="Digit 2">
+          <input class="ig-auth__otp-digit" maxlength="1" inputmode="numeric" aria-label="Digit 3">
+          <input class="ig-auth__otp-digit" maxlength="1" inputmode="numeric" aria-label="Digit 4">
+          <input class="ig-auth__otp-digit" maxlength="1" inputmode="numeric" aria-label="Digit 5">
+          <input class="ig-auth__otp-digit" maxlength="1" inputmode="numeric" aria-label="Digit 6">
+        </div>
+        <p class="ig-auth__error" id="ig-signup-code-error" hidden role="alert"></p>
+        <button class="ig-auth__submit" type="submit">Continue</button>
+        <button type="button" class="ig-auth__link-btn ig-auth__resend" id="ig-signup-resend" disabled>Resend code</button>
+      </form>
+    </div>
+
+    <div class="ig-auth__panel" data-auth-panel="signup-setup" hidden>
+      <h2 class="ig-auth__title" id="ig-signup-setup-title">Set up account</h2>
+      <p class="ig-auth__lead" id="ig-signup-setup-lead">Pick a username and password.</p>
+      <form class="ig-auth__form" id="ig-signup-setup-form" novalidate>
+        <input type="hidden" name="next" value="{{ request.path }}" data-auth-next>
+        <div class="ig-auth__field">
+          <label class="ig-auth__label">Username</label>
+          <input class="ig-auth__input" name="username" id="ig-signup-username" autocomplete="username" placeholder="shopper_ab12" required>
+          <p class="ig-auth__hint" id="ig-username-hint"></p>
+        </div>
+        <div class="ig-auth__field">
+          <input class="ig-auth__input" name="display_name" type="text" autocomplete="name" placeholder="Display name (optional)">
+        </div>
+        <div id="ig-signup-password-fields">
+          <div class="ig-auth__field">
+            <input class="ig-auth__input" name="password" type="password" autocomplete="new-password" minlength="12" placeholder="Password (12+ characters)">
+          </div>
+          <div class="ig-auth__field">
+            <input class="ig-auth__input" name="confirm_password" type="password" autocomplete="new-password" minlength="12" placeholder="Confirm password">
+          </div>
+        </div>
+        <p class="ig-auth__error" id="ig-signup-setup-error" hidden role="alert"></p>
+        {% include 'customer/_remember_device.html' %}
+        <button class="ig-auth__submit" type="submit">Continue</button>
+      </form>
+    </div>
+
+    <div class="ig-auth__panel" data-auth-panel="signup-photo" hidden>
+      <h2 class="ig-auth__title">Add a photo</h2>
+      <p class="ig-auth__lead">Optional — you can change this anytime.</p>
+      <form class="ig-auth__form ig-auth__form--photo" id="ig-signup-photo-form" enctype="multipart/form-data" novalidate>
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <input type="hidden" name="next" value="{{ request.path }}" data-auth-next>
+        <input type="hidden" name="username" id="ig-photo-username">
+        <input type="hidden" name="password" id="ig-photo-password">
+        <input type="hidden" name="confirm_password" id="ig-photo-confirm">
+        <input type="hidden" name="display_name" id="ig-photo-display">
+        <label class="ig-auth__avatar-picker">
+          <input type="file" name="avatar" accept="image/jpeg,image/png,image/webp,image/gif" hidden>
+          <span class="ig-auth__avatar-preview" id="ig-avatar-preview">+</span>
+          <span class="ig-auth__avatar-label">Choose photo</span>
+        </label>
+        <p class="ig-auth__error" id="ig-signup-photo-error" hidden role="alert"></p>
+        <button class="ig-auth__submit" type="submit">Finish</button>
+        <button type="button" class="ig-auth__link-btn" id="ig-signup-skip-photo">Skip for now</button>
+      </form>
+    </div>
+
+    <div class="ig-auth__panel" data-auth-panel="google-setup" hidden>
+      <h2 class="ig-auth__title">Choose username</h2>
+      <p class="ig-auth__lead">Almost done — pick how others see you.</p>
+      <form class="ig-auth__form ig-auth__form--photo" id="ig-google-setup-form" enctype="multipart/form-data" novalidate>
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <input type="hidden" name="next" value="{{ request.path }}" data-auth-next>
+        <div class="ig-auth__field">
+          <input class="ig-auth__input" name="username" id="ig-google-username" autocomplete="username" required>
+          <p class="ig-auth__hint" id="ig-google-username-hint"></p>
+        </div>
+        <label class="ig-auth__avatar-picker">
+          <input type="file" name="avatar" accept="image/jpeg,image/png,image/webp,image/gif" hidden>
+          <span class="ig-auth__avatar-preview" id="ig-google-avatar-preview">+</span>
+          <span class="ig-auth__avatar-label">Profile photo (optional)</span>
+        </label>
+        <p class="ig-auth__error" id="ig-google-setup-error" hidden role="alert"></p>
+        <button class="ig-auth__submit" type="submit">Save &amp; continue</button>
+      </form>
+    </div>
+  </div>
+</div>

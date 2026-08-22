@@ -75,7 +75,7 @@ export function getSettingsCommands() {
       label: "Account settings",
       category: "Settings",
       keywords: ["profile", "password", "2fa"],
-      run: () => { window.location.href = "/account"; },
+      run: () => { window.location.href = "/app/account"; },
     },
     {
       id: "settings-store",

@@ -2,19 +2,23 @@
 {% block title %}Discover shops{% endblock %}
 {% block customer_head %}
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="">
-<link rel="stylesheet" href="{{ url_for('static', filename='guest.css') }}">
 {% endblock %}
 {% block content %}
-<section class="guest-discover mq-section" id="guest-discover"
+<section class="guest-discover mq-section{% if show_customer_tabbar|default(false) %} guest-discover--hub{% endif %}" id="guest-discover"
          data-user-lat="{{ user_lat if user_lat is not none else '' }}"
          data-user-lng="{{ user_lng if user_lng is not none else '' }}">
+  {% if not show_customer_tabbar|default(false) %}
   <header class="guest-discover__head">
-    <p class="mq-hero__eyebrow">Discover</p>
-    <h1 class="guest-discover__title">Find shops</h1>
-    <p class="guest-discover__lead">Search, browse the map, or sort by distance — opt-in active storefronts only.</p>
+    <div class="guest-page-head">
+      <h1 class="guest-discover__title">Browse</h1>
+      <p class="guest-page-head__lead">Discover shops near you — list or map.</p>
+    </div>
+    <a class="guest-page-head__link" href="{{ url_for('guest_venues') }}">Markets &amp; venues →</a>
   </header>
+  {% endif %}
 
   <div class="guest-discover__toolbar material-module">
+    {% if not show_customer_tabbar|default(false) %}
     <form class="guest-discover__search" method="get" action="{{ url_for('guest_discover') }}" role="search">
       {% if user_lat is not none %}<input type="hidden" name="lat" value="{{ user_lat }}">{% endif %}
       {% if user_lng is not none %}<input type="hidden" name="lng" value="{{ user_lng }}">{% endif %}
@@ -27,14 +31,15 @@
         <button class="mq-btn mq-btn-primary guest-discover__search-btn" type="submit">Search</button>
       </div>
     </form>
+    {% endif %}
 
-    <div class="guest-discover__filters" role="toolbar" aria-label="Discover filters">
-      <a class="guest-discover__filter{% if not open_only and not active_category %} is-active{% endif %}"
+    <div class="guest-discover__filters ch-ue-filters{% if show_customer_tabbar|default(false) %} ch-ue-filters--discover{% endif %}" role="toolbar" aria-label="Discover filters">
+      <a class="guest-discover__filter{% if show_customer_tabbar|default(false) %} ch-ue-filter{% endif %}{% if not open_only and not active_category %} is-active{% endif %}"
          href="{{ url_for('guest_discover', lat=user_lat, lng=user_lng, q=search_q or none) }}">All</a>
-      <a class="guest-discover__filter{% if open_only %} is-active{% endif %}"
+      <a class="guest-discover__filter{% if show_customer_tabbar|default(false) %} ch-ue-filter{% endif %}{% if open_only %} is-active{% endif %}"
          href="{{ url_for('guest_discover', lat=user_lat, lng=user_lng, q=search_q or none, open=1) }}">Open now</a>
       {% for cat in categories %}
-      <a class="guest-discover__filter{% if active_category == cat %} is-active{% endif %}"
+      <a class="guest-discover__filter ch-ue-filter{% if active_category == cat %} is-active{% endif %}"
          href="{{ url_for('guest_discover', lat=user_lat, lng=user_lng, q=search_q or none, category=cat) }}">{{ cat }}</a>
       {% endfor %}
     </div>
@@ -44,16 +49,16 @@
         <button type="button" class="guest-discover__view-btn is-active" data-view="list" role="tab" aria-selected="true">List</button>
         <button type="button" class="guest-discover__view-btn" data-view="map" role="tab" aria-selected="false">Map</button>
       </div>
-      <button type="button" class="mq-btn mq-btn-ghost guest-discover__loc-btn" id="discover-use-location">
+      <button type="button" class="mq-btn mq-btn-ghost guest-discover__loc-btn" id="discover-use-location"{% if show_customer_tabbar|default(false) %} hidden{% endif %}>
         Use my location
       </button>
-      <p class="guest-discover__loc-status" id="discover-loc-status" aria-live="polite">
+      <p class="guest-discover__loc-status" id="discover-loc-status" aria-live="polite"{% if show_customer_tabbar|default(false) %} hidden{% endif %}>
         {% if user_lat is not none and user_lng is not none %}Sorted by distance{% else %}Share location to sort by distance{% endif %}
       </p>
     </div>
   </div>
 
-  {% if recent_places %}
+  {% if recent_places and not show_customer_tabbar|default(false) %}
   <section class="guest-discover__recent" aria-labelledby="discover-recent-title">
     <div class="guest-discover__section-head">
       <h2 class="guest-discover__section-title" id="discover-recent-title">Your places</h2>
@@ -84,7 +89,7 @@
   <div id="discover-list-panel" class="guest-discover__list-panel">
     {% if stores %}
     <p class="guest-discover__result-count" id="discover-result-count">{{ stores|length }} shop{% if stores|length != 1 %}s{% endif %}</p>
-    <ul class="guest-places__list guest-discover__list" id="discover-store-list">
+    <ul class="guest-places__list guest-discover__list{% if show_customer_tabbar|default(false) %} guest-discover__list--ue{% endif %}" id="discover-store-list">
       {% for shop in stores %}
       <li data-discover-item
           data-store-id="{{ shop.store_id }}"
@@ -93,6 +98,9 @@
           data-distance-km="{{ shop.distance_km if shop.distance_km is not none else '' }}"
           {% if shop.lat is not none %}data-store-lat="{{ shop.lat }}"{% endif %}
           {% if shop.lng is not none %}data-store-lng="{{ shop.lng }}"{% endif %}>
+        {% if show_customer_tabbar|default(false) %}
+        {% include 'customer/_ue_store_card.html' %}
+        {% else %}
         <a class="guest-place-card material-module" href="{{ shop.storefront_url }}">
           <div class="guest-place-card__logo">
             {% if shop.logo_url %}
@@ -122,10 +130,13 @@
           </div>
           <span class="guest-place-card__chev" aria-hidden="true">→</span>
         </a>
+        {% endif %}
       </li>
       {% endfor %}
     </ul>
+    {% if not show_customer_tabbar|default(false) %}
     <p class="guest-discover__footnote">Listings are opt-in. Merchants control visibility in store settings.</p>
+    {% endif %}
     {% else %}
     <div class="mq-empty guest-discover__empty">
       <p><strong>No matching shops</strong></p>

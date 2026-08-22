@@ -1,0 +1,23 @@
+{% extends 'base.html' %}
+{% block title %}{% block legal_title %}Legal{% endblock %} — zintriq{% endblock %}
+{% block public_head %}
+<link rel="stylesheet" href="{{ url_for('static', filename='legal.css') }}">
+{% endblock %}
+{% block content %}
+<article class="legal-doc mq-public-container">
+  <header class="legal-doc__header">
+    <p class="legal-doc__eyebrow">Legal</p>
+    <h1 class="legal-doc__title">{% block legal_heading %}Legal{% endblock %}</h1>
+    {% block legal_meta %}{% endblock %}
+  </header>
+  <div class="legal-doc__body">
+    {% block legal_body %}{% endblock %}
+  </div>
+  <nav class="legal-doc__nav" aria-label="Legal documents">
+    <a href="{{ url_for('legal_page', page='privacy') }}">Privacy Policy</a>
+    <a href="{{ url_for('legal_page', page='terms') }}">Terms of Service</a>
+    <a href="{{ url_for('legal_page', page='cookies') }}">Cookie Policy</a>
+    <a href="{{ url_for('legal_page', page='imprint') }}">Imprint / Contact</a>
+  </nav>
+</article>
+{% endblock %}

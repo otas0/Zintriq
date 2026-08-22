@@ -1,4 +1,4 @@
-# Business OS — Platform Specification
+# Zintriq — Platform Specification
 
 > **Status:** Mandatory for every platform implementation  
 > **Code mirrors:** `bos/platform_spec.py`, `static/bos/platform/platform-spec.js`  
@@ -7,7 +7,7 @@
 
 ## Objective
 
-Define universal standards every Business OS Platform must follow.
+Define universal standards every Zintriq Platform must follow.
 
 Platforms are major capabilities — not separate applications. They must feel like different areas of the **same operating system**.
 
@@ -22,7 +22,7 @@ A Platform is a **complete business capability**.
 | Operates on one or more Business Objects | Own global system capabilities |
 | Implements business workflows and rules | Implement authentication, navigation, or search engines |
 | Integrates with other platforms via objects and events | Directly call unrelated platforms |
-| Follows shared Business OS standards | Duplicate Foundation or Core logic |
+| Follows shared Zintriq standards | Duplicate Foundation or Core logic |
 
 **Example — Customer Platform**
 
@@ -271,7 +271,7 @@ A platform is **complete** when:
 - [ ] Reuses shared components (tables, drawers, filter bar, action bar)
 - [ ] Follows Design System (tokens, materials, BOS components)
 - [ ] Does not duplicate Foundation or Core functionality
-- [ ] Behaves consistently with every other Business OS platform
+- [ ] Behaves consistently with every other Zintriq platform
 - [ ] Registered in `PLATFORM_REGISTRY`
 
 ---

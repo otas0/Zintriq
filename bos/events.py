@@ -1,4 +1,4 @@
-"""Business OS Event Bus — centralized domain event backbone.
+"""Zintriq Event Bus — centralized domain event backbone.
 
 Every significant business action emits an immutable, append-only domain event.
 Platforms subscribe via in-process handlers; modules never call each other directly.

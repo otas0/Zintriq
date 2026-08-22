@@ -1,4 +1,4 @@
-"""Business OS MVP database schema — six core tables and migrations."""
+"""Zintriq MVP database schema — six core tables and migrations."""
 
 from __future__ import annotations
 

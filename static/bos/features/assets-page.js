@@ -1,4 +1,4 @@
-/** Business OS — Assets (API-backed QR domain aggregate). */
+/** Zintriq — Assets (API-backed QR domain aggregate). */
 
 import { fetchJson, esc, wsQuery } from "../services/bos-api.js";
 

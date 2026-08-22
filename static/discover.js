@@ -41,7 +41,9 @@ function applyDiscoverSort(lat, lng) {
     if (Number.isFinite(storeLat) && Number.isFinite(storeLng)) {
       distanceKm = haversineKm(lat, lng, storeLat, storeLng);
       item.dataset.distanceKm = String(distanceKm);
-      const slot = item.querySelector(".guest-discover__distance--live, .guest-discover__distance");
+      const slot = item.querySelector(
+        ".guest-discover__distance--live, .guest-discover__distance, .ch-ue-store__distance-live",
+      );
       if (slot) {
         slot.textContent = formatDistance(distanceKm);
         slot.classList.remove("guest-discover__distance--live");
@@ -178,7 +180,7 @@ function setDiscoverView(mode) {
 
 document.addEventListener("DOMContentLoaded", () => {
   const btn = document.getElementById("discover-use-location");
-  const searchInput = document.getElementById("discover-search");
+  const searchInput = document.getElementById("discover-search") || document.getElementById("ch-hub-search-input");
   const params = new URLSearchParams(window.location.search);
   const paramLat = parseFloat(params.get("lat") || document.getElementById("guest-discover")?.dataset.userLat || "");
   const paramLng = parseFloat(params.get("lng") || document.getElementById("guest-discover")?.dataset.userLng || "");
@@ -232,6 +234,10 @@ document.addEventListener("DOMContentLoaded", () => {
   document.querySelectorAll(".guest-discover__view-btn").forEach((button) => {
     button.addEventListener("click", () => setDiscoverView(button.dataset.view || "list"));
   });
+
+  if (window.location.hash === "#map") {
+    setDiscoverView("map");
+  }
 
   if (!Number.isFinite(paramLat) && btn && navigator.geolocation && !params.get("q")) {
     btn.click();

@@ -1,6 +1,6 @@
 """Internal workspace ↔ store shim.
 
-Business OS treats **Experience** as the customer-facing object. The legacy
+Zintriq treats **Experience** as the customer-facing object. The legacy
 ``stores`` row exists only to satisfy ``qr_codes.store_id`` and old routing.
 One workspace gets one internal store — never surfaced as a separate product.
 """

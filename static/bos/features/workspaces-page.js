@@ -1,4 +1,4 @@
-/** Business OS — Workspace Platform (API-backed operating environment). */
+/** Zintriq — Workspace Platform (API-backed operating environment). */
 
 import { renderIntegrationsSection } from "./integrations-section.js";
 import { statusBadge, pageHeader, settingsNav, loadingState } from "../components/index.js";
@@ -82,7 +82,7 @@ async function renderAccount(container) {
     <section class="bos-panel" style="max-width:520px">
       <h2 class="bos-panel-title">Account</h2>
       <p class="cp-muted">Manage your login, password, and personal profile.</p>
-      <a class="bos-btn bos-btn-primary" href="/account" style="margin-top:12px">Open account settings</a>
+      <a class="bos-btn bos-btn-primary" href="/app/account" style="margin-top:12px">Open account settings</a>
     </section>`;
 }
 

@@ -57,7 +57,7 @@
 
   <section class="os-card os-card-padded">
     <h2 class="os-card-title">Place details</h2>
-    <form method="post" class="os-form">
+    <form method="post" class="os-form" enctype="multipart/form-data">
       <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
       <input type="hidden" name="action" value="update">
       <label class="os-field">
@@ -68,10 +68,25 @@
         <span class="os-label">Address</span>
         <input class="os-input" name="address" value="{{ place.address or '' }}">
       </label>
-      <label class="os-field">
-        <span class="os-label">Cover image URL</span>
-        <input class="os-input" name="cover_image" value="{{ place.cover_image or '' }}" placeholder="https://…">
-      </label>
+      <div class="os-image-block">
+        <h3 class="os-card-title">Cover image</h3>
+        <p class="os-panel-desc">Shown on the public directory and Markets &amp; venues cards.</p>
+        <div class="os-field">
+          <label class="os-label">Image URL <span class="os-label-hint">(optional if uploading)</span></label>
+          <input class="os-input" name="cover_image" id="place-cover-url" type="url" value="{{ place.cover_image or '' }}" placeholder="https://…">
+        </div>
+        <div class="os-field">
+          <label class="os-label">Or upload image</label>
+          <input name="cover_file" type="file" accept="image/jpeg,image/png,image/webp,image/gif" data-preview="place-cover-preview">
+        </div>
+        <div class="os-image-preview" id="place-cover-preview">
+          {% if place.cover_image %}
+          <img src="{{ place.cover_image }}" alt="Place cover">
+          {% else %}
+          <span>No cover selected</span>
+          {% endif %}
+        </div>
+      </div>
       <label class="os-field">
         <span class="os-label">Description</span>
         <textarea class="os-input" name="description" rows="3">{{ place.description or '' }}</textarea>
@@ -158,6 +173,7 @@
   </section>
 </div>
 <link rel="stylesheet" href="{{ url_for('static', filename='place.css') }}">
+<script src="{{ url_for('static', filename='owner.js') }}"></script>
 <script>
 document.getElementById("place-copy-url")?.addEventListener("click", async () => {
   const btn = document.getElementById("place-copy-url");

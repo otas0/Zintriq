@@ -1,4 +1,4 @@
-/* Business OS — unified shell layout */
+/* Zintriq — unified shell layout */
 
 .bos-body {
   margin: 0;
@@ -43,6 +43,26 @@
   color: var(--color-text-primary);
   font-weight: var(--weight-bold);
   font-size: 15px;
+}
+
+.bos-brand__logo,
+.zintriq-logo {
+  display: block;
+  height: 40px;
+  width: auto;
+  max-width: 200px;
+  object-fit: contain;
+  object-position: left center;
+  border: 0;
+  outline: none;
+  box-shadow: none;
+  background: transparent;
+}
+
+.bos-brand:focus,
+.bos-brand:focus-visible {
+  outline: none;
+  box-shadow: none;
 }
 
 .bos-brand__mark {
@@ -92,9 +112,18 @@
 }
 
 .bos-nav__item.is-active {
-  background: var(--color-info-soft);
+  background: var(--mq-brand-soft, #FFF8D6);
   color: var(--color-text-primary);
   font-weight: var(--weight-semibold);
+}
+
+.bos-nav__icon,
+.os-nav-icon,
+.ch-tabbar__icon,
+.help-topic-row__icon,
+.ue-acct-list__icon,
+.bos-mobile-tabbar__icon {
+  display: none !important;
 }
 
 .bos-nav__icon {
@@ -355,7 +384,7 @@
 
 .bos-create-picker__item:hover {
   border-color: var(--color-accent-orange);
-  background: var(--color-accent-orange-soft, #fff3eb);
+  background: var(--mq-brand-soft, #FFF8D6);
 }
 
 .bos-workspace-shell {
@@ -547,6 +576,14 @@ body.bos-drawer-open .bos-quick-fab { z-index: 50; }
   display: none;
 }
 
+.bos-sidebar.is-collapsed .bos-brand__logo {
+  height: 32px;
+  width: auto;
+  max-width: 48px;
+  object-fit: contain;
+  object-position: left center;
+}
+
 .bos-app.bos-sidebar-collapsed {
   grid-template-columns: var(--sidebar-w-collapsed) 1fr;
 }
@@ -564,11 +601,12 @@ body.bos-drawer-open .bos-quick-fab { z-index: 50; }
   display: none;
 }
 
-@media (max-width: 900px) {
+@media (max-width: 960px) {
   .bos-app { grid-template-columns: 1fr; }
   .bos-sidebar {
     position: fixed;
     left: 0;
+    top: 0;
     transform: translateX(-100%);
     transition: transform var(--motion-normal);
   }
@@ -577,8 +615,8 @@ body.bos-drawer-open .bos-quick-fab { z-index: 50; }
   .bos-mobile-nav-trigger {
     display: inline-flex;
     position: fixed;
-    top: 12px;
-    left: 12px;
+    top: max(12px, env(safe-area-inset-top, 0px));
+    left: max(12px, env(safe-area-inset-left, 0px));
     z-index: 80;
     align-items: center;
     justify-content: center;
@@ -590,6 +628,14 @@ body.bos-drawer-open .bos-quick-fab { z-index: 50; }
     background: var(--sheet-bg);
     cursor: pointer;
     box-shadow: var(--elevation-module);
+  }
+
+  .bos-workspace {
+    padding-top: calc(52px + env(safe-area-inset-top, 0px));
+  }
+
+  .merchant-page-head {
+    padding-top: 4px;
   }
 }
 

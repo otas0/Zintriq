@@ -1,0 +1,45 @@
+<div id="ch-location-root" class="ch-loc-sheet" hidden aria-hidden="true">
+  <div class="ch-loc-sheet__backdrop" data-loc-close tabindex="-1"></div>
+  <div class="ch-loc-sheet__panel" id="ch-location-sheet" role="dialog" aria-modal="true" aria-labelledby="ch-loc-title">
+    <div class="ch-loc-sheet__handle" aria-hidden="true"></div>
+    <button type="button" class="ch-loc-sheet__close" data-loc-close aria-label="Close">&times;</button>
+    <h2 class="ch-loc-sheet__title" id="ch-loc-title">Delivery location</h2>
+    <p class="ch-loc-sheet__lead">Shops and distances are based on where you are.</p>
+
+    <button type="button" class="ch-loc-sheet__action material-module" id="ch-loc-use-gps">
+      <span class="ch-loc-sheet__action-icon" aria-hidden="true">◎</span>
+      <span class="ch-loc-sheet__action-body">
+        <strong>Use current location</strong>
+        <span class="ch-loc-sheet__action-sub" id="ch-loc-gps-status">Share GPS to sort by distance</span>
+      </span>
+    </button>
+
+    <form class="ch-loc-sheet__search material-module" id="ch-loc-address-form" role="search">
+      <label class="visually-hidden" for="ch-loc-address-input">Search address</label>
+      <input class="ch-loc-sheet__search-input" type="search" id="ch-loc-address-input"
+             placeholder="Search city, area, or address…" autocomplete="off">
+      <button type="submit" class="mq-btn mq-btn-primary ch-loc-sheet__search-btn">Search</button>
+    </form>
+    <ul class="ch-loc-sheet__results" id="ch-loc-address-results" hidden></ul>
+
+    {% if hub_recent_places %}
+    <section class="ch-loc-sheet__section" aria-labelledby="ch-loc-saved-title">
+      <h3 class="ch-loc-sheet__section-title" id="ch-loc-saved-title">Saved places</h3>
+      <ul class="ch-loc-sheet__saved">
+        {% for place in hub_recent_places %}
+        <li>
+          <a class="ch-loc-sheet__saved-row" href="{{ place.storefront_url }}">
+            {% if place.logo_url %}
+            <img src="{{ place.logo_url }}" alt="" class="ch-loc-sheet__saved-logo">
+            {% else %}
+            <span class="ch-loc-sheet__saved-logo ch-loc-sheet__saved-logo--initial">{{ place.name[0]|upper }}</span>
+            {% endif %}
+            <span>{{ place.name }}</span>
+          </a>
+        </li>
+        {% endfor %}
+      </ul>
+    </section>
+    {% endif %}
+  </div>
+</div>

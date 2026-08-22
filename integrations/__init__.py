@@ -1,4 +1,4 @@
-"""Business OS Integration Layer."""
+"""Zintriq Integration Layer."""
 
 from integrations.subscription import init_subscription_tables
 from integrations.user_profile import init_user_profile_tables

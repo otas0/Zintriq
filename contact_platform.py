@@ -1,4 +1,4 @@
-"""Contact Platform — universal relationship management for Business OS.
+"""Contact Platform — universal relationship management for Zintriq.
 
 Physical storage uses `customer_profiles` (single source of truth) plus contact extension tables.
 """

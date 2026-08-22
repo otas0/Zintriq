@@ -36,6 +36,15 @@
     </div>
   </div>
   <div class="os-field"><label class="os-label">Description</label><textarea class="os-textarea" name="description">{{ item.description or '' }}</textarea></div>
+  {% if store_checkout_enabled|default(false) %}
+  <div class="os-field os-field--check">
+    <label class="os-check">
+      <input type="checkbox" name="allow_cart" value="1"{% if item.allow_cart|default(0)|int == 1 %} checked{% endif %}>
+      Allow add to cart
+    </label>
+    <p class="os-label-hint">When checked, customers can add this item to their cart and pay online.</p>
+  </div>
+  {% endif %}
   <div class="os-field"><label class="os-label">Internal notes</label><textarea class="os-textarea" name="internal_notes">{{ item.internal_notes or '' }}</textarea></div>
   <div class="os-image-block">
     <div class="os-field"><label class="os-label">Image URL <span class="os-label-hint">(optional if uploading)</span></label><input class="os-input" name="image_url" id="item-image-url" type="text" value="{{ item.image_url or '' }}"></div>

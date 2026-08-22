@@ -1,4 +1,4 @@
-/** Business OS — Contact Platform (universal relationship management). */
+/** Zintriq — Contact Platform (universal relationship management). */
 
 import { statusBadge, tag } from "../components/index.js";
 import { showToast, openDrawer, closeDrawer, renderActionBar, apiPost } from "../services/api.js";

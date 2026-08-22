@@ -1,4 +1,4 @@
-"""Business OS domain model — canonical registry for ownership, relationships, and lifecycle.
+"""Zintriq domain model — canonical registry for ownership, relationships, and lifecycle.
 
 Human-readable spec: docs/bos/DOMAIN_MODEL.md
 Frontend mirror: static/bos/platform/domain-model.js

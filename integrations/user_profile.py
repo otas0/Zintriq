@@ -1,4 +1,4 @@
-"""UserProfile — Business OS identity layer (separate from auth provider)."""
+"""UserProfile — Zintriq identity layer (separate from auth provider)."""
 
 from __future__ import annotations
 
@@ -42,7 +42,7 @@ def upsert_user_profile(
     full_name: str | None = None,
     avatar_url: str | None = None,
 ) -> int:
-    """Link external auth identity to Business OS user."""
+    """Link external auth identity to Zintriq user."""
     email = email.strip().lower()
     existing = conn.execute("SELECT id FROM user_profiles WHERE user_id=?", (user_id,)).fetchone()
     now = _now()

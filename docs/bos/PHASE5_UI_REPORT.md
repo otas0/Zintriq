@@ -1,14 +1,14 @@
-# Business OS — Phase 5 UI & UX Polish Report
+# Zintriq — Phase 5 UI & UX Polish Report
 
 **Date:** August 1, 2026  
-**Scope:** Presentation-only refinements across Business OS (`/app/*`)  
+**Scope:** Presentation-only refinements across Zintriq (`/app/*`)  
 **Constraint verification:** No business logic, architecture, workflows, or feature changes.
 
 ---
 
 ## Executive Summary
 
-Phase 5 delivered a unified visual polish layer across Business OS. All changes are CSS and presentational markup only — no JavaScript behavior, store logic, routing, or workflow modifications.
+Phase 5 delivered a unified visual polish layer across Zintriq. All changes are CSS and presentational markup only — no JavaScript behavior, store logic, routing, or workflow modifications.
 
 **Primary deliverable:** `static/bos/polish.css` (loaded after `shell.css` and `components.css`)
 

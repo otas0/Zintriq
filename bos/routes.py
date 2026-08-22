@@ -1,4 +1,4 @@
-"""Business OS API and page routes — MVP scope."""
+"""Zintriq API and page routes — MVP scope."""
 
 from __future__ import annotations
 
@@ -26,7 +26,15 @@ def _current_user():
 def _login_required(view):
     @wraps(view)
     def wrapped(*args, **kwargs):
-        if not _current_user():
+        from flask import session
+
+        from app import current_user
+        from customer_account_platform import current_customer_id
+
+        if current_customer_id(session) and not session.get("user_id"):
+            flash("You are signed in as a shopper. Business tools need a separate business sign-in.", "error")
+            return redirect(url_for("guest_home"))
+        if not current_user():
             flash("Please sign in to manage a storefront.", "error")
             return redirect(url_for("login", next=request.path))
         return view(*args, **kwargs)

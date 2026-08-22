@@ -76,36 +76,45 @@ def main() -> None:
         conn.commit()
 
     client = app.test_client()
+    http_slug = None
 
-    with db() as conn:
-        place = create_place(conn, venue_id, name="8C HTTP Hall")
-        http_slug = place["slug"]
-        conn.execute("UPDATE stores SET owner_id = ? WHERE id = ?", (tenant_id, store_id))
-        conn.commit()
+    try:
+        with db() as conn:
+            place = create_place(conn, venue_id, name="8C HTTP Hall")
+            http_slug = place["slug"]
+            conn.execute("UPDATE stores SET owner_id = ? WHERE id = ?", (tenant_id, store_id))
+            conn.commit()
 
-    r = client.get(f"/place/{http_slug}")
-    assert r.status_code == 200
-    assert b"Shop owner" in r.data
-    assert b"Sign in to apply" in r.data
+        r = client.get(f"/place/{http_slug}")
+        assert r.status_code == 200
+        assert b"Shop owner" in r.data
+        assert b"Sign in to apply" in r.data
 
-    with client.session_transaction() as sess:
-        sess["user_id"] = tenant_id
-    r2 = client.get(f"/place/{http_slug}")
-    assert r2.status_code == 200
-    assert b"Apply to list here" in r2.data
+        with client.session_transaction() as sess:
+            sess["user_id"] = tenant_id
+        r2 = client.get(f"/place/{http_slug}")
+        assert r2.status_code == 200
+        assert b"Apply to list here" in r2.data
 
-    with client.session_transaction() as sess:
-        sess["user_id"] = venue_id
-    r3 = client.get(f"/manage/places/{http_slug}")
-    assert r3.status_code == 200
-    assert b"Tenant apply link" in r3.data
-    assert b"Pending now" in r3.data
-
-    with db() as conn:
-        conn.execute("UPDATE stores SET owner_id = ? WHERE id = ?", (orig_owner, store_id))
-        conn.execute("DELETE FROM places WHERE slug = ?", (http_slug,))
-        conn.execute("DELETE FROM users WHERE id IN (?, ?)", (venue_id, tenant_id))
-        conn.commit()
+        with client.session_transaction() as sess:
+            sess["user_id"] = venue_id
+        r3 = client.get(f"/manage/places/{http_slug}")
+        assert r3.status_code == 200
+        assert b"Tenant apply link" in r3.data
+        assert b"Pending now" in r3.data
+    finally:
+        with db() as conn:
+            conn.execute("UPDATE stores SET owner_id = ? WHERE id = ?", (orig_owner, store_id))
+            if http_slug:
+                row = conn.execute("SELECT id FROM places WHERE slug = ?", (http_slug,)).fetchone()
+                if row:
+                    pid = int(row["id"])
+                    conn.execute("DELETE FROM place_analytics_events WHERE place_id = ?", (pid,))
+                    conn.execute("DELETE FROM place_tenant_applications WHERE place_id = ?", (pid,))
+                    conn.execute("DELETE FROM place_stores WHERE place_id = ?", (pid,))
+                    conn.execute("DELETE FROM places WHERE id = ?", (pid,))
+            conn.execute("DELETE FROM users WHERE id IN (?, ?)", (venue_id, tenant_id))
+            conn.commit()
 
     print("place Phase 8C: OK")
 

@@ -1,4 +1,4 @@
-# Business OS — Data Architecture Specification
+# Zintriq — Data Architecture Specification
 
 > **Status:** Platform-wide data principles (not database DDL)  
 > **Code mirrors:** `bos/data_architecture.py`, `static/bos/platform/data-architecture.js`  
@@ -8,7 +8,7 @@
 
 ## Objective
 
-Define how business data is created, stored, referenced, synchronized, searched, versioned, and consumed throughout Business OS.
+Define how business data is created, stored, referenced, synchronized, searched, versioned, and consumed throughout Zintriq.
 
 This is a **platform-wide data architecture specification** — not a database schema. Every platform must comply.
 

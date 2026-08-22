@@ -1,11 +1,11 @@
-# Business OS — Event Bus & Activity Architecture
+# Zintriq — Event Bus & Activity Architecture
 
 > **Status:** Canonical event architecture  
 > **Code:** `bos/events.py`, `event_platform.py`, `static/bos/platform/event-bus.js`
 
 ## Philosophy
 
-Business OS is **event-driven**. Objects perform actions → actions emit domain events → platforms subscribe and react. Modules never call each other directly.
+Zintriq is **event-driven**. Objects perform actions → actions emit domain events → platforms subscribe and react. Modules never call each other directly.
 
 ## Event Flow
 

@@ -1,4 +1,4 @@
-# Business OS — Object Standards
+# Zintriq — Object Standards
 
 > **Status:** Mandatory for every implementation  
 > **Scope:** Universal object behavior — not domain ownership (see [DOMAIN_MODEL.md](./DOMAIN_MODEL.md))  
@@ -9,7 +9,7 @@
 
 ## Philosophy
 
-Business OS is **object-driven**.
+Zintriq is **object-driven**.
 
 - Every object follows the same **lifecycle**.
 - Every object follows the same **interaction model**.
@@ -372,7 +372,7 @@ Consistency beats object-specific endpoints.
 
 ## UI Consistency
 
-Reuse Business OS Design System components only:
+Reuse Zintriq Design System components only:
 
 | Component | Use |
 |-----------|-----|

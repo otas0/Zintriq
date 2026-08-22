@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Business OS Team Platform — automated verification against real DB + APIs."""
+"""Zintriq Team Platform — automated verification against real DB + APIs."""
 
 from __future__ import annotations
 

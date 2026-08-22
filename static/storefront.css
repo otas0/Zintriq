@@ -1,4 +1,4 @@
-/* Customer storefront — Uber Eats–style layout */
+/* Customer storefront */
 
 .sf-page {
   --sf-sidebar: clamp(220px, 22vw, 300px);
@@ -6,6 +6,15 @@
   --sf-shop-nav-height: 44px;
   --sf-search-height: 52px;
   padding-top: var(--space-2);
+  padding-bottom: calc(72px + env(safe-area-inset-bottom, 0px));
+}
+
+.sf-preview-banner {
+  margin: 0;
+  border-radius: 0;
+  text-align: center;
+  font-size: 13px;
+  font-weight: var(--weight-semibold);
 }
 
 .sf-categories--desktop {
@@ -224,6 +233,69 @@
   overflow: hidden;
   background: #fff5f6;
   border: 1px solid #f5c6cb;
+}
+
+.sf-reviews {
+  margin: 0 0 var(--space-4);
+  padding: 16px;
+  border-radius: var(--module-radius);
+  background: #fff;
+  border: 1px solid var(--color-border, #e8eaed);
+}
+.sf-reviews__head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+.sf-reviews__title {
+  margin: 0;
+  font-size: var(--font-h4, 1.1rem);
+  font-weight: var(--weight-semibold, 650);
+}
+.sf-reviews__summary {
+  margin: 0;
+  font-size: 13px;
+  color: var(--color-muted, #667085);
+}
+.sf-reviews__list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 12px;
+}
+.sf-reviews__item {
+  padding: 12px;
+  border-radius: 10px;
+  background: var(--color-surface-2, #f8f9fb);
+}
+.sf-reviews__meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+  margin-bottom: 6px;
+  font-size: 13px;
+}
+.sf-reviews__stars {
+  color: #ca8a04;
+  letter-spacing: 1px;
+}
+.sf-reviews__platform {
+  margin-left: auto;
+  font-size: 11px;
+  font-weight: 650;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--color-muted, #667085);
+}
+.sf-reviews__comment {
+  margin: 0;
+  font-size: 14px;
+  line-height: 1.45;
+  color: var(--color-text, #111);
 }
 
 .sf-deals-bar__head {
@@ -719,10 +791,35 @@
 .sf-tile {
   flex: 0 0 168px;
   scroll-snap-align: start;
+  color: inherit;
+  display: flex;
+  flex-direction: column;
+}
+
+.sf-tile__top {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+}
+
+.sf-tile__media-wrap {
+  position: relative;
+}
+
+.sf-tile__media-link,
+.sf-tile__body-link {
+  text-decoration: none;
+  color: inherit;
+  display: block;
+}
+
+.sf-tile__link {
   text-decoration: none;
   color: inherit;
   display: flex;
   flex-direction: column;
+  flex: 1;
 }
 
 .sf-tile__media {
@@ -778,6 +875,94 @@
   font-weight: var(--weight-normal);
   box-shadow: 0 1px 4px rgba(0, 0, 0, 0.08);
 }
+
+.sf-tile__add--btn {
+  cursor: pointer;
+  z-index: 3;
+  pointer-events: auto;
+}
+
+.sf-tile__add--done {
+  background: var(--color-brand, #fc7251);
+  color: #fff;
+  border-color: transparent;
+}
+
+.sf-header-cart {
+  font-weight: var(--weight-semibold);
+}
+
+.sf-cart-bar {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 200;
+  padding: 12px 16px calc(12px + env(safe-area-inset-bottom));
+  background: rgba(255, 255, 255, 0.96);
+  border-top: 1px solid var(--color-border);
+  box-shadow: 0 -4px 24px rgba(0, 0, 0, 0.08);
+}
+
+.sf-cart-bar__inner {
+  max-width: 640px;
+  margin: 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.sf-cart-bar__count {
+  font-weight: var(--weight-semibold);
+}
+
+.sf-checkout-lines {
+  list-style: none;
+  margin: 0 0 16px;
+  padding: 0;
+}
+
+.sf-checkout-lines li {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 8px 0;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.sf-checkout-totals {
+  margin: 0 0 20px;
+}
+
+.sf-checkout-totals > div {
+  display: flex;
+  justify-content: space-between;
+  padding: 4px 0;
+}
+
+.sf-checkout-totals__total {
+  font-weight: var(--weight-bold);
+  font-size: 1.1rem;
+  margin-top: 8px;
+  padding-top: 8px;
+  border-top: 1px solid var(--color-border);
+}
+
+.sf-checkout-note {
+  margin-top: 12px;
+  font-size: 13px;
+}
+
+.mq-btn-block {
+  width: 100%;
+  margin-top: 12px;
+}
+
+.sf-checkout--success .mq-hero__title {
+  color: var(--color-success, #059669);
+}
+
 
 .sf-tile__body {
   padding: 8px 2px 0;
@@ -1028,6 +1213,94 @@
   font-weight: var(--weight-normal);
   font-size: 0.9em;
   margin-left: 6px;
+}
+
+/* Item detail + checkout subpages */
+.sf-item-detail {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: var(--space-4);
+  max-width: 960px;
+  margin: 0 auto;
+  padding: var(--space-3) var(--space-2);
+}
+
+.sf-item-detail__media {
+  border-radius: 16px;
+  overflow: hidden;
+  aspect-ratio: 1;
+  display: grid;
+  place-items: center;
+  background: var(--panel-bg);
+}
+
+.sf-item-detail__media img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.sf-item-detail__placeholder {
+  font-size: 48px;
+  font-weight: var(--weight-bold);
+  opacity: 0.3;
+}
+
+.sf-item-detail__cat {
+  margin: 0 0 6px;
+  font-size: 13px;
+  color: var(--color-text-muted);
+}
+
+.sf-item-detail__name {
+  margin: 0 0 10px;
+  font-size: clamp(1.35rem, 3vw, 1.75rem);
+  font-weight: var(--weight-bold);
+}
+
+.sf-item-detail__price {
+  margin: 0 0 12px;
+  font-size: 18px;
+}
+
+.sf-item-detail__price strong {
+  font-weight: var(--weight-bold);
+}
+
+.sf-item-detail__price s {
+  margin-left: 8px;
+  color: var(--color-text-muted);
+}
+
+.sf-item-detail__desc {
+  margin: 0 0 var(--space-3);
+  color: var(--color-text-secondary);
+  line-height: 1.55;
+}
+
+.sf-item-detail__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.sf-checkout-page {
+  max-width: 520px;
+  margin: var(--space-3) auto;
+  padding: var(--space-3);
+}
+
+.sf-checkout-page__title {
+  margin: 0 0 var(--space-3);
+  font-size: 1.5rem;
+  font-weight: var(--weight-bold);
+}
+
+.sf-tile__badge--inline {
+  position: static;
+  display: inline-block;
+  margin-left: 8px;
+  vertical-align: middle;
 }
 
 /* ── Mobile ── */

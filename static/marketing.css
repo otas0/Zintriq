@@ -1,4 +1,4 @@
-/* Business OS — public/marketing (material-based) */
+/* Zintriq — public/marketing (material-based) */
 
 .mq-public {
   min-height: 100vh;
@@ -129,6 +129,25 @@
 
 .mq-home-hero__inner {
   max-width: 560px;
+}
+
+.mq-home-hero__brand {
+  display: inline-flex;
+  margin: 0 0 var(--space-3);
+  text-decoration: none;
+}
+
+.mq-home-hero__logo {
+  display: block;
+  height: clamp(52px, 8vw, 72px);
+  width: auto;
+  max-width: 320px;
+  object-fit: contain;
+  object-position: left center;
+  border: 0;
+  outline: none;
+  box-shadow: none;
+  background: transparent;
 }
 
 .mq-home-hero__eyebrow {
@@ -485,7 +504,7 @@
   align-items: center;
   justify-content: center;
   gap: 10px;
-  border: 1px solid var(--color-border);
+  border: 2px solid var(--color-text-primary);
   border-radius: var(--mq-radius-sm);
   background: var(--module-bg);
   color: var(--color-text-primary);

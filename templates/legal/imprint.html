@@ -1,0 +1,34 @@
+{% extends 'legal/base.html' %}
+{% block legal_title %}Imprint / Contact{% endblock %}
+{% block legal_heading %}IMPRINT / CONTACT{% endblock %}
+{% block legal_meta %}<p class="legal-doc__meta">Effective Date: August 21, 2026</p>{% endblock %}
+{% block legal_body %}
+<section>
+  <h2>1. OPERATOR</h2>
+  <p>This website is operated by an individual student project under the brand name <strong>zintriq</strong>.</p>
+  <table>
+    <tbody>
+      <tr><th>Brand</th><td>zintriq</td></tr>
+      <tr><th>Operational Base</th><td>Shanghai, People's Republic of China</td></tr>
+      <tr><th>Data Storage</th><td>Frankfurt, Germany (European Union)</td></tr>
+      <tr><th>Contact Email</th><td><a href="mailto:{{ contact_email }}">{{ contact_email }}</a></td></tr>
+    </tbody>
+  </table>
+</section>
+
+<section>
+  <h2>2. CONTACT</h2>
+  <p>For general inquiries, privacy requests, legal questions, or imprint-related correspondence, please email:</p>
+  <p><a href="mailto:{{ contact_email }}">{{ contact_email }}</a></p>
+  <ul>
+    <li>Privacy / data requests: see also our <a href="{{ url_for('legal_page', page='privacy') }}">Privacy Policy</a>.</li>
+    <li>Contractual terms: see our <a href="{{ url_for('legal_page', page='terms') }}">Terms of Service</a>.</li>
+    <li>Cookies: see our <a href="{{ url_for('legal_page', page='cookies') }}">Cookie Policy</a>.</li>
+  </ul>
+</section>
+
+<section>
+  <h2>3. RESPONSIBILITY FOR CONTENT</h2>
+  <p>As a technical intermediary and student project, zintriq provides the Platform on an "as is" basis. User-generated content and third-party links remain the responsibility of their respective owners. See the Terms of Service for liability limitations.</p>
+</section>
+{% endblock %}

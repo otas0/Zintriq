@@ -1,4 +1,4 @@
-/** Business OS — Calendar (operational support for bookings and events). */
+/** Zintriq — Calendar (operational support for bookings and events). */
 
 import { statusBadge } from "../components/index.js";
 import { showToast, openDrawer, closeDrawer, apiPost } from "../services/api.js";
@@ -21,7 +21,7 @@ const EVENT_TYPE_LABELS = {
 };
 
 const SOURCE_LABELS = {
-  business_os: "Business OS",
+  business_os: "Zintriq",
   google_calendar: "Google Calendar",
   microsoft_calendar: "Microsoft Calendar",
 };
@@ -190,7 +190,7 @@ async function openConflictsPanel() {
     return;
   }
   openDrawer("Sync conflicts", `
-    <p class="cp-muted">Google Calendar and Business OS both changed these events. Choose which version to keep.</p>
+    <p class="cp-muted">Google Calendar and Zintriq both changed these events. Choose which version to keep.</p>
     <div class="cal-conflicts-list">
       ${conflicts.map((c) => `
         <article class="cal-conflict-card" data-conflict-id="${c.id}">

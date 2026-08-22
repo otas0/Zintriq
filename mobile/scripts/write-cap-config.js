@@ -27,7 +27,7 @@ const cleartext = base.startsWith("http://");
 
 const config = {
   appId: "com.businessos.app",
-  appName: "Business OS",
+  appName: "Zintriq",
   webDir: "www",
   server: {
     url: startUrl,

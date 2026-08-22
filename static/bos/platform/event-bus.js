@@ -1,4 +1,4 @@
-/** Business OS Event Bus — client-side domain event backbone. */
+/** Zintriq Event Bus — client-side domain event backbone. */
 
 /** @typedef {{ event_type: string, object_type: string, object_id: number|string, title?: string, detail?: string, metadata?: object, href?: string, created_at?: string }} DomainEventDetail */
 

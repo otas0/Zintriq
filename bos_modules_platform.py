@@ -1,4 +1,4 @@
-"""Business OS module APIs — organizations, catalog, orders, team, tags, assets, documents, operations."""
+"""Zintriq module APIs — organizations, catalog, orders, team, tags, assets, documents, operations."""
 
 from __future__ import annotations
 
@@ -170,10 +170,14 @@ def register_bos_modules_platform(app) -> None:
                 abort(404)
             fields = []
             params = []
-            for col in ("name", "price", "description", "sku", "status", "inventory"):
+            for col in ("name", "price", "description", "sku", "status", "inventory", "allow_cart"):
                 if col in data:
                     fields.append(f"{col}=?")
-                    params.append(data[col])
+                    if col == "allow_cart":
+                        from storefront_platform import normalize_allow_cart
+                        params.append(normalize_allow_cart(data[col]))
+                    else:
+                        params.append(data[col])
             if fields:
                 fields.append("updated_at=?")
                 params.append(_now())
@@ -438,6 +442,7 @@ def _catalog_row(row) -> dict:
         "description": d.get("description") or "",
         "status": status,
         "inventory": d.get("inventory"),
+        "allow_cart": int(d.get("allow_cart") or 0),
         "store_id": d["store_id"],
         "store_name": d.get("store_name"),
         "store_slug": d.get("store_slug"),

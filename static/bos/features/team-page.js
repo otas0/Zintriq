@@ -1,4 +1,4 @@
-/** Business OS — Team Platform (multi-user collaboration foundation). */
+/** Zintriq — Team Platform (multi-user collaboration foundation). */
 
 import { StatusBadge, statusBadge, MemberCard, mountCardGrid, PageHeader, Skeleton, InviteMemberModal } from "../components/index.js";
 import { showToast, openDrawer, closeDrawer, renderActionBar } from "../services/api.js";

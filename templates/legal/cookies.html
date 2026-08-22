@@ -1,0 +1,71 @@
+{% extends 'legal/base.html' %}
+{% block legal_title %}Cookie Policy{% endblock %}
+{% block legal_heading %}COOKIE POLICY{% endblock %}
+{% block legal_meta %}<p class="legal-doc__meta">Effective Date: August 21, 2026</p>{% endblock %}
+{% block legal_body %}
+<section>
+  <h2>1. WHAT ARE COOKIES?</h2>
+  <p>Cookies are small text files stored on your device (computer, smartphone, tablet) when you visit a website. They are widely used to make websites work more efficiently and to provide information to the site owners.</p>
+</section>
+
+<section>
+  <h2>2. HOW WE USE COOKIES</h2>
+  <p>zintriq uses cookies strictly for the following purposes:</p>
+  <table>
+    <thead>
+      <tr><th>Cookie Type</th><th>Purpose</th><th>Duration</th></tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td>Strictly Necessary / Session Cookies</td>
+        <td>To keep you logged in, maintain your session state, and prevent security breaches.</td>
+        <td>Session (deleted when you close your browser)</td>
+      </tr>
+      <tr>
+        <td>Preference Cookies</td>
+        <td>To remember your language preferences and region settings.</td>
+        <td>Up to 12 months</td>
+      </tr>
+    </tbody>
+  </table>
+  <p>We DO NOT use:</p>
+  <ul>
+    <li>Advertising or marketing cookies</li>
+    <li>Cross-site tracking cookies</li>
+    <li>Third-party analytical cookies (we use privacy-first, cookieless analytics)</li>
+    <li>Behavioral targeting cookies</li>
+  </ul>
+</section>
+
+<section>
+  <h2>3. THIRD-PARTY COOKIES</h2>
+  <p>When you click on payment buttons (PayPal, Stripe, etc.) or review widgets (Trustpilot, Google Reviews, etc.), you are redirected to third-party platforms. These external sites may place their own cookies on your device. zintriq has no access to or control over these third-party cookies. We recommend reviewing the cookie policies of each third-party platform you interact with.</p>
+</section>
+
+<section>
+  <h2>4. YOUR CONSENT</h2>
+  <p>By clicking "Accept" on our cookie banner, or by continuing to use the Platform, you consent to our use of strictly necessary and preference cookies as described above. We do not require consent for essential cookies, but we inform you of their use.</p>
+</section>
+
+<section>
+  <h2>5. YOUR CONTROL</h2>
+  <p>Most browsers allow you to:</p>
+  <ul>
+    <li>View and delete individual cookies</li>
+    <li>Block all cookies</li>
+    <li>Block third-party cookies</li>
+    <li>Set preferences for specific websites</li>
+  </ul>
+  <p>Please note that blocking Strictly Necessary cookies may render the Platform inoperable (you may not be able to log in or use core features).</p>
+</section>
+
+<section>
+  <h2>6. CHANGES TO THIS POLICY</h2>
+  <p>We may update this Cookie Policy from time to time. Any changes will be posted on this page with an updated Effective Date.</p>
+</section>
+
+<section>
+  <h2>7. CONTACT</h2>
+  <p>If you have any questions about our use of cookies, please contact us at: <a href="mailto:{{ contact_email }}">{{ contact_email }}</a></p>
+</section>
+{% endblock %}

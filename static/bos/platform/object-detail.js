@@ -9,7 +9,7 @@ import { groupRelatedObjects } from "./relationships.js";
 import { renderPropertiesPanel, parsePropertyForm, renderPropertyDisplay } from "./properties.js";
 import { formatActivityAction } from "./activity.js";
 import { assignTag, removeTag } from "./tags.js";
-import { listAttachments, addAttachment, removeAttachment, getFileIcon, mockPickFile } from "./attachments.js";
+import { listAttachments, addAttachment, removeAttachment, getFileIcon, pickFileFromInput } from "./attachments.js";
 import { listNotes, addNote, updateNote, deleteNote, renderNoteBody } from "./notes.js";
 import { trackObjectRecent, toggleObjectFavorite, isObjectFavorite } from "./recents.js";
 
@@ -69,7 +69,7 @@ function renderActivityTimeline(collection, id) {
 function renderAttachmentsPanel(collection, id) {
   const items = listAttachments(collection, id);
   return `<div class="bos-att-panel">
-    <button type="button" class="os-btn os-btn-ghost os-btn-sm" id="bos-add-attachment">Add attachment (mock)</button>
+    <button type="button" class="os-btn os-btn-ghost os-btn-sm" id="bos-add-attachment">Add attachment</button>
     ${items.length ? `<ul class="bos-att-list">${items.map((a) => `
       <li class="bos-att-item">
         <span class="bos-att-icon">${getFileIcon(String(a.type))}</span>
@@ -152,9 +152,10 @@ function wireTabPanel(tab, typeDef, record, collection, id) {
   }
 
   if (tab === "attachments") {
-    body.querySelector("#bos-add-attachment")?.addEventListener("click", () => {
-      const mock = mockPickFile();
-      addAttachment(collection, id, mock);
+    body.querySelector("#bos-add-attachment")?.addEventListener("click", async () => {
+      const fileMeta = await pickFileFromInput();
+      if (!fileMeta) return;
+      addAttachment(collection, id, fileMeta);
       showToast("Attachment added");
       renderObjectDetail(collection, id, tab);
     });

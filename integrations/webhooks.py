@@ -1,4 +1,4 @@
-"""Webhook handlers — external provider events → Business OS state."""
+"""Webhook handlers — external provider events → Zintriq state."""
 
 from __future__ import annotations
 

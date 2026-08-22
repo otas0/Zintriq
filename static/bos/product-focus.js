@@ -1,5 +1,5 @@
 /**
- * Business OS MVP — product scope & navigation.
+ * Zintriq MVP — product scope & navigation.
  * Store · Team · Settings
  */
 
@@ -17,11 +17,11 @@ export const MVP_FLAGS = {
   advancedAnalytics: false,
   /** Plugin marketplace & external integrations. */
   plugins: false,
-  reputationPlugins: false,
+  reputationPlugins: true,
   googleCalendarSync: false,
-  connectedApps: false,
-  /** Settings → Integrations section (placeholder cards only). */
-  integrationsPlaceholder: true,
+  connectedApps: true,
+  /** Deprecated — integrations load from /api/integrations/plugins. */
+  integrationsPlaceholder: false,
   showCalendarNav: false,
   showOperationsNav: false,
 };
@@ -37,17 +37,17 @@ export const PRODUCT_FLAGS = MVP_FLAGS;
 
 /** @type {readonly NavItem[]} */
 export const PRODUCT_NAV = [
-  { id: "store", label: "Stores", icon: "▣", path: "/app/store", group: "core" },
-  { id: "team", label: "Team", icon: "◈", path: "/app/team", group: "team" },
-  { id: "settings", label: "Settings", icon: "⚙", path: "/app/settings", group: "settings" },
+  { id: "store", label: "Stores", icon: "", path: "/app/store", group: "core" },
+  { id: "team", label: "Team", icon: "", path: "/app/team", group: "team" },
+  { id: "settings", label: "Settings", icon: "", path: "/app/settings", group: "settings" },
   /* Legacy — redirect to Store tabs */
-  { id: "qr", label: "Experiences", icon: "⬡", path: "/app/store#experiences", group: "legacy", hidden: true },
-  { id: "responses", label: "Responses", icon: "✎", path: "/app/store#responses", group: "legacy", hidden: true },
-  { id: "customers", label: "Customers", icon: "★", path: "/app/store#responses", group: "legacy", hidden: true },
-  { id: "interactions", label: "Interactions", icon: "↔", path: "/app/store#responses", group: "legacy", hidden: true },
-  { id: "feedback", label: "Feedback", icon: "★", path: "/app/store#responses", group: "legacy", hidden: true },
-  { id: "booking", label: "Booking", icon: "◷", path: "/app/booking", group: "legacy", hidden: true },
-  { id: "calendar", label: "Calendar", icon: "📅", path: "/app/calendar", group: "legacy", hidden: true },
+  { id: "qr", label: "Experiences", icon: "", path: "/app/store#experiences", group: "legacy", hidden: true },
+  { id: "responses", label: "Responses", icon: "", path: "/app/store#responses", group: "legacy", hidden: true },
+  { id: "customers", label: "Customers", icon: "", path: "/app/store#responses", group: "legacy", hidden: true },
+  { id: "interactions", label: "Interactions", icon: "", path: "/app/store#responses", group: "legacy", hidden: true },
+  { id: "feedback", label: "Feedback", icon: "", path: "/app/store#responses", group: "legacy", hidden: true },
+  { id: "booking", label: "Booking", icon: "", path: "/app/booking", group: "legacy", hidden: true },
+  { id: "calendar", label: "Calendar", icon: "", path: "/app/calendar", group: "legacy", hidden: true },
 ];
 
 export function visibleNav() {

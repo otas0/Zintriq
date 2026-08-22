@@ -50,7 +50,7 @@ export async function mountModule(moduleId, root) {
 
   const loader = MODULE_LOADERS[moduleId];
   if (!loader) {
-    root.innerHTML = `<div class="bos-empty"><p class="bos-empty__title">Module not found</p><p class="bos-empty__text">This platform is not part of Business OS V1.</p></div>`;
+    root.innerHTML = `<div class="bos-empty"><p class="bos-empty__title">Module not found</p><p class="bos-empty__text">This platform is not part of Zintriq V1.</p></div>`;
     return;
   }
 

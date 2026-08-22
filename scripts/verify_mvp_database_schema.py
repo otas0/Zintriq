@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Verify Business OS MVP database schema (spec v1.0)."""
+"""Verify Zintriq MVP database schema (spec v1.0)."""
 
 from __future__ import annotations
 

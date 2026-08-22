@@ -12,19 +12,21 @@ def register_mobile_platform(app) -> None:
     @app.get("/manifest.webmanifest")
     def pwa_manifest():
         payload = {
-            "name": "Business OS",
-            "short_name": "Business OS",
+            "name": "Zintriq",
+            "short_name": "Zintriq",
             "description": "Create customer experiences and manage your business",
             "start_url": "/app/store",
             "scope": "/",
             "display": "standalone",
             "orientation": "portrait-primary",
-            "background_color": "#111111",
-            "theme_color": "#111111",
+            "background_color": "#FFFFFF",
+            "theme_color": "#FFD500",
             "icons": [
-                {"src": "/static/icons/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any"},
-                {"src": "/static/icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any"},
-                {"src": "/static/icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable"},
+                {"src": "/static/safari-touch-icon-yellow.png", "sizes": "180x180", "type": "image/png", "purpose": "any"},
+                {"src": "/static/safari-tab-icon-yellow.png", "sizes": "32x32", "type": "image/png", "purpose": "any"},
+                {"src": "/static/icons/icon-192.png?v=20260822y", "sizes": "192x192", "type": "image/png", "purpose": "any"},
+                {"src": "/static/icons/icon-512.png?v=20260822y", "sizes": "512x512", "type": "image/png", "purpose": "any"},
+                {"src": "/static/icons/icon-512.png?v=20260822y", "sizes": "512x512", "type": "image/png", "purpose": "maskable"},
             ],
         }
         return app.response_class(
@@ -36,7 +38,7 @@ def register_mobile_platform(app) -> None:
     def mobile_config():
         base = (os.environ.get("PUBLIC_BASE_URL") or "").rstrip("/")
         return jsonify({
-            "app_name": "Business OS",
+            "app_name": "Zintriq",
             "start_path": "/app/store",
             "api_base": base or None,
             "min_version": "1.0.0",
@@ -45,12 +47,12 @@ def register_mobile_platform(app) -> None:
     @app.get("/sw.js")
     def service_worker():
         return app.response_class(
-            """const CACHE = 'bos-v3';
+            """const CACHE = 'bos-v6-yellow';
 self.addEventListener('install', (e) => {
   self.skipWaiting();
   e.waitUntil(caches.open(CACHE).then((c) => c.addAll([
-    '/static/icons/icon-192.png',
-    '/static/icons/icon-512.png',
+    '/static/safari-tab-icon-yellow.png',
+    '/static/icons/icon-192.png?v=20260822y',
   ])));
 });
 self.addEventListener('activate', (e) => {

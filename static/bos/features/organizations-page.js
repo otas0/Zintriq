@@ -1,4 +1,4 @@
-/** Business OS — Organization (API-backed). */
+/** Zintriq — Organization (API-backed). */
 
 import { showToast } from "../services/api.js";
 import { fetchJson, esc } from "../services/bos-api.js";

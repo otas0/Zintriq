@@ -1,4 +1,4 @@
-"""Business OS Workflow Engine — trigger, conditions, actions, execution.
+"""Zintriq Workflow Engine — trigger, conditions, actions, execution.
 
 Human spec: docs/bos/WORKFLOW_ENGINE.md
 Frontend mirror: static/bos/platform/workflow-engine.js

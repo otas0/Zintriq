@@ -1,4 +1,4 @@
-"""Booking Platform — core operational scheduling for Business OS."""
+"""Booking Platform — core operational scheduling for Zintriq."""
 
 from __future__ import annotations
 

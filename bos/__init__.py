@@ -1,1 +1,1 @@
-"""Business OS — feature-based backend package."""
+"""Zintriq — feature-based backend package."""

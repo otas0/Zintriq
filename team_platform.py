@@ -1,4 +1,4 @@
-"""Team Platform — multi-user collaboration foundation for Business OS."""
+"""Team Platform — multi-user collaboration foundation for Zintriq."""
 
 from __future__ import annotations
 

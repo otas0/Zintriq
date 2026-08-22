@@ -1,4 +1,4 @@
-/** Business OS — Interactions (unified customer activity from QR). */
+/** Zintriq — Interactions (unified customer activity from QR). */
 
 import { statusBadge } from "../components/index.js";
 import { escapeHtml } from "../services/search.js";

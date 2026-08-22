@@ -1,4 +1,4 @@
-"""Business OS domain models — MVP platform scope."""
+"""Zintriq domain models — MVP platform scope."""
 
 from __future__ import annotations
 
@@ -15,7 +15,7 @@ class BosModule:
     description: str = ""
 
 
-# Business OS module registry — MVP navigation
+# Zintriq module registry — MVP navigation
 BOS_MODULES: tuple[BosModule, ...] = (
     BosModule("store", "Stores", "▣", "bos.store", "Storefronts, customer QR, and responses"),
     BosModule("team", "Team", "◈", "bos.team", "Invite members and manage access"),

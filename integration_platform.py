@@ -1,4 +1,4 @@
-"""Integration Layer — optional plugins connecting Business OS to external services."""
+"""Integration Layer — optional plugins connecting Zintriq to external services."""
 
 from __future__ import annotations
 
@@ -6,28 +6,14 @@ from datetime import datetime, timezone
 
 from flask import abort, jsonify
 
-PLUGIN_SEED = (
-    {
-        "slug": "google_calendar",
-        "name": "Google Calendar",
-        "provider": "google",
-        "description": "Scheduling integration — sync bookings to your calendar",
-        "category": "scheduling",
-    },
-    {
-        "slug": "stripe",
-        "name": "Stripe",
-        "provider": "stripe",
-        "description": "Payment integration — accept payments via Stripe",
-        "category": "payments",
-    },
-    {
-        "slug": "notion",
-        "name": "Notion",
-        "provider": "notion",
-        "description": "Documentation integration — sync records to Notion",
-        "category": "documentation",
-    },
+from integration_catalog import all_plugin_seeds, catalog_api_payload, plugin_logo_url, plugin_public_meta
+
+REMOVED_PLUGIN_SLUGS = (
+    "google_calendar",
+    "notion",
+    "google_business",
+    "taiwan_pay",
+    "ipeen",
 )
 
 SCHEMA_SQL = """
@@ -61,17 +47,6 @@ CREATE TABLE IF NOT EXISTS user_integration_connections (
 );
 CREATE INDEX IF NOT EXISTS idx_user_integration_user ON user_integration_connections(user_id);
 
-CREATE TABLE IF NOT EXISTS calendar_connections (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    connection_id INTEGER NOT NULL UNIQUE,
-    google_calendar_id TEXT NOT NULL,
-    calendar_name TEXT NOT NULL,
-    sync_enabled INTEGER NOT NULL DEFAULT 1,
-    created_at TEXT DEFAULT CURRENT_TIMESTAMP,
-    updated_at TEXT DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY(connection_id) REFERENCES user_integration_connections(id) ON DELETE CASCADE
-);
-
 CREATE TABLE IF NOT EXISTS external_references (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     workspace_id INTEGER,
@@ -97,17 +72,6 @@ CREATE TABLE IF NOT EXISTS integration_event_logs (
     FOREIGN KEY(connection_id) REFERENCES user_integration_connections(id) ON DELETE CASCADE
 );
 CREATE INDEX IF NOT EXISTS idx_integration_logs_conn ON integration_event_logs(connection_id, created_at DESC);
-
-CREATE TABLE IF NOT EXISTS google_calendar_watch_channels (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    connection_id INTEGER NOT NULL,
-    channel_id TEXT NOT NULL UNIQUE,
-    resource_id TEXT NOT NULL,
-    expiration TEXT,
-    created_at TEXT DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY(connection_id) REFERENCES user_integration_connections(id) ON DELETE CASCADE
-);
-CREATE INDEX IF NOT EXISTS idx_gcal_watch_conn ON google_calendar_watch_channels(connection_id);
 """
 
 
@@ -115,14 +79,36 @@ def _now() -> str:
     return datetime.now(timezone.utc).replace(microsecond=0).isoformat()
 
 
+def purge_removed_plugins(conn) -> None:
+    for slug in REMOVED_PLUGIN_SLUGS:
+        conn.execute(
+            """DELETE FROM user_integration_connections
+               WHERE plugin_id IN (SELECT id FROM integration_plugins WHERE slug=?)""",
+            (slug,),
+        )
+        conn.execute("DELETE FROM integration_plugins WHERE slug=?", (slug,))
+
+
 def init_integration_tables(conn) -> None:
     conn.executescript(SCHEMA_SQL)
-    for p in PLUGIN_SEED:
+    purge_removed_plugins(conn)
+    for p in all_plugin_seeds():
         conn.execute(
-            """INSERT OR IGNORE INTO integration_plugins (slug, name, provider, description, category, status)
-               VALUES (?, ?, ?, ?, ?, 'available')""",
+            """INSERT INTO integration_plugins (slug, name, provider, description, category, status)
+               VALUES (?, ?, ?, ?, ?, 'available')
+               ON CONFLICT(slug) DO UPDATE SET
+                 name=excluded.name,
+                 provider=excluded.provider,
+                 description=excluded.description,
+                 category=excluded.category,
+                 updated_at=CURRENT_TIMESTAMP""",
             (p["slug"], p["name"], p["provider"], p["description"], p["category"]),
         )
+    try:
+        from payment_connect_plugin import init_payment_connection_tables
+        init_payment_connection_tables(conn)
+    except ImportError:
+        pass
 
 
 def get_plugin_by_slug(conn, slug: str):
@@ -147,30 +133,25 @@ def log_integration_event(conn, connection_id: int, event_type: str, status: str
     )
 
 
-def connection_to_api(row, *, include_calendar: bool = False) -> dict:
+def connection_to_api(row) -> dict:
     d = dict(row)
-    status = d.get("status") or "installed"
-    cal = d.get("calendar_name")
-    if d.get("sync_enabled") and d.get("google_calendar_id"):
-        status = "active"
-    elif d.get("access_token_enc") or d.get("status") == "connected":
-        status = "connected" if not cal else "active"
-    payload = {
+    status = d.get("status") or "disconnected"
+    if status in ("pending", "disconnected"):
+        status = "disconnected"
+    elif d.get("access_token_enc") or status in ("connected", "active", "installed"):
+        status = "connected" if status not in ("active", "error", "disconnected") else status
+    if d.get("external_account_id") and status == "installed":
+        status = "connected"
+    return {
         "id": d["id"],
         "plugin_slug": d.get("plugin_slug"),
         "plugin_name": d.get("plugin_name"),
+        "external_account_id": d.get("external_account_id"),
         "external_account_email": d.get("external_account_email"),
         "status": status,
         "expires_at": d.get("expires_at"),
         "created_at": d.get("created_at"),
     }
-    if include_calendar:
-        payload["calendar"] = {
-            "id": d.get("google_calendar_id"),
-            "name": d.get("calendar_name"),
-            "sync_enabled": bool(d.get("sync_enabled")),
-        } if d.get("google_calendar_id") else None
-    return payload
 
 
 def register_integration_platform(app) -> None:
@@ -192,6 +173,11 @@ def register_integration_platform(app) -> None:
             ).fetchall()
             result = []
             for p in plugins:
+                if p["slug"] in REMOVED_PLUGIN_SLUGS:
+                    continue
+                meta = plugin_public_meta(p["slug"])
+                if not meta:
+                    continue
                 conn_row = get_user_connection(conn, user_id, p["slug"])
                 item = {
                     "slug": p["slug"],
@@ -201,41 +187,51 @@ def register_integration_platform(app) -> None:
                     "category": p["category"],
                     "available": True,
                     "connection": None,
+                    "regions": meta["regions"],
+                    "region_labels": meta["region_labels"],
+                    "checkout_ready": meta.get("checkout_ready", False),
+                    "oauth_required": meta.get("oauth_required", False),
+                    "credential_fields": meta.get("credential_fields", []),
+                    "setup_guide": meta.get("setup_guide", {}),
+                    "logo_url": meta.get("logo_url") or plugin_logo_url(p["slug"]),
                 }
                 if conn_row:
-                    cal = conn.execute(
-                        "SELECT * FROM calendar_connections WHERE connection_id=?",
+                    pay = conn.execute(
+                        "SELECT * FROM payment_connections WHERE connection_id=?",
                         (conn_row["id"],),
                     ).fetchone()
-                    merged = dict(conn_row)
-                    if cal:
-                        merged.update(dict(cal))
-                    item["connection"] = connection_to_api(merged, include_calendar=p["slug"] == "google_calendar")
+                    conn_api = connection_to_api(conn_row)
+                    if pay:
+                        from payment_connect_plugin import payment_connection_to_api
+                        conn_api["payment"] = payment_connection_to_api(pay)
+                        if pay["account_status"] == "active" or pay["charges_enabled"]:
+                            conn_api["status"] = "active"
+                    item["connection"] = conn_api
                 result.append(item)
         return jsonify(result)
+
+    @app.get("/api/integrations/catalog")
+    @login_required
+    def api_integration_catalog():
+        return jsonify(catalog_api_payload())
 
     @app.get("/api/integrations/connections/<plugin_slug>")
     @login_required
     def api_integration_connection_detail(plugin_slug):
+        if plugin_slug in REMOVED_PLUGIN_SLUGS:
+            abort(404)
         user_id = uid()
         with db() as conn:
             row = get_user_connection(conn, user_id, plugin_slug)
             if not row:
                 return jsonify({"connected": False})
-            cal = conn.execute(
-                "SELECT * FROM calendar_connections WHERE connection_id=?",
-                (row["id"],),
-            ).fetchone()
-            merged = dict(row)
-            if cal:
-                merged.update(dict(cal))
             logs = conn.execute(
                 """SELECT event_type, status, error_message, created_at
                    FROM integration_event_logs WHERE connection_id=?
                    ORDER BY created_at DESC LIMIT 20""",
                 (row["id"],),
             ).fetchall()
-            payload = connection_to_api(merged, include_calendar=plugin_slug == "google_calendar")
+            payload = connection_to_api(row)
             payload["connected"] = row["status"] in ("connected", "active", "installed")
             payload["recent_logs"] = [dict(l) for l in logs]
         return jsonify(payload)

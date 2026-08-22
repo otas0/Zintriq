@@ -1,4 +1,4 @@
-"""Business OS Data Architecture — platform-wide data principles registry.
+"""Zintriq Data Architecture — platform-wide data principles registry.
 
 Human-readable spec: docs/bos/DATA_ARCHITECTURE.md
 Frontend mirror: static/bos/platform/data-architecture.js
@@ -141,7 +141,7 @@ CONFORMANCE: tuple[PrincipleConformance, ...] = (
     PrincipleConformance("immutable_history", True, "domain_events append-only"),
     PrincipleConformance("derived_not_authoritative", True, "event_analytics, search API"),
     PrincipleConformance("disposable_search_index", True, "No separate search DB"),
-    PrincipleConformance("cache_not_source", True, "Business OS modules use REST APIs; store.js is UI prefs only"),
+    PrincipleConformance("cache_not_source", True, "Zintriq modules use REST APIs; store.js is UI prefs only"),
     PrincipleConformance("archive_over_delete", True, "status=archived default"),
     PrincipleConformance("workspace_root", True, "All operational data under workspace"),
 )

@@ -1,4 +1,4 @@
-{# Store sidebar — Uber Eats style: name, meta, Shop/Deals, numbered categories #}
+{# Store sidebar — name, meta, Shop/Deals, numbered categories #}
 <aside class="sf-sidebar" id="sf-profile"
        {% if store_profile.location.lat is not none %}data-store-lat="{{ store_profile.location.lat }}" data-store-lng="{{ store_profile.location.lng }}"{% endif %}>
   <h1 class="sf-sidebar__name">{{ store_profile.name }}</h1>

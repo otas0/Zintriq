@@ -1,4 +1,4 @@
-/* Business OS — Merchant UI (Uber Eats × Shopify) */
+/* Zintriq — Merchant UI (Uber Eats × Shopify) */
 
 /* ── Top bar ── */
 .bos-toolbar--merchant {
@@ -111,7 +111,7 @@
 }
 
 .bos-sidebar--merchant .bos-nav__item.is-active {
-  background: #f3f3f3;
+  background: var(--mq-brand-soft, #FFF8D6);
   color: #000;
   font-weight: 600;
 }
@@ -520,7 +520,7 @@
 .bos-workspace {
   padding: 20px 24px 32px;
 }
-@media (max-width: 900px) {
+@media (max-width: 960px) {
   .bos-toolbar--merchant {
     grid-template-columns: auto 1fr auto;
   }
@@ -556,24 +556,6 @@
 
   .merchant-quick-actions {
     grid-template-columns: 1fr;
-  }
-}
-
-@media (max-width: 768px) {
-  .bos-app {
-    grid-template-columns: 1fr;
-  }
-
-  .bos-sidebar {
-    position: fixed;
-    left: 0;
-    top: 0;
-    transform: translateX(-100%);
-    transition: transform 0.2s;
-  }
-
-  .bos-sidebar.is-open {
-    transform: translateX(0);
   }
 }
 

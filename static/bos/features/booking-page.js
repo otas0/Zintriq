@@ -1,4 +1,4 @@
-/** Business OS — Booking Platform Foundation. */
+/** Zintriq — Booking Platform Foundation. */
 
 import { statusBadge } from "../components/index.js";
 import { showToast, openDrawer, closeDrawer, apiPost } from "../services/api.js";

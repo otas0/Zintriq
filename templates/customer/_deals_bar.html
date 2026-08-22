@@ -12,26 +12,35 @@
   <div class="sf-deals-bar__track" id="sf-deals-track">
     {% for deal in deals %}
     {% set item_id = deal.item_id %}
+    {% set cartable = checkout_enabled|default(false) and (deal.item_allow_cart|default(0)|int == 1) %}
     {% set href = url_for('item_preview' if preview_mode else 'customer_item_detail', slug=store.slug, item_id=item_id) %}
-    <a class="sf-tile sf-tile--deal" href="{{ href }}" data-search="{{ deal.item_name|lower }}">
-      <div class="sf-tile__media">
-        <span class="sf-tile__badge">{{ deal.label }}</span>
-        {% if deal.image_url %}
-        <img src="{{ deal.image_url }}" alt="">
-        {% else %}
-        <span class="sf-tile__placeholder">{{ deal.item_name[0]|upper }}</span>
+    <div class="sf-tile sf-tile--deal" data-search="{{ deal.item_name|lower }}">
+      <div class="sf-tile__media-wrap">
+        <a class="sf-tile__media-link" href="{{ href }}">
+          <div class="sf-tile__media">
+            <span class="sf-tile__badge">{{ deal.label }}</span>
+            {% if deal.image_url %}
+            <img src="{{ deal.image_url }}" alt="">
+            {% else %}
+            <span class="sf-tile__placeholder">{{ deal.item_name[0]|upper }}</span>
+            {% endif %}
+          </div>
+        </a>
+        {% if cartable %}
+        <button type="button" class="sf-tile__add sf-tile__add--btn" data-add-cart="{{ item_id }}" aria-label="Add {{ deal.item_name }} to cart">+</button>
         {% endif %}
-        <span class="sf-tile__add" aria-hidden="true">+</span>
       </div>
-      <div class="sf-tile__body">
-        <p class="sf-tile__prices">
-          <strong>${{ '%.2f'|format(deal.sale_price) }}</strong>
-          <s>${{ '%.2f'|format(deal.compare_at_price) }}</s>
-        </p>
-        <p class="sf-tile__name">{{ deal.item_name }}</p>
-        {% if deal.item_unit %}<p class="sf-tile__unit">{{ deal.item_unit }}</p>{% endif %}
-      </div>
-    </a>
+      <a class="sf-tile__body-link" href="{{ href }}">
+        <div class="sf-tile__body">
+          <p class="sf-tile__prices">
+            <strong>${{ '%.2f'|format(deal.sale_price) }}</strong>
+            <s>${{ '%.2f'|format(deal.compare_at_price) }}</s>
+          </p>
+          <p class="sf-tile__name">{{ deal.item_name }}</p>
+          {% if deal.item_unit %}<p class="sf-tile__unit">{{ deal.item_unit }}</p>{% endif %}
+        </div>
+      </a>
+    </div>
     {% endfor %}
   </div>
 </section>

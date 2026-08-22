@@ -162,6 +162,44 @@ TEMPLATE_LIBRARY = (
 )
 
 
+def _strip_legacy_feedback_forms_fk(conn) -> None:
+    """Rebuild feedback_records if it still FKs the dropped feedback_forms table."""
+    tables = {r["name"] for r in conn.execute("SELECT name FROM sqlite_master WHERE type='table'")}
+    if "feedback_records" not in tables:
+        return
+    fks = conn.execute("PRAGMA foreign_key_list(feedback_records)").fetchall()
+    if not any(fk["table"] == "feedback_forms" for fk in fks):
+        return
+
+    info = conn.execute("PRAGMA table_info(feedback_records)").fetchall()
+    col_defs = []
+    for col in info:
+        parts = [col["name"], col["type"] or "TEXT"]
+        if col["pk"]:
+            parts.append("PRIMARY KEY AUTOINCREMENT" if (col["type"] or "").upper() == "INTEGER" else "PRIMARY KEY")
+        else:
+            if col["notnull"]:
+                parts.append("NOT NULL")
+            if col["dflt_value"] is not None:
+                parts.append(f"DEFAULT {col['dflt_value']}")
+        col_defs.append(" ".join(parts))
+    col_list = ", ".join(col["name"] for col in info)
+    conn.execute("PRAGMA foreign_keys=OFF")
+    try:
+        conn.execute(
+            "CREATE TABLE feedback_records__mig (\n  "
+            + ",\n  ".join(col_defs)
+            + ",\n  FOREIGN KEY(store_id) REFERENCES stores(id) ON DELETE CASCADE\n)"
+        )
+        conn.execute(
+            f"INSERT INTO feedback_records__mig ({col_list}) SELECT {col_list} FROM feedback_records"
+        )
+        conn.execute("DROP TABLE feedback_records")
+        conn.execute("ALTER TABLE feedback_records__mig RENAME TO feedback_records")
+    finally:
+        conn.execute("PRAGMA foreign_keys=ON")
+
+
 def init_feedback_tables(conn) -> None:
     conn.executescript(SCHEMA_SQL)
     record_cols = {r["name"] for r in conn.execute("PRAGMA table_info(feedback_records)")}
@@ -195,6 +233,8 @@ def init_feedback_tables(conn) -> None:
                     (tid, form["store_id"], form["form_code"], form["name"], form["status"] or "draft", form["scan_count"] or 0),
                 )
         conn.execute("DROP TABLE IF EXISTS feedback_forms")
+    # Dropping feedback_forms leaves a dangling FK on older feedback_records schemas.
+    _strip_legacy_feedback_forms_fk(conn)
     for store in conn.execute("SELECT id FROM stores").fetchall():
         exists = conn.execute("SELECT 1 FROM feedback_settings WHERE store_id = ?", (store["id"],)).fetchone()
         if not exists:

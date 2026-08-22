@@ -4,12 +4,23 @@
 <link rel="stylesheet" href="{{ url_for('static', filename='storefront.css') }}">
 {% endblock %}
 {% block customer_header_actions %}
+{% if checkout_enabled|default(false) %}
+<a class="mq-public-header__guest-link sf-header-cart" href="{{ url_for('store_checkout_page', slug=store.slug) }}">Cart</a>
+{% endif %}
 {% if store_profile.contact %}
 <a class="mq-btn mq-btn-primary mq-btn-sm" href="#sf-contact">Contact</a>
 {% endif %}
 {% endblock %}
 {% block content %}
-<div class="sf-page">
+{% if preview_mode|default(false) %}
+<div class="sf-preview-banner material-feedback" role="status">
+  Preview — customer view
+  {% if checkout_enabled|default(false) %}
+  · <a href="{{ url_for('store_checkout_page', slug=store.slug) }}">Open cart</a>
+  {% endif %}
+</div>
+{% endif %}
+<div class="sf-page" data-store-slug="{{ store.slug }}" data-checkout-enabled="{{ '1' if checkout_enabled|default(false) else '0' }}" data-has-cartable="{{ '1' if has_cartable_items|default(false) else '0' }}">
   <header class="sf-hero">
     <div class="sf-hero__banner{% if not store.background_image %} sf-hero__banner--empty{% endif %}"
          {% if store.background_image %}style="background-image:url('{{ store.background_image }}')"{% endif %}
@@ -38,6 +49,8 @@
       {% include 'customer/_store_categories.html' %}
 
       {% include 'customer/_deals_bar.html' %}
+
+      {% include 'customer/_store_reviews.html' %}
 
       {% if group_in_url and store_view == 'shop' and catalog_sections|length == 1 %}
       <p class="sf-back-shop">
@@ -86,7 +99,7 @@
       {% endif %}
 
       {% if store_profile.contact or not preview_mode %}
-      <section class="sf-contact mq-section">
+      <section class="sf-contact mq-section" id="sf-contact">
         {% include 'customer/_store_contact.html' %}
       </section>
       {% endif %}
@@ -96,4 +109,16 @@
 {% endblock %}
 {% block customer_scripts %}
 <script src="{{ url_for('static', filename='storefront.js') }}"></script>
+{% if checkout_enabled|default(false) %}
+<script type="module">
+import { mountCartBar, bindAddToCart } from "{{ url_for('static', filename='storefront-cart.js') }}";
+const root = document.querySelector(".sf-page");
+if (root) {
+  mountCartBar(root);
+  if (root.dataset.checkoutEnabled === "1") {
+    bindAddToCart(root);
+  }
+}
+</script>
+{% endif %}
 {% endblock %}

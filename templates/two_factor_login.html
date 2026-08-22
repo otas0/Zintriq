@@ -1,5 +1,5 @@
 {% extends 'base.html' %}
-{% block title %}Verify sign in — MarketQR{% endblock %}
+{% block title %}Verify sign in — Zintriq{% endblock %}
 {% block content %}
 <section class="mq-auth-page">
   <div class="mq-auth-card">
@@ -12,6 +12,7 @@
         <label class="mq-label">Authentication code</label>
         <input class="mq-input" name="code" inputmode="numeric" autocomplete="one-time-code" pattern="[0-9]{6}" maxlength="6" required>
       </div>
+      <p class="mq-auth-lead mq-auth-lead--compact">Your sign-in preference from the previous step still applies.</p>
       <button class="mq-btn mq-btn-primary" type="submit">Verify and sign in</button>
     </form>
   </div>

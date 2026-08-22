@@ -1,4 +1,4 @@
-# Business OS — Domain Model & Relationship Specification
+# Zintriq — Domain Model & Relationship Specification
 
 > **Status:** Canonical source of truth  
 > **Scope:** Business domain only — not UI, not features, not database DDL  
@@ -11,7 +11,7 @@
 
 ## Philosophy
 
-Business OS is built around a small number of **reusable business objects**.
+Zintriq is built around a small number of **reusable business objects**.
 
 - Features do not own data.
 - Platforms do not own data.
@@ -25,7 +25,7 @@ This ensures consistency, scalability, and long-term maintainability.
 ## Domain Hierarchy
 
 ```
-Business OS
+Zintriq
 └── Workspace                          ← root container for all operational data
     ├── Store                          ← physical / logical location
     ├── Customer                       ← one business relationship
@@ -510,7 +510,7 @@ Platforms operate on objects. They do not own them.
 | Operations | Task | Yes |
 | Notifications | Notification | Yes (event refs only) |
 | Analytics | All (read) | **No** |
-| Business OS Shell | Navigation, Search, Permissions | **No** |
+| Zintriq Shell | Navigation, Search, Permissions | **No** |
 
 ---
 

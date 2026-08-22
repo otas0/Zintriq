@@ -1,5 +1,5 @@
 {% extends 'bos/shell.html' %}
-{% block bos_title %}Account — Business OS{% endblock %}
+{% block bos_title %}Account — Zintriq{% endblock %}
 {% block bos_content %}
 <div class="merchant-page bos-account-page">
   <header class="merchant-page-head bos-ui-page-header">
@@ -19,6 +19,16 @@
       </div>
       <button class="bos-btn bos-btn-primary" type="submit">Save changes</button>
     </form>
+
+    <section class="material-panel bos-panel">
+      <div class="bos-panel-head bos-panel-head--split">
+        <div>
+          <h2 class="bos-panel-title">Help</h2>
+          <p class="bos-panel-desc">Guides for stores, QR codes, and Zintriq.</p>
+        </div>
+        <a class="bos-btn bos-btn-ghost bos-btn-sm" href="{{ url_for('business_help_home') }}">Open Help</a>
+      </div>
+    </section>
 
     <section class="material-panel bos-panel">
       <div class="bos-panel-head bos-panel-head--split">

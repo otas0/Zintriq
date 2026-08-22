@@ -287,17 +287,17 @@ def run() -> int:
                 conn,
                 workspace_id=ws_a,
                 store_id=store_a,
-                platform="google_business",
+                platform="yelp",
                 external_id=f"g-{ts}",
                 rating=5,
                 content="Synced review",
-                customer_name="Google User",
+                customer_name="Yelp User",
             )
             dup = upsert_external_feedback(
                 conn,
                 workspace_id=ws_a,
                 store_id=store_a,
-                platform="google_business",
+                platform="yelp",
                 external_id=f"g-{ts}",
                 rating=5,
                 content="Synced review",
@@ -308,7 +308,7 @@ def run() -> int:
                 fail("Plugin.external_mapping", "duplicate not deduped")
 
         r = api(client, "GET", "/api/feedback/plugins", user_id=uid_a, ws_id=ws_a)
-        if r.status_code == 200 and len(r.get_json()) >= 5:
+        if r.status_code == 200 and len(r.get_json()) >= 4:
             ok("Plugins.list")
         else:
             fail("Plugins.list", f"status={r.status_code}")

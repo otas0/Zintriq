@@ -1,10 +1,15 @@
 {% extends 'base.html' %}
-{% block title %}Business OS — Turn every QR code into a customer experience{% endblock %}
+{% block title %}Zintriq — Turn every QR code into a customer experience{% endblock %}
 {% block content %}
 <section class="material-sheet mq-home-hero">
   <div class="mq-public-container">
     <div class="mq-home-hero__layout">
       <div class="mq-home-hero__inner mq-reveal">
+        <a class="mq-home-hero__brand" href="{{ url_for('index') }}" aria-label="zintriq">
+          {% with variant='light', class='mq-home-hero__logo zintriq-logo', width=280, height=72 %}
+          {% include 'partials/brand_logo.html' %}
+          {% endwith %}
+        </a>
         <p class="mq-home-hero__eyebrow">QR-powered customer experiences</p>
         <h1 class="mq-home-hero__title">Turn every QR code<br><em>into a customer experience.</em></h1>
         <p class="mq-home-hero__lead">Create QR-powered experiences for your business — from reservations and check-ins to feedback and customer engagement.</p>
@@ -170,7 +175,7 @@
 <section class="material-panel mq-cta-band">
   <div class="mq-public-container mq-reveal">
     <h2>Create your first QR Experience</h2>
-    <p>Connect customers to your business with one scan — then manage every interaction in Business OS.</p>
+    <p>Connect customers to your business with one scan — then manage every interaction in Zintriq.</p>
     <a class="material-tool mq-btn mq-btn-primary" href="{{ url_for('register') if not current_user else url_for('bos.qr_experiences') }}">Create QR Experience</a>
   </div>
 </section>

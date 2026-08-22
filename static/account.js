@@ -19,7 +19,7 @@ document.addEventListener('DOMContentLoaded', () => {
       .then((plugins) => {
         const connected = (plugins || []).filter((p) => p.connection?.status === 'active' || p.connection?.status === 'connected');
         if (!connected.length) {
-          connectedRoot.innerHTML = '<p class="cp-muted" style="font-size:13px">No apps connected yet. Connect Google Calendar in Settings → Integrations.</p>';
+          connectedRoot.innerHTML = '<p class="cp-muted" style="font-size:13px">No apps connected yet. Connect review platforms in Settings → Integrations.</p>';
           return;
         }
         connectedRoot.innerHTML = connected.map((p) => {

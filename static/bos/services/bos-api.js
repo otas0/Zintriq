@@ -1,4 +1,4 @@
-/** Shared fetch helpers for Business OS API modules. */
+/** Shared fetch helpers for Zintriq API modules. */
 
 import { getActiveWorkspaceId } from "./workspace-context.js";
 import { getCsrf } from "./api.js";

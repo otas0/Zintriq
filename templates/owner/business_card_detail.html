@@ -61,7 +61,7 @@
       <button class="os-btn os-btn-ghost os-btn-sm ep-share" data-url="{{ qr.url }}" type="button">Share</button>
       <form method="post" class="inline-form"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><input type="hidden" name="action" value="regenerate"><button class="os-btn os-btn-ghost os-btn-sm" type="submit">Regenerate</button></form>
     </div>
-    <p class="ep-analytics"><strong>{{ card.scan_count or 0 }}</strong> total scans <span class="ep-muted">(mock analytics)</span></p>
+    <p class="ep-analytics"><strong>{{ card.scan_count or 0 }}</strong> total scans</p>
   </aside>
 </div>
 <link rel="stylesheet" href="{{ url_for('static', filename='event-passes.css') }}">

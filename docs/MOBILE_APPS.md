@@ -1,4 +1,4 @@
-# Business OS — Mobile Apps (Android & iOS)
+# Zintriq — Mobile Apps (Android & iOS)
 
 The **website stays as-is** (Flask on port 5001). Native apps are thin Capacitor shells that load the same `/app` UI from your server.
 

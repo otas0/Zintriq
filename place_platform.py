@@ -70,6 +70,46 @@ CREATE INDEX IF NOT EXISTS idx_place_apps_status ON place_tenant_applications(pl
 PLACE_EVENT_TYPES = ("place_view", "tenant_click")
 APPLICATION_STATUSES = ("pending", "approved", "rejected")
 
+# Left behind when verify scripts exit early — never show on customer surfaces.
+_VERIFY_PLACE_SLUG_PREFIXES = ("httptesthall", "testfoodhallphase8", "8chttphall", "8cpolishhall")
+_VERIFY_PLACE_NAMES = frozenset({
+    "HTTP Test Hall",
+    "Test Food Hall Phase8",
+    "8C HTTP Hall",
+    "8C Polish Hall",
+    "Apply Test Hall",
+})
+
+
+def is_verify_test_place(name: str | None, slug: str | None) -> bool:
+    place_name = (name or "").strip()
+    place_slug = (slug or "").strip().lower()
+    if place_name in _VERIFY_PLACE_NAMES:
+        return True
+    if place_name.startswith("Test Food Hall"):
+        return True
+    if any(place_slug.startswith(prefix) for prefix in _VERIFY_PLACE_SLUG_PREFIXES):
+        return True
+    if place_name == "T" and len(place_slug) <= 2:
+        return True
+    return False
+
+
+def purge_verify_test_places(conn) -> int:
+    """Delete verify-script venue rows. Returns number of places removed."""
+    rows = conn.execute("SELECT id, name, slug FROM places").fetchall()
+    removed = 0
+    for row in rows:
+        if not is_verify_test_place(row["name"], row["slug"]):
+            continue
+        pid = int(row["id"])
+        conn.execute("DELETE FROM place_analytics_events WHERE place_id = ?", (pid,))
+        conn.execute("DELETE FROM place_tenant_applications WHERE place_id = ?", (pid,))
+        conn.execute("DELETE FROM place_stores WHERE place_id = ?", (pid,))
+        conn.execute("DELETE FROM places WHERE id = ?", (pid,))
+        removed += 1
+    return removed
+
 
 def _now() -> str:
     return datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S")
@@ -102,6 +142,68 @@ def list_places_for_owner(conn, owner_id: int) -> list[dict[str, Any]]:
         (owner_id,),
     ).fetchall()
     return [dict(r) for r in rows]
+
+
+def public_places(conn, *, limit: int = 8) -> list[dict[str, Any]]:
+    """Active venue directories with real content and at least one live tenant."""
+    rows = conn.execute(
+        """SELECT p.*,
+                  (SELECT COUNT(*)
+                   FROM place_stores ps
+                   JOIN stores s ON s.id = ps.store_id
+                   WHERE ps.place_id = p.id
+                     AND COALESCE(s.status, 'active') != 'archived') AS tenant_count
+           FROM places p
+           WHERE COALESCE(p.status, 'active') = 'active'
+             AND (
+               TRIM(COALESCE(p.description, '')) != ''
+               OR TRIM(COALESCE(p.address, '')) != ''
+               OR TRIM(COALESCE(p.cover_image, '')) != ''
+             )
+             AND (SELECT COUNT(*)
+                  FROM place_stores ps
+                  JOIN stores s ON s.id = ps.store_id
+                  WHERE ps.place_id = p.id
+                    AND COALESCE(s.status, 'active') != 'archived') > 0
+           ORDER BY tenant_count DESC, p.updated_at DESC, p.name COLLATE NOCASE
+           LIMIT ?""",
+        (max(1, min(limit, 24)),),
+    ).fetchall()
+    out: list[dict[str, Any]] = []
+    for row in rows:
+        if is_verify_test_place(row["name"], row["slug"]):
+            continue
+        cover_image = row["cover_image"]
+        if not cover_image:
+            cover_image = _first_tenant_logo(conn, int(row["id"]))
+        out.append({
+            "slug": row["slug"],
+            "name": row["name"],
+            "description": ((row["description"] or "")[:100] or None),
+            "cover_image": cover_image,
+            "address": row["address"],
+            "tenant_count": int(row["tenant_count"] or 0),
+            "directory_url": f"/place/{row['slug']}",
+        })
+    return out
+
+
+def _first_tenant_logo(conn, place_id: int) -> str | None:
+    from storefront_platform import build_store_profile
+
+    tenant = conn.execute(
+        """SELECT s.*
+           FROM place_stores ps
+           JOIN stores s ON s.id = ps.store_id
+           WHERE ps.place_id = ?
+             AND COALESCE(s.status, 'active') != 'archived'
+           ORDER BY ps.sort_order ASC, s.name COLLATE NOCASE ASC
+           LIMIT 1""",
+        (place_id,),
+    ).fetchone()
+    if not tenant:
+        return None
+    return build_store_profile(conn, dict(tenant)).get("logo_url")
 
 
 def get_place_by_slug(conn, slug: str) -> dict[str, Any] | None:

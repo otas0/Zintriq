@@ -1,5 +1,14 @@
 {% extends 'customer_base.html' %}
 {% block title %}{{ item.name }} — {{ store.name }}{% endblock %}
+{% block customer_head %}
+<link rel="stylesheet" href="{{ url_for('static', filename='storefront.css') }}">
+{% endblock %}
+{% block customer_header_actions %}
+{% if checkout_enabled|default(false) %}
+<a class="mq-public-header__guest-link sf-header-cart" href="{{ url_for('store_checkout_page', slug=store.slug) }}">Cart</a>
+{% endif %}
+<a class="mq-btn mq-btn-primary mq-btn-sm" href="#sf-contact">Contact</a>
+{% endblock %}
 {% block content %}
 <section class="mq-hero mq-hero--compact{% if store.background_image %} has-bg{% endif %}"{% if store.background_image %} style="--store-bg-image: url('{{ store.background_image }}')"{% endif %}>
   {% if store.background_image %}<div class="mq-hero__bg" aria-hidden="true"></div>{% endif %}
@@ -39,8 +48,14 @@
       </p>
       {% endif %}
       <a class="mq-btn mq-btn-ghost" href="{{ url_for('store_preview' if preview_mode else 'storefront', slug=store.slug, group=back_group) if back_group else url_for('store_preview' if preview_mode else 'storefront', slug=store.slug) }}">← Back to store</a>
+      {% if checkout_enabled|default(false) and (item.allow_cart|default(0)|int == 1) %}
+      <button type="button" class="mq-btn mq-btn-primary" id="item-add-cart" data-item-id="{{ item.id }}">Add to cart</button>
+      <a class="mq-btn mq-btn-ghost" href="{{ url_for('store_checkout_page', slug=store.slug) }}">Go to checkout</a>
+      {% elif checkout_enabled|default(false) %}
+      <p class="cp-muted" style="font-size:13px">This item is not enabled for online checkout. Enable <strong>Allow add to cart</strong> in Edit item.</p>
+      {% endif %}
       {% if not preview_mode %}
-      <a class="mq-btn mq-btn-primary" href="#sf-contact">Contact about this item</a>
+      <a class="mq-btn mq-btn-ghost" href="#sf-contact">Contact about this item</a>
       {% endif %}
     </div>
   </div>
@@ -51,5 +66,30 @@
   {% set inquiry_item = item %}
   {% include 'customer/_store_contact.html' %}
 </section>
+{% endif %}
+{% if checkout_enabled|default(false) and (item.allow_cart|default(0)|int == 1) %}
+<script type="module">
+import { addToCart, mountCartBar } from "{{ url_for('static', filename='storefront-cart.js') }}";
+const slug = {{ store.slug|tojson }};
+const root = document.createElement("div");
+root.dataset.storeSlug = slug;
+root.dataset.checkoutEnabled = "1";
+document.body.appendChild(root);
+mountCartBar(root);
+document.getElementById("item-add-cart")?.addEventListener("click", () => {
+  addToCart(slug, {{ item.id }}, 1);
+  window.dispatchEvent(new CustomEvent("mq-cart-updated"));
+});
+</script>
+{% elif checkout_enabled|default(false) %}
+<script type="module">
+import { mountCartBar } from "{{ url_for('static', filename='storefront-cart.js') }}";
+const slug = {{ store.slug|tojson }};
+const root = document.createElement("div");
+root.dataset.storeSlug = slug;
+root.dataset.checkoutEnabled = "1";
+document.body.appendChild(root);
+mountCartBar(root);
+</script>
 {% endif %}
 {% endblock %}

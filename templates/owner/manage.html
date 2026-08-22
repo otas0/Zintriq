@@ -1,6 +1,6 @@
 {% extends 'owner_base.html' %}
 {% set active_tab = 'products' %}
-{% block title %}Products — {{ store.name }} — MarketQR{% endblock %}
+{% block title %}Products — {{ store.name }} — Zintriq{% endblock %}
 {% block os_head %}
 <link rel="stylesheet" href="{{ url_for('static', filename='storefront.css') }}">
 {% endblock %}
@@ -60,6 +60,9 @@
           <span class="tag tag-{{ item.status }}">{{ item.status }}</span>
           {% if item.sku %}<span class="tag">SKU {{ item.sku }}</span>{% endif %}
           {% if item.inventory is not none %}<span class="tag">Stock {{ item.inventory }}</span>{% endif %}
+          {% if store_checkout_enabled|default(false) %}
+          <span class="tag tag-{{ 'published' if item.allow_cart|default(0)|int == 1 else 'draft' }}">Cart {{ 'on' if item.allow_cart|default(0)|int == 1 else 'off' }}</span>
+          {% endif %}
         </div>
       </div>
       <div class="sf-product-deal" data-product-deal="{{ item.id }}">

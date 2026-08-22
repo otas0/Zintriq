@@ -1,4 +1,4 @@
-"""Business OS Platform Specification — universal platform standards registry.
+"""Zintriq Platform Specification — universal platform standards registry.
 
 Human-readable spec: docs/bos/PLATFORM_SPECIFICATION.md
 Frontend mirror: static/bos/platform/platform-spec.js

@@ -1,4 +1,4 @@
-"""Home & Interactions — operational center API for Business OS."""
+"""Home & Interactions — operational center API for Zintriq."""
 
 from __future__ import annotations
 

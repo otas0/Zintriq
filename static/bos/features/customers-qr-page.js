@@ -1,4 +1,4 @@
-/** Business OS — Customers (QR-generated interactions only, not CRM). */
+/** Zintriq — Customers (QR-generated interactions only, not CRM). */
 
 import { escapeHtml } from "../services/search.js";
 import { fetchJson, wsQuery } from "../services/bos-api.js";

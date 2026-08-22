@@ -1,4 +1,4 @@
-/** Business OS — Tags (API-backed customer tags). */
+/** Zintriq — Tags (API-backed customer tags). */
 
 import { showToast } from "../services/api.js";
 import { fetchJson, esc } from "../services/bos-api.js";

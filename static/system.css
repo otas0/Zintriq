@@ -1,4 +1,4 @@
-/* Business OS — shared components (material-mapped) */
+/* Zintriq — shared components (material-mapped) */
 @import url("materials.css");
 
 * { box-sizing: border-box; }
@@ -60,11 +60,11 @@ html { scroll-behavior: smooth; }
   border-radius: var(--mq-radius-sm);
   font: var(--weight-semibold) var(--font-small) var(--font-family);
   text-decoration: none;
-  border: 1px solid var(--color-border);
+  border: 2px solid var(--color-text-primary);
   background: var(--module-bg);
   color: var(--color-text-primary);
   cursor: pointer;
-  transition: background var(--motion-hover), border-color var(--motion-hover);
+  transition: background var(--motion-hover), border-color var(--motion-hover), color var(--motion-hover);
   white-space: nowrap;
 }
 
@@ -73,14 +73,15 @@ html { scroll-behavior: smooth; }
 .mq-btn-primary,
 .os-btn-primary,
 .button {
-  background: var(--color-accent-orange);
-  border-color: var(--color-accent-orange);
-  color: #FFFFFF;
+  background: var(--color-accent-yellow);
+  border-color: var(--color-text-primary);
+  color: var(--color-text-primary);
 }
 
 .mq-btn-primary:hover, .os-btn-primary:hover, .button:hover {
-  background: var(--color-accent-orange-hover);
-  border-color: var(--color-accent-orange-hover);
+  background: var(--color-accent-yellow-hover);
+  border-color: var(--color-text-primary);
+  color: var(--color-text-primary);
 }
 
 .mq-btn-ghost,
@@ -88,28 +89,29 @@ html { scroll-behavior: smooth; }
 .outline {
   background: var(--module-bg);
   color: var(--color-text-primary);
+  border-color: var(--color-text-primary);
 }
 
 .mq-btn-ghost:hover, .os-btn-ghost:hover, .outline:hover {
-  background: var(--panel-bg);
-  border-color: var(--color-border-strong);
+  background: var(--mq-brand-soft);
+  border-color: var(--color-text-primary);
 }
 
 .mq-btn-danger, .os-btn-danger, .danger-button {
-  background: var(--color-danger);
-  color: #FFFFFF;
+  background: var(--module-bg);
+  color: var(--color-danger);
   border-color: var(--color-danger);
 }
 
 .mq-btn-danger:hover, .os-btn-danger:hover, .danger-button:hover {
-  background: #C93B40;
-  border-color: #C93B40;
-  color: #FFFFFF;
+  background: var(--color-danger-soft);
+  border-color: var(--color-danger);
+  color: var(--color-danger);
 }
 
 .mq-btn-sm, .os-btn-sm { min-height: 36px; padding: 0 12px; font-size: var(--font-caption); }
 
-/* ── App top navigation (Business OS ↔ QR Codes) ── */
+/* ── App top navigation (Zintriq ↔ QR Codes) ── */
 .app-topnav {
   position: sticky;
   top: 0;
@@ -287,7 +289,7 @@ html { scroll-behavior: smooth; }
   border: 1px solid var(--color-border);
 }
 
-.mq-tag--brand { background: #FFF0EA; color: var(--color-accent-orange); border-color: transparent; }
+.mq-tag--brand { background: var(--mq-brand-soft); color: var(--color-text-primary); border-color: transparent; }
 
 .mq-tag--success, .tag-published, .tag-active, .os-tag-active, .os-tag-published {
   background: var(--color-success-soft); color: var(--color-success); border-color: transparent;
@@ -505,6 +507,28 @@ html { scroll-behavior: smooth; }
   font-size: var(--font-body);
 }
 
+.mq-shell-brand__logo,
+.zintriq-logo {
+  display: block;
+  height: 40px;
+  width: auto;
+  max-width: 200px;
+  object-fit: contain;
+  object-position: left center;
+  border: 0;
+  outline: none;
+  box-shadow: none;
+  background: transparent;
+}
+
+.mq-shell-brand:focus,
+.mq-shell-brand:focus-visible,
+.mq-home-hero__brand:focus,
+.mq-home-hero__brand:focus-visible {
+  outline: none;
+  box-shadow: none;
+}
+
 .mq-shell-brand-mark {
   width: 32px;
   height: 32px;
@@ -557,6 +581,48 @@ html { scroll-behavior: smooth; }
   padding: var(--space-1) var(--space-2);
   font-size: var(--font-caption);
   font-weight: var(--weight-semibold);
+}
+
+.mq-public--preview .mq-shell-main {
+  padding: 0;
+  max-width: none;
+}
+
+.mq-public--preview .sf-page {
+  padding-top: 0;
+}
+
+.mq-public--preview .sf-hero {
+  margin-top: 0;
+  margin-left: 0;
+  margin-right: 0;
+  width: 100%;
+}
+
+.mq-public--preview .mq-public-footer {
+  display: none;
+}
+
+.mq-remember-device {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 0 0 14px;
+  font-size: var(--font-small);
+  color: var(--color-text-secondary);
+  cursor: pointer;
+  user-select: none;
+}
+
+.mq-remember-device input {
+  width: 16px;
+  height: 16px;
+  margin: 0;
+  accent-color: var(--color-text-primary);
+}
+
+.ig-auth__form .mq-remember-device {
+  margin-bottom: 12px;
 }
 
 .mq-public-footer, .mq-footer {

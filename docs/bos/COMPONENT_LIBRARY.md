@@ -1,4 +1,4 @@
-# Business OS — MVP Component Library
+# Zintriq — MVP Component Library
 
 Version 1.0 · Vanilla JS (ES modules)
 

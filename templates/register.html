@@ -1,5 +1,5 @@
 {% extends 'base.html' %}
-{% block title %}Create your free account — MarketQR{% endblock %}
+{% block title %}Create your free account — Zintriq{% endblock %}
 {% block content %}
 <section class="mq-auth-page">
   <div class="mq-auth-card">
@@ -21,6 +21,10 @@
         <label class="mq-label">Confirm password *</label>
         <input class="mq-input" name="confirm_password" type="password" autocomplete="new-password" minlength="12" required>
       </div>
+      {% with consent_id='legal_consent' %}
+      {% include 'partials/legal_consent.html' %}
+      {% endwith %}
+      {% include 'customer/_remember_device.html' %}
       <button class="mq-btn mq-btn-primary" type="submit">Create free account</button>
       <div class="mq-auth-divider">or</div>
       <button class="mq-google-btn" type="button" id="google-signup" data-google-intent="signup">

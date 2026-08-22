@@ -2,61 +2,111 @@
 <html lang="en">
 <head>
   <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <meta name="csrf-token" content="{{ csrf_token() }}">
   <title>{% block title %}Store{% endblock %}</title>
-  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/geist@1.3.1/dist/fonts/geist-sans/style.min.css">
+  {% include 'partials/favicon_links.html' %}
+  <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/geist@1.3.1/dist/fonts/geist-sans/style.min.css" media="print" onload="this.media='all'">
+  <noscript><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/geist@1.3.1/dist/fonts/geist-sans/style.min.css"></noscript>
   <link rel="stylesheet" href="{{ url_for('static', filename='tokens.css') }}">
   <link rel="stylesheet" href="{{ url_for('static', filename='materials.css') }}">
   <link rel="stylesheet" href="{{ url_for('static', filename='system.css') }}">
+  {% if not show_customer_tabbar|default(false) %}
   <link rel="stylesheet" href="{{ url_for('static', filename='marketing.css') }}">
-<link rel="stylesheet" href="{{ url_for('static', filename='guest.css') }}">
+  {% endif %}
+  <link rel="stylesheet" href="{{ url_for('static', filename='guest.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='legal.css') }}">
+  {% if show_customer_tabbar|default(false) %}
+  <link rel="stylesheet" href="{{ url_for('static', filename='customer-shell.css') }}">
+  {% endif %}
   {% block customer_head %}{% endblock %}
 </head>
-<body class="material-canvas mq-app mq-density-customer mq-public">
-  {% if preview_mode %}
-  <div class="material-feedback mq-preview-banner">Customer preview — this is exactly what shoppers see.</div>
+<body class="material-canvas mq-app mq-density-customer mq-public{% if show_customer_tabbar|default(false) %} mq-customer-hub{% endif %}{% if show_storefront_shell|default(false) %} mq-storefront{% endif %}{% if preview_mode|default(false) %} mq-public--preview{% endif %}"
+      {% if customer_nav_tab|default(none) %}data-customer-tab="{{ customer_nav_tab }}"{% endif %}>
+  <div class="{% if show_customer_tabbar|default(false) %}mq-customer-hub-frame{% endif %}">
+  {% if show_customer_tabbar|default(false) %}
+  {% include 'customer/_customer_tabbar.html' %}
   {% endif %}
-
+  <div class="{% if show_customer_tabbar|default(false) %}mq-customer-hub-body{% endif %}">
+  {% if not preview_mode|default(false) %}
+  {% block customer_header %}
+  {% if show_customer_tabbar|default(false) %}
+  {% include 'customer/_hub_topbar.html' %}
+  {% else %}
   <header class="material-panel mq-public-header" id="mq-public-header">
     <div class="mq-public-header__inner">
-      <a class="mq-shell-brand" href="{{ url_for('index') }}">
-        <span class="mq-shell-brand-mark">M</span>
-        <span>MarketQR</span>
+      <a class="mq-shell-brand" href="{{ url_for('guest_home') }}" aria-label="zintriq">
+        {% with variant='light', class='mq-shell-brand__logo zintriq-logo', width=180, height=48 %}
+        {% include 'partials/brand_logo.html' %}
+        {% endwith %}
       </a>
       <div class="mq-public-header__actions">
-        <a class="mq-public-header__guest-link" href="{{ url_for('guest_discover') }}">Discover</a>
+        <a class="mq-public-header__guest-link" href="{{ url_for('guest_home') }}">Home</a>
         <a class="mq-public-header__guest-link" href="{{ url_for('guest_recent_places') }}">
-          Your places{% if guest_recent_count|default(0) > 0 %}<span class="guest-link-count">{{ guest_recent_count }}</span>{% endif %}
+          Places{% if guest_recent_count|default(0) > 0 %}<span class="guest-link-count">{{ guest_recent_count }}</span>{% endif %}
         </a>
+        {% if customer_logged_in and current_customer %}
+        <a class="mq-public-header__guest-link" href="{{ url_for('customer_account_home') }}">{{ current_customer.email.split('@')[0] }}</a>
+        {% else %}
+        <button type="button" class="mq-public-header__guest-link mq-public-header__guest-btn" data-auth-open="login">Log in</button>
+        {% endif %}
         {% block customer_header_actions %}{% endblock %}
       </div>
     </div>
   </header>
+  {% endif %}
+  {% endblock %}
+  {% endif %}
+
+  <main class="material-sheet mq-shell-main">{% block content %}{% endblock %}</main>
+
+  {% if not show_customer_tabbar|default(false) and not show_storefront_shell|default(false) and not preview_mode|default(false) %}
+  <footer class="mq-public-footer">{% include 'partials/site_footer.html' %}</footer>
+  {% endif %}
+  </div>
+  </div>
 
   {% with messages = get_flashed_messages(with_categories=true) %}
     {% if messages %}
-    <div class="mq-flash-wrap">
-      {% for category, message in messages %}
-      <div class="material-feedback mq-flash mq-flash-{{ category }}" role="status">{{ message }}</div>
-      {% endfor %}
-    </div>
+      {% if show_customer_tabbar|default(false) %}
+      <div class="ch-toast-stack" id="ch-toast-stack" aria-live="polite">
+        {% for category, message in messages %}
+        <div class="ch-toast ch-toast--{{ category }}" role="status">
+          <span class="ch-toast__msg">{{ message }}</span>
+          <button type="button" class="ch-toast__close" aria-label="Dismiss">×</button>
+        </div>
+        {% endfor %}
+      </div>
+      {% else %}
+      <div class="mq-flash-wrap">
+        {% for category, message in messages %}
+        <div class="material-feedback mq-flash mq-flash-{{ category }}" role="status">{{ message }}</div>
+        {% endfor %}
+      </div>
+      {% endif %}
     {% endif %}
   {% endwith %}
 
-  <main class="material-sheet mq-shell-main">{% block content %}{% endblock %}</main>
-  <footer class="mq-public-footer"><strong>MarketQR</strong> · Powered by MarketQR</footer>
-  <script src="{{ url_for('static', filename='marketing.js') }}"></script>
-  <script>
-  (function () {
-    if (!("serviceWorker" in navigator)) return;
-    var h = location.hostname;
-    if (h !== "localhost" && h !== "127.0.0.1") return;
-    navigator.serviceWorker.getRegistrations().then(function (regs) {
-      regs.forEach(function (reg) { reg.unregister(); });
-    });
-  })();
-  </script>
+  {% if not preview_mode %}
+  {% include 'customer/_auth_sheet.html' %}
+  {% if customer_nav_tab|default('') == 'home' %}
+  {% include 'customer/_onboarding_modal.html' %}
+  {% endif %}
+  {% endif %}
+
+  {% if show_customer_tabbar|default(false) %}
+  <script type="module" src="{{ url_for('static', filename='customer-motion.js') }}" defer></script>
+  <script type="module" src="{{ url_for('static', filename='customer-toast.js') }}" defer></script>
+  {% if customer_nav_tab|default('') == 'home' %}
+  <script type="module" src="{{ url_for('static', filename='customer-onboarding.js') }}?v=3" defer></script>
+  {% endif %}
+  {% elif not show_storefront_shell|default(false) %}
+  <script src="{{ url_for('static', filename='marketing.js') }}" defer></script>
+  {% endif %}
+  {% if not preview_mode|default(false) %}
+  <script type="module" src="{{ url_for('static', filename='customer-auth.js') }}"></script>
+  {% endif %}
   {% block customer_scripts %}{% endblock %}
 </body>
 </html>

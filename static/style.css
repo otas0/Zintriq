@@ -1397,7 +1397,7 @@ select {
   .row-actions { grid-column: 2 / -1; }
 }
 
-/* ── Store Workspace (Business OS) ── */
+/* ── Store Workspace (Zintriq) ── */
 .workspace {
   display: grid;
   grid-template-columns: 240px 1fr;

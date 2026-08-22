@@ -4,7 +4,7 @@
     <p class="sf-inquiry__eyebrow">Ready to buy?</p>
     <h2 class="sf-inquiry__title">Contact {{ store.owner_name or store.name }}</h2>
     {% if store.contact %}<p class="sf-inquiry__direct">{{ store.contact }}</p>{% endif %}
-    <small class="sf-inquiry__note">MarketQR does not process payments. Arrange payment directly with the business.</small>
+    <small class="sf-inquiry__note">{% if checkout_enabled|default(false) %}Pay online above, or send a message below.{% else %}Zintriq does not process payments. Arrange payment directly with the business.{% endif %}</small>
   </div>
 
   {% with messages = get_flashed_messages(with_categories=true) %}
