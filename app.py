@@ -793,6 +793,42 @@ def sync_customer_remember_cookie(response):
 
 
 @app.after_request
+def observability_access_log(response):
+    """Log one line per request with method, path, status, duration, request_id."""
+    from flask import g
+    path = request.path
+    if path.startswith("/static/") or path in ("/health", "/healthz", "/ready"):
+        return response
+    start = getattr(g, "request_start_time", None)
+    if start is None:
+        from observability.context import get_context
+        ctx = get_context()
+        start = ctx.get("start_time") if ctx else None
+    duration_ms = int((time.time() - start) * 1000) if start else 0
+    status = response.status_code
+    rid = getattr(g, "request_id", None)
+    level = "INFO"
+    if status >= 500:
+        level = "ERROR"
+    elif status >= 400:
+        level = "WARNING"
+    elif status >= 300:
+        level = "DEBUG"
+    _log.log(
+        getattr(logging, level),
+        "http_request",
+        extra={
+            "method": request.method,
+            "path": path,
+            "status": status,
+            "duration_ms": duration_ms,
+            "request_id": rid,
+        },
+    )
+    return response
+
+
+@app.after_request
 def observability_attach_request_id(response):
     """Register LAST: attach X-Request-ID header, increment counter, clear context."""
     from flask import g
