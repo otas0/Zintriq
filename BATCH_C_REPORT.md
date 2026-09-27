@@ -239,6 +239,39 @@ Batch C completes Phase 1.0 Step 2 (Observability Hardening) by adding external 
 
 ---
 
+## 8.1 RULE 2 Evidence — Two-Pass Grep Verification (Batch C.5 GAP 4)
+
+| Category | Pass 1 pattern | Count | Pass 2 pattern | Count | Delta | Resolution |
+|----------|---------------|-------|----------------|-------|-------|------------|
+| trace wrapping | `with trace(` | 9 files | `from observability.trace import` | 9 files | 0 | All imports have matching usage |
+| ad-hoc loggers (warning) | `app.logger.warning` | 0 | — | — | 0 | All 15 migrated to structured logging |
+| ad-hoc loggers (error) | `app.logger.error` | 19 | Batch A payment paths | 19 | 0 | DO NOT TOUCH (Batch A scope) |
+| access log | `def observability_access_log` | 1 | `"http_request"` event | 1 | 0 | Single implementation verified |
+| client errors | `/api/client-errors` endpoint | 1 | `"client_error"` event | 1 | 0 | Single endpoint verified |
+
+**Grep commands executed:**
+```bash
+# trace wrapping
+grep -c "with trace(" --include="*.py" -r . | grep -v ":0$" | wc -l  # → 9
+grep -c "from observability.trace import" --include="*.py" -r . | grep -v ":0$" | wc -l  # → 9
+
+# ad-hoc loggers
+grep -r "app\.logger\.warning" --include="*.py" . | wc -l  # → 0
+grep -r "app\.logger\.error" --include="*.py" . | wc -l  # → 19 (Batch A payment paths)
+
+# access log
+grep -c "def observability_access_log" --include="*.py" -r . | grep -v ":0$" | wc -l  # → 1
+grep -c '"http_request"' --include="*.py" -r . | grep -v ":0$" | wc -l  # → 1
+
+# client errors
+grep -c '/api/client-errors' --include="*.py" -r . | grep -v ":0$" | wc -l  # → 1
+grep -c '"client_error"' --include="*.py" -r . | grep -v ":0$" | wc -l  # → 1
+```
+
+**Conclusion:** Zero delta across all categories. No under-counting. No PHASE_1_TODO.md updates needed (RULE 3).
+
+---
+
 ## 9. RULE 3 — PHASE_1_TODO.md Updates
 
 All items from Batch C are new additions, not tracked in PHASE_1_TODO.md (which tracks silent except blocks). No updates needed.
