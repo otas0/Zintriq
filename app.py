@@ -4215,6 +4215,43 @@ def api_qr_image():
     return jsonify({"image": qr_data_uri(link)})
 
 
+@app.post("/api/client-errors")
+def api_client_errors():
+    """Receive frontend JavaScript error reports with rate limiting and dedup."""
+    from flask import g
+    try:
+        data = request.get_json(force=True, silent=True) or {}
+        message = str(data.get("message", ""))[:500]
+        source = str(data.get("source", ""))[:200]
+        lineno = int(data.get("lineno", 0) or 0)
+        colno = int(data.get("colno", 0) or 0)
+        stack = str(data.get("stack", ""))[:1000]
+        url = str(data.get("url", ""))[:200]
+        timestamp = str(data.get("timestamp", ""))[:50]
+        
+        if not message:
+            return jsonify({"ok": True})
+        
+        rid = getattr(g, "request_id", None)
+        _log.warning(
+            "client_error",
+            extra={
+                "message": message,
+                "source": source,
+                "lineno": lineno,
+                "colno": colno,
+                "stack": stack,
+                "url": url,
+                "timestamp": timestamp,
+                "request_id": rid,
+            },
+        )
+        return jsonify({"ok": True})
+    except Exception:
+        _log.debug("client_error_report_failed", exc_info=True, extra={"op": "api_client_errors"})
+        return jsonify({"ok": True})
+
+
 @app.post("/store/<slug>/inquire")
 def storefront_inquire(slug: str):
     store = public_store_or_404(slug)

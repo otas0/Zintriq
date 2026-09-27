@@ -1,8 +1,10 @@
 <!doctype html>
-<html lang="en">
+<html lang="{{ html_lang|default('en') }}" dir="{{ ui_lang_dir|default('ltr') }}">
 <head>
+  {% include 'partials/theme_init.html' %}
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="ui-lang" content="{{ ui_lang|default('en') }}">
   <title>{% block title %}Zintriq{% endblock %}</title>
   <meta name="csrf-token" content="{{ csrf_token() }}">
   {% include 'partials/favicon_links.html' %}
@@ -17,15 +19,14 @@
 <body class="material-canvas mq-app mq-density-customer mq-public">
   <header class="material-panel mq-public-header" id="mq-public-header">
     <div class="mq-public-header__inner">
-      <a class="mq-shell-brand" href="{{ url_for('index') if not current_user else url_for('bos.store') }}" aria-label="zintriq">
-        {% with variant='light', class='mq-shell-brand__logo zintriq-logo', width=180, height=48 %}
+      <a class="mq-shell-brand" href="{{ url_for('index') }}" aria-label="zintriq">
+        {% with class='mq-shell-brand__logo zintriq-logo', width=180, height=48 %}
         {% include 'partials/brand_logo.html' %}
         {% endwith %}
       </a>
       <nav class="mq-public-nav" aria-label="Main">
         {% if current_user %}
-        <a href="{{ url_for('bos.store') }}">Store</a>
-        <a href="{{ url_for('bos.operations') }}">Operations</a>
+        <a href="{{ url_for('workspace_dashboard') }}">Dashboard</a>
         <a href="{{ url_for('account') }}">Account</a>
         <form method="post" action="{{ url_for('logout') }}">
           <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
@@ -42,8 +43,7 @@
     </div>
     <nav class="mq-mobile-nav" id="mq-mobile-nav" aria-label="Mobile">
       {% if current_user %}
-      <a href="{{ url_for('bos.store') }}">Store</a>
-      <a href="{{ url_for('bos.operations') }}">Operations</a>
+      <a href="{{ url_for('workspace_dashboard') }}">Dashboard</a>
       <a href="{{ url_for('account') }}">Account</a>
       <form method="post" action="{{ url_for('logout') }}">
         <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
@@ -75,6 +75,81 @@
   </footer>
 
   <script src="{{ url_for('static', filename='marketing.js') }}"></script>
+  <script type="module" src="{{ url_for('static', filename='i18n/legacy-dom-i18n.js') }}"></script>
   {% block public_scripts %}{% endblock %}
+  
+  <script>
+  (function() {
+    if (window.__zintriq_error_capture_initialized) return;
+    window.__zintriq_error_capture_initialized = true;
+    
+    var errorQueue = [];
+    var lastSent = 0;
+    var RATE_LIMIT_MS = 5000;
+    var MAX_ERRORS_PER_MINUTE = 10;
+    var errorCount = 0;
+    var minuteStart = Date.now();
+    
+    function shouldSend() {
+      var now = Date.now();
+      if (now - minuteStart > 60000) {
+        errorCount = 0;
+        minuteStart = now;
+      }
+      if (errorCount >= MAX_ERRORS_PER_MINUTE) return false;
+      if (now - lastSent < RATE_LIMIT_MS) return false;
+      return true;
+    }
+    
+    function sendError(data) {
+      if (!shouldSend()) return;
+      errorCount++;
+      lastSent = Date.now();
+      
+      try {
+        var xhr = new XMLHttpRequest();
+        xhr.open('POST', '/api/client-errors', true);
+        xhr.setRequestHeader('Content-Type', 'application/json');
+        xhr.send(JSON.stringify({
+          message: data.message || 'Unknown error',
+          source: data.source || '',
+          lineno: data.lineno || 0,
+          colno: data.colno || 0,
+          stack: data.stack || '',
+          url: window.location.href,
+          timestamp: new Date().toISOString()
+        }));
+      } catch (e) {
+        // Silently fail - don't create error loops
+      }
+    }
+    
+    window.addEventListener('error', function(event) {
+      sendError({
+        message: event.message,
+        source: event.filename,
+        lineno: event.lineno,
+        colno: event.colno,
+        stack: event.error ? event.error.stack : ''
+      });
+    });
+    
+    window.addEventListener('unhandledrejection', function(event) {
+      var message = 'Unhandled Promise Rejection';
+      var stack = '';
+      if (event.reason) {
+        message = event.reason.message || String(event.reason);
+        stack = event.reason.stack || '';
+      }
+      sendError({
+        message: message,
+        source: 'promise',
+        lineno: 0,
+        colno: 0,
+        stack: stack
+      });
+    });
+  })();
+  </script>
 </body>
 </html>
