@@ -46,22 +46,34 @@ Background worker retries or flags for manual review.
 
 ---
 
-## Phase 2.6 — External Call Tracing (bare urllib sites)
+## Phase 2.6 — External Call Tracing [DONE — Batch C Step 2.6 + C.5 GAP 3]
 
-9 sites with `urllib.request.urlopen` and no exception handler.
-All need `trace()` wrapping in Step 2.6.
+**Status:** COMPLETE (2026-09-27)
 
-| File:Line | Function |
-|-----------|----------|
-| `checkout_platform.py:319` | `_stripe_create_checkout_session()` |
-| `checkout_platform.py:740` | `store_checkout_success()` — Stripe verify (currently caught by `except Exception` from 2.0.4) |
-| `payment_connect_plugin.py:57` | `_payment_http_json()` |
-| `payment_connect_plugin.py:65` | `_payment_http_json_auth()` |
-| `payment_connect_plugin.py:76` | `_payment_http_get_json()` |
-| `payment_connect_plugin.py:366` | `_stripe_refresh_account_status()` |
-| `payment_connect_plugin.py:486` | `_paypal_refresh_account_status()` |
-| `reputation_connect_plugin.py:132` | `_reputation_http_json()` |
-| `reputation_connect_plugin.py:158` | `_reputation_http_get_json()` |
+Original plan: 9 bare urllib sites. Actual: 14 HTTP + 2 SMTP = 16 total trace() wrappings.
+
+**Line number mapping** (pre-edit → post-edit after trace() wrapping added lines):
+- checkout_platform.py:319 → :324 (Stripe create session)
+- checkout_platform.py:740 → :747 (Stripe verify session)
+- payment_connect_plugin.py:57 → :61 (HTTP POST form)
+- payment_connect_plugin.py:65 → :70 (HTTP GET JSON)
+- payment_connect_plugin.py:76 → :82 (HTTP POST JSON)
+- payment_connect_plugin.py:366 → :376 (Stripe verify secret)
+- payment_connect_plugin.py:486 → :497 (Stripe account status)
+- reputation_connect_plugin.py:132 → :134 (HTTP GET JSON)
+- reputation_connect_plugin.py:158 → :161 (HTTP POST form)
+
+**Additional sites found and wrapped:**
+- payment_checkout_adapters.py:47, :61 (2 HTTP adapters)
+- storefront_platform.py:622 (geocode OSM)
+- integrations/payment/__init__.py:80 (Stripe create customer)
+- integration_credential_verify.py:41 (credential verify)
+- email_delivery.py:44, :50 (2 SMTP connections)
+
+**Final count:** `grep -c "with trace(" *.py` = 16 (excl. observability/trace.py docstring)
+**Plus:** 2 `with slow_query()` wrappings (storefront_platform.py, qr_experience_analytics.py)
+
+All outbound HTTP + SMTP calls in production code are now traced.
 
 ---
 

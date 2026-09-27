@@ -6,6 +6,8 @@ import os
 import smtplib
 from email.message import EmailMessage
 
+from observability.trace import trace
+
 
 def smtp_configured() -> bool:
     return bool(os.environ.get("SMTP_HOST", "").strip())
@@ -39,15 +41,17 @@ def send_transactional_email(
         msg.add_alternative(html_body, subtype="html")
 
     if use_ssl:
-        with smtplib.SMTP_SSL(host, port, timeout=30) as smtp:
-            if user:
-                smtp.login(user, password)
-            smtp.send_message(msg)
+        with trace("smtp.send_ssl", host=host, port=port):
+            with smtplib.SMTP_SSL(host, port, timeout=30) as smtp:
+                if user:
+                    smtp.login(user, password)
+                smtp.send_message(msg)
     else:
-        with smtplib.SMTP(host, port, timeout=30) as smtp:
-            if use_tls:
-                smtp.starttls()
-            if user:
-                smtp.login(user, password)
-            smtp.send_message(msg)
+        with trace("smtp.send", host=host, port=port):
+            with smtplib.SMTP(host, port, timeout=30) as smtp:
+                if use_tls:
+                    smtp.starttls()
+                if user:
+                    smtp.login(user, password)
+                smtp.send_message(msg)
     return True
