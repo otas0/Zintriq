@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import base64
 import json
+import logging
 import os
 import secrets
 import urllib.parse
@@ -11,6 +12,7 @@ import urllib.request
 from datetime import datetime, timedelta, timezone
 
 from flask import abort, jsonify, redirect, request, session, url_for
+from observability.trace import trace
 
 from bos.integration_crypto import encrypt_token
 from integration_catalog import get_reputation_plugin, reputation_plugin_slugs
@@ -129,9 +131,10 @@ def _http_get_json(url: str, access_token: str) -> dict:
     req = urllib.request.Request(url, method="GET")
     req.add_header("Authorization", f"Bearer {access_token}")
     req.add_header("Accept", "application/json")
-    with urllib.request.urlopen(req, timeout=10) as resp:
-        raw = resp.read().decode()
-        return json.loads(raw) if raw else {}
+    with trace("http.get_json", url=url):
+        with urllib.request.urlopen(req, timeout=10) as resp:
+            raw = resp.read().decode()
+            return json.loads(raw) if raw else {}
 
 
 def _google_profile(access: str, kind: str) -> tuple[str, str, str]:
@@ -155,9 +158,10 @@ def _http_post_form(url: str, data: dict, *, headers: dict | None = None) -> dic
     req.add_header("Content-Type", "application/x-www-form-urlencoded")
     for key, value in (headers or {}).items():
         req.add_header(key, value)
-    with urllib.request.urlopen(req, timeout=10) as resp:
-        raw = resp.read().decode()
-        return json.loads(raw) if raw else {}
+    with trace("http.post_form", url=url):
+        with urllib.request.urlopen(req, timeout=10) as resp:
+            raw = resp.read().decode()
+            return json.loads(raw) if raw else {}
 
 
 def _store_oauth_connection(
@@ -331,7 +335,7 @@ def register_reputation_connect_plugin(app) -> None:
                 try:
                     external_id, email, business_name = _google_profile(access, cfg["profile"])
                 except Exception:
-                    pass
+                    logging.getLogger("app.reputation").error("google_profile_fetch_failed", exc_info=True)  # SUSPECT: swallow may hide bug — see Phase 1.1
             with db() as conn:
                 _store_oauth_connection(
                     conn,
@@ -347,6 +351,7 @@ def register_reputation_connect_plugin(app) -> None:
                     connect_mode="oauth",
                 )
         except Exception:
+            logging.getLogger("app.reputation").error("rep_oauth_token_exchange_failed", exc_info=True, extra={"provider": provider})  # SUSPECT: swallow may hide bug — see Phase 1.1
             return redirect(f"/app/settings?integration={provider}&integration_error=token_exchange_failed")
         session.pop(f"rep_oauth_state_{provider}", None)
         session.pop(f"rep_oauth_user_{provider}", None)

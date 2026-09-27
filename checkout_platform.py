@@ -19,6 +19,7 @@ from flask import jsonify, redirect, render_template, request, session
 from bos.integration_crypto import decrypt_token
 from integration_platform import get_user_connection
 from integration_catalog import get_payment_plugin
+from observability.trace import trace
 from payment_checkout_adapters import create_hosted_checkout, verify_hosted_payment
 from payment_connect_plugin import (
     PAYMENT_PLUGIN_SLUGS,
@@ -320,8 +321,9 @@ def _stripe_checkout_session(
         method="POST",
         headers={**headers, "Content-Type": "application/x-www-form-urlencoded"},
     )
-    with urllib.request.urlopen(req, timeout=15) as resp:
-        return json.loads(resp.read().decode())
+    with trace("payment.stripe.create_session", provider="stripe", op="create_session"):
+        with urllib.request.urlopen(req, timeout=15) as resp:
+            return json.loads(resp.read().decode())
 
 
 def _resolve_workspace_id(conn, store_id: int, workspace_id: int | None) -> int:
@@ -742,8 +744,9 @@ def register_checkout_platform(app) -> None:
                         method="GET",
                         headers={"Authorization": f"Bearer {secret}"},
                     )
-                    with urllib.request.urlopen(req, timeout=10) as resp:
-                        stripe_sess = json.loads(resp.read().decode())
+                    with trace("payment.stripe.verify_session", provider="stripe", op="verify_session", checkout_id=public_id):
+                        with urllib.request.urlopen(req, timeout=10) as resp:
+                            stripe_sess = json.loads(resp.read().decode())
                     if stripe_sess.get("payment_status") == "paid":
                         payment_verified = True
                     else:

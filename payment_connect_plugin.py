@@ -13,6 +13,7 @@ import urllib.request
 from datetime import datetime, timedelta, timezone
 
 from flask import abort, jsonify, redirect, request, session, url_for
+from observability.trace import trace
 
 from bos.integration_crypto import decrypt_token, encrypt_token
 from integration_platform import (
@@ -57,17 +58,19 @@ def _http_post_form(url: str, data: dict, *, headers: dict | None = None) -> dic
     req.add_header("Content-Type", "application/x-www-form-urlencoded")
     for key, value in (headers or {}).items():
         req.add_header(key, value)
-    with urllib.request.urlopen(req, timeout=8) as resp:
-        raw = resp.read().decode()
-        return json.loads(raw) if raw else {}
+    with trace("http.post_form", url=url):
+        with urllib.request.urlopen(req, timeout=8) as resp:
+            raw = resp.read().decode()
+            return json.loads(raw) if raw else {}
 
 
 def _http_get_json(url: str, access_token: str) -> dict:
     req = urllib.request.Request(url, method="GET")
     req.add_header("Authorization", f"Bearer {access_token}")
-    with urllib.request.urlopen(req, timeout=8) as resp:
-        raw = resp.read().decode()
-        return json.loads(raw) if raw else {}
+    with trace("http.get_json", url=url):
+        with urllib.request.urlopen(req, timeout=8) as resp:
+            raw = resp.read().decode()
+            return json.loads(raw) if raw else {}
 
 
 def _http_post_json(url: str, payload: dict, *, headers: dict | None = None) -> dict:
@@ -76,9 +79,10 @@ def _http_post_json(url: str, payload: dict, *, headers: dict | None = None) -> 
     req.add_header("Content-Type", "application/json")
     for key, value in (headers or {}).items():
         req.add_header(key, value)
-    with urllib.request.urlopen(req, timeout=8) as resp:
-        raw = resp.read().decode()
-        return json.loads(raw) if raw else {}
+    with trace("http.post_json", url=url):
+        with urllib.request.urlopen(req, timeout=8) as resp:
+            raw = resp.read().decode()
+            return json.loads(raw) if raw else {}
 
 
 def init_payment_connection_tables(conn) -> None:
@@ -369,8 +373,9 @@ def _verify_stripe_secret(secret_key: str) -> dict:
         method="GET",
         headers={"Authorization": f"Bearer {secret_key}"},
     )
-    with urllib.request.urlopen(req, timeout=8) as resp:
-        return json.loads(resp.read().decode())
+    with trace("payment.stripe.verify_secret", provider="stripe", op="verify_secret"):
+        with urllib.request.urlopen(req, timeout=8) as resp:
+            return json.loads(resp.read().decode())
 
 
 def _verify_paypal_credentials(client_id: str, client_secret: str, mode: str) -> dict:
@@ -489,8 +494,9 @@ def _refresh_stripe_from_connection(conn, app, connection_row: dict) -> dict:
         method="GET",
         headers={"Authorization": f"Bearer {cfg['client_secret']}"},
     )
-    with urllib.request.urlopen(req, timeout=8) as resp:
-        data = json.loads(resp.read().decode())
+    with trace("payment.stripe.account_status", provider="stripe", op="account_status", account_id=account_id):
+        with urllib.request.urlopen(req, timeout=8) as resp:
+            data = json.loads(resp.read().decode())
     charges = bool(data.get("charges_enabled"))
     payouts = bool(data.get("payouts_enabled"))
     status = "active" if charges else "pending"

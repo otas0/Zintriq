@@ -14,6 +14,8 @@ import urllib.parse
 import urllib.request
 from typing import Any
 
+from observability.trace import trace
+
 
 PLACEHOLDER_RE = re.compile(
     r"^(test|demo|fake|sample|example|xxx+|asdf+|qwerty|password|secret|admin|1234+|0000+|aaaa+|abcd|"
@@ -36,9 +38,10 @@ def _http_json(
 ) -> dict:
     req = urllib.request.Request(url, data=body, method=method, headers=headers or {})
     try:
-        with urllib.request.urlopen(req, timeout=timeout) as resp:
-            raw = resp.read().decode()
-            return json.loads(raw) if raw.strip() else {}
+        with trace("credential.verify", url=url):
+            with urllib.request.urlopen(req, timeout=timeout) as resp:
+                raw = resp.read().decode()
+                return json.loads(raw) if raw.strip() else {}
     except urllib.error.HTTPError as exc:
         detail = exc.read().decode() if exc.fp else str(exc)
         raise CredentialVerifyError(

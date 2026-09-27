@@ -6,6 +6,8 @@ from abc import ABC, abstractmethod
 import logging
 from typing import Any
 
+from observability.trace import trace
+
 _log = logging.getLogger("app.payment")
 
 
@@ -75,8 +77,9 @@ class StripePaymentProvider(PaymentProvider):
             method="POST",
         )
         try:
-            with urllib.request.urlopen(req, timeout=15) as resp:
-                data = json.loads(resp.read().decode())
+            with trace("payment.stripe.create_customer", provider="stripe", op="create_customer"):
+                with urllib.request.urlopen(req, timeout=15) as resp:
+                    data = json.loads(resp.read().decode())
         except urllib.error.HTTPError as exc:
             detail = exc.read().decode() if exc.fp else str(exc)
             raise RuntimeError(f"Stripe customer creation failed: {detail}") from exc

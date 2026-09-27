@@ -9,6 +9,8 @@ import re
 import threading
 from datetime import datetime
 
+from observability.trace import slow_query
+
 _log = logging.getLogger("app.qr_experience")
 
 # Spec-aligned experience event types
@@ -110,22 +112,23 @@ def _backfill_from_interactions(conn) -> None:
     ).fetchone()["c"]
     if existing:
         return
-    rows = conn.execute(
-        """SELECT i.*, s.session_id
-           FROM qr_experience_interactions i
-           JOIN qr_experience_sessions s ON s.id=i.experience_session_id
-           ORDER BY i.id"""
-    ).fetchall()
-    for r in rows:
-        etype = _interaction_to_analytics(r["event_type"], r["action_type"])
-        if not etype:
-            continue
-        conn.execute(
-            """INSERT INTO qr_experience_analytics_events
-               (experience_id, session_id, event_type, metadata, created_at)
-               VALUES (?, ?, ?, ?, ?)""",
-            (r["experience_id"], r["session_id"], etype, r["metadata"] or "{}", r["created_at"]),
-        )
+    with slow_query("qr_analytics_backfill", threshold_ms=2000):
+        rows = conn.execute(
+            """SELECT i.*, s.session_id
+            FROM qr_experience_interactions i
+            JOIN qr_experience_sessions s ON s.id=i.experience_session_id
+            ORDER BY i.id"""
+        ).fetchall()
+        for r in rows:
+            etype = _interaction_to_analytics(r["event_type"], r["action_type"])
+            if not etype:
+                continue
+            conn.execute(
+                """INSERT INTO qr_experience_analytics_events
+                (experience_id, session_id, event_type, metadata, created_at)
+                VALUES (?, ?, ?, ?, ?)""",
+                (r["experience_id"], r["session_id"], etype, r["metadata"] or "{}", r["created_at"]),
+            )
 
 
 def _table_exists(conn, table: str) -> bool:

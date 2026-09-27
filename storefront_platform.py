@@ -13,6 +13,8 @@ from typing import Any
 from urllib.parse import quote
 from zoneinfo import ZoneInfo
 
+from observability.trace import trace, slow_query
+
 _log = logging.getLogger("app.storefront")
 
 WEEKDAYS = ("mon", "tue", "wed", "thu", "fri", "sat", "sun")
@@ -617,8 +619,9 @@ def geocode_address(address: str | None) -> tuple[float, float] | None:
     url = f"https://nominatim.openstreetmap.org/search?{params}"
     req = urllib.request.Request(url, headers={"User-Agent": "Zintriq-Storefront/1.0"})
     try:
-        with urllib.request.urlopen(req, timeout=8) as resp:
-            data = json.loads(resp.read().decode())
+        with trace("geocode.osm", op="geocode_address"):
+            with urllib.request.urlopen(req, timeout=8) as resp:
+                data = json.loads(resp.read().decode())
     except (urllib.error.URLError, TimeoutError, json.JSONDecodeError, ValueError):
         _log.debug("geocode_request_failed", exc_info=True, extra={"op": "geocode_address"})
         return None
@@ -821,15 +824,16 @@ def storefront_insights(conn, store_id: int, *, period: str = "7d") -> dict[str,
     new_inquiries = int(inq_row["new_count"] or 0)
 
     clause, params = analytics_period_clause(period, column="e.created_at")
-    top_items = conn.execute(
-        f"""SELECT e.item_id, i.name, COUNT(*) AS views
-            FROM store_analytics_events e
-            LEFT JOIN items i ON i.id = e.item_id
-            WHERE e.store_id = ? AND e.event_type = 'item_view' AND e.item_id IS NOT NULL
-              AND {clause}
-            GROUP BY e.item_id ORDER BY views DESC LIMIT 5""",
-        [store_id, *params],
-    ).fetchall()
+    with slow_query("storefront_top_items"):
+        top_items = conn.execute(
+            f"""SELECT e.item_id, i.name, COUNT(*) AS views
+                FROM store_analytics_events e
+                LEFT JOIN items i ON i.id = e.item_id
+                WHERE e.store_id = ? AND e.event_type = 'item_view' AND e.item_id IS NOT NULL
+                  AND {clause}
+                GROUP BY e.item_id ORDER BY views DESC LIMIT 5""",
+            [store_id, *params],
+        ).fetchall()
 
     recent_inquiries = list_store_inquiries(conn, store_id, limit=5)
     discovery = _storefront_discovery_metrics(conn, store_id, period)

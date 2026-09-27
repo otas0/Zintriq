@@ -14,6 +14,8 @@ import urllib.parse
 import urllib.request
 from typing import Any
 
+from observability.trace import trace
+
 _log = logging.getLogger("app.payment_checkout")
 
 
@@ -42,9 +44,10 @@ def _http_json(
     for key, value in (headers or {}).items():
         req.add_header(key, value)
     try:
-        with urllib.request.urlopen(req, timeout=timeout) as resp:
-            raw = resp.read().decode()
-            return json.loads(raw) if raw else {}
+        with trace("http.request", url=url, method=method):
+            with urllib.request.urlopen(req, timeout=timeout) as resp:
+                raw = resp.read().decode()
+                return json.loads(raw) if raw else {}
     except urllib.error.HTTPError as exc:
         detail = exc.read().decode()[:400] if exc.fp else str(exc)
         raise RuntimeError(f"{exc.code}: {detail}") from exc
@@ -55,9 +58,10 @@ def _http_raw(url: str, body: bytes, headers: dict, *, method: str = "POST") -> 
     for key, value in headers.items():
         req.add_header(key, value)
     try:
-        with urllib.request.urlopen(req, timeout=15) as resp:
-            raw = resp.read().decode()
-            return json.loads(raw) if raw else {}
+        with trace("http.request_raw", url=url, method=method):
+            with urllib.request.urlopen(req, timeout=15) as resp:
+                raw = resp.read().decode()
+                return json.loads(raw) if raw else {}
     except urllib.error.HTTPError as exc:
         detail = exc.read().decode()[:400] if exc.fp else str(exc)
         raise RuntimeError(f"{exc.code}: {detail}") from exc
