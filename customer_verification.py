@@ -192,7 +192,7 @@ def deliver_otp(app, *, channel: str, target: str, code: str) -> None:
 
 def _deliver_email(app, to: str, subject: str, body: str) -> None:
     to_domain = to.split("@", 1)[1] if "@" in to else "unknown"
-    app.logger.warning("verification_email_send to_domain=%s body_len=%d", to_domain, len(body))
+    _log.warning("verification_email_send to_domain=%s body_len=%d", to_domain, len(body))
 
 
 def _deliver_sms(app, phone: str, body: str) -> None:
@@ -206,8 +206,8 @@ def _deliver_sms(app, phone: str, body: str) -> None:
             Client(sid, token).messages.create(to=phone, from_=from_num, body=body)
             return
         except Exception as exc:
-            app.logger.warning("twilio_sms_failed error=%s", type(exc).__name__)
-    app.logger.warning("verification_sms_fallback body_len=%d", len(body))
+            _log.warning("twilio_sms_failed error=%s", type(exc).__name__)
+    _log.warning("verification_sms_fallback body_len=%d", len(body))
 
 
 def send_verification_code(app, conn, *, channel: str, target: str, purpose: str = "signup") -> tuple[bool, str, dict | None]:

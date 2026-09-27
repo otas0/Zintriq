@@ -526,10 +526,7 @@ def register_customer_account_platform(app) -> None:
                 ).fetchone()
             if user and user_account_kind(user) == ACCOUNT_KIND_CUSTOMER:
                 token = create_auth_token(user["id"], "reset_customer")
-                app.logger.warning(
-                    "Customer password-reset link: %s",
-                    url_for("customer_reset_password", token=token, _external=True),
-                )
+                _log.warning("customer_reset_link_sent token_prefix=%s", token[:8])
             flash("If that email has a shopper account, a reset link has been sent.", "success")
             return redirect(url_for("customer_login"))
         return render_template("customer/forgot_password.html")
@@ -574,10 +571,7 @@ def register_customer_account_platform(app) -> None:
                 ).fetchone()
             if user and user_account_kind(user) == ACCOUNT_KIND_CUSTOMER:
                 token = create_auth_token(user["id"], "magic_customer")
-                app.logger.warning(
-                    "Customer magic-login link: %s",
-                    url_for("customer_magic_signin", token=token, _external=True),
-                )
+                _log.warning("customer_magic_link_sent token_prefix=%s", token[:8])
             flash("If that email has a shopper account, a sign-in link has been sent.", "success")
             return redirect(url_for("customer_login"))
         return render_template("customer/magic_link.html")

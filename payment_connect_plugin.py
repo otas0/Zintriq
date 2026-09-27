@@ -1204,7 +1204,7 @@ def register_payment_connect_plugin(app) -> None:
                 if n:
                     app.logger.info("payment_integration_purge count=%d", n)
         except Exception as exc:
-            app.logger.warning("payment_integration_purge_skipped error=%s", type(exc).__name__)
+            _log.warning("payment_integration_purge_skipped error=%s", type(exc).__name__)
 
 
 def _payment_connect_modes(app, slug: str) -> list[str]:

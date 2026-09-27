@@ -233,7 +233,7 @@ def record_place_event_safe(
             return
         except sqlite3.OperationalError as exc:
             if "locked" not in str(exc).lower() or attempt >= 5:
-                app.logger.warning("place analytics skipped: %s", exc)
+                _log.warning("place_analytics_skipped error=%s", str(exc)[:80])
                 return
             time.sleep(min(0.05 * (2**attempt), 1.0))
 
@@ -703,7 +703,7 @@ def track_guest_store_visit(conn, store_id: int, *, path: str | None = None) -> 
     try:
         record_store_visit(conn, key, store_id, path=path)
     except sqlite3.OperationalError:
-        app.logger.warning("Could not record store visit (database busy)", exc_info=True)
+        _log.warning("store_visit_record_failed", exc_info=True)
     return key
 
 
@@ -1973,7 +1973,7 @@ def forgot_password():
             user = conn.execute("SELECT id FROM users WHERE email = ?", (email,)).fetchone()
         if user:
             token = create_auth_token(user["id"], "reset")
-            app.logger.warning("Development password-reset link: %s", url_for("reset_password", token=token, _external=True))
+            _log.warning("dev_password_reset_link token_prefix=%s", token[:8])
         flash("If that email has an account, a reset link has been sent. In local development, check the Flask terminal for the link.", "success")
         return redirect(url_for("login"))
     return render_template("forgot_password.html")
@@ -2005,7 +2005,7 @@ def magic_link():
             user = conn.execute("SELECT id FROM users WHERE email = ?", (email,)).fetchone()
         if user:
             token = create_auth_token(user["id"], "magic")
-            app.logger.warning("Development magic-login link: %s", url_for("magic_signin", token=token, _external=True))
+            _log.warning("dev_magic_login_link token_prefix=%s", token[:8])
         flash("If that email has an account, a sign-in link has been sent. In local development, check the Flask terminal for the link.", "success")
         return redirect(url_for("login"))
     return render_template("magic_link.html")
@@ -4226,13 +4226,8 @@ def storefront_inquire(slug: str):
                 "SELECT u.email FROM stores s JOIN users u ON u.id = s.owner_id WHERE s.id = ?",
                 (store["id"],),
             ).fetchone()
-            app.logger.warning(
-                "Dev: new inquiry %s for store %s — inbox %s (notify %s)",
-                inquiry_id,
-                slug,
-                inbox_url,
-                owner["email"] if owner else "?",
-            )
+            _log.warning("dev_new_inquiry inquiry_id=%s store_slug=%s inbox_url=%s owner_notified=%s",
+                        inquiry_id, slug, inbox_url, "yes" if owner else "no")
         if email:
             from guest_platform import guest_remembered_email
 
@@ -4403,11 +4398,7 @@ def manage_place_detail(place_slug: str):
                     if not notify_tenant_application_decision(
                         conn, app_id, approved=True, directory_url=directory_url
                     ):
-                        app.logger.warning(
-                            "Dev: tenant approved for application %s — directory %s",
-                            app_id,
-                            directory_url,
-                        )
+                        _log.warning("dev_tenant_approved application_id=%s", app_id)
                     flash("Application approved — shop added to directory.", "success")
                 else:
                     flash("Could not approve that application.", "error")
@@ -4422,7 +4413,7 @@ def manage_place_detail(place_slug: str):
                     note=request.form.get("rejection_note"),
                 ):
                     if not notify_tenant_application_decision(conn, app_id, approved=False):
-                        app.logger.warning("Dev: tenant rejected for application %s", app_id)
+                        _log.warning("dev_tenant_rejected application_id=%s", app_id)
                     flash("Application rejected.", "success")
                 else:
                     flash("Could not reject that application.", "error")
@@ -4498,11 +4489,7 @@ def place_tenant_apply(place_slug: str):
 
                     review_url = url_for("manage_place_detail", place_slug=place_slug, _external=True)
                     if not notify_venue_new_application(conn, app_id, review_url=review_url):
-                        app.logger.warning(
-                            "Dev: new tenant application %s — venue review %s",
-                            app_id,
-                            review_url,
-                        )
+                        _log.warning("dev_new_tenant_application application_id=%s", app_id)
             messages = {
                 "submitted": "Application sent — the venue will review it.",
                 "updated": "Application updated.",
@@ -4567,11 +4554,7 @@ def manage_store_place_membership(slug: str):
 
                     review_url = url_for("manage_place_detail", place_slug=place["slug"], _external=True)
                     if not notify_venue_new_application(conn, app_id, review_url=review_url):
-                        app.logger.warning(
-                            "Dev: new tenant application %s — venue review %s",
-                            app_id,
-                            review_url,
-                        )
+                        _log.warning("dev_new_tenant_application application_id=%s", app_id)
                 messages = {
                     "submitted": f"Application sent to {place['name']}.",
                     "updated": "Application updated.",
