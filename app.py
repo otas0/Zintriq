@@ -802,8 +802,7 @@ def observability_access_log(response):
     start = getattr(g, "request_start_time", None)
     if start is None:
         from observability.context import get_context
-        ctx = get_context()
-        start = ctx.get("start_time") if ctx else None
+        start = get_context("start_time") or None
     duration_ms = int((time.time() - start) * 1000) if start else 0
     status = response.status_code
     rid = getattr(g, "request_id", None)
