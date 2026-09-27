@@ -3,7 +3,10 @@
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
+import logging
 from typing import Any
+
+_log = logging.getLogger("app.payment")
 
 
 class PaymentProvider(ABC):
@@ -93,6 +96,7 @@ class StripePaymentProvider(PaymentProvider):
         try:
             event = json.loads(payload.decode())
         except json.JSONDecodeError:
+            _log.debug("stripe_webhook_json_parse_failed", exc_info=True, extra={"op": "parse_webhook"})
             return None
         etype = event.get("type", "")
         obj = (event.get("data") or {}).get("object") or {}
@@ -102,6 +106,7 @@ class StripePaymentProvider(PaymentProvider):
             try:
                 workspace_id = int(meta["workspace_id"])
             except (TypeError, ValueError):
+                _log.debug("webhook_workspace_id_parse_failed", exc_info=True, extra={"op": "parse_webhook"})
                 pass
         if etype == "customer.subscription.updated" or etype == "customer.subscription.created":
             status_map = {"active": "active", "past_due": "past_due", "canceled": "cancelled", "trialing": "trialing"}

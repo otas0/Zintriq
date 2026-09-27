@@ -6,6 +6,8 @@ hosted checkout URL. Custom bank bases are HTTPS-only (no SSRF).
 
 from __future__ import annotations
 
+import logging
+
 import base64
 import hashlib
 import hmac
@@ -25,6 +27,8 @@ from payment_checkout_adapters import (
     _load_rsa_private,
     _money,
 )
+
+_log = logging.getLogger("app.payment_apac")
 
 
 def _b64url(data: bytes) -> str:
@@ -64,6 +68,7 @@ def _safe_https_base(raw: str, *, fallback: str) -> str:
         if ip.is_private or ip.is_loopback or ip.is_link_local or ip.is_reserved:
             raise RuntimeError("Payment gateway host is not allowed")
     except ValueError:
+        _log.debug("payment_apac_ip_validation_failed", exc_info=True, extra={"op": "_safe_https_base"})
         pass
     return f"https://{parsed.hostname}{parsed.path.rstrip('/')}"
 

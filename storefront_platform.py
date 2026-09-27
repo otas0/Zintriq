@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import logging
 import math
 import urllib.error
 import urllib.parse
@@ -11,6 +12,8 @@ from datetime import datetime, time
 from typing import Any
 from urllib.parse import quote
 from zoneinfo import ZoneInfo
+
+_log = logging.getLogger("app.storefront")
 
 WEEKDAYS = ("mon", "tue", "wed", "thu", "fri", "sat", "sun")
 WEEKDAY_LABELS = {
@@ -25,12 +28,15 @@ WEEKDAY_LABELS = {
 
 DEFAULT_TIMEZONE = "Asia/Singapore"
 
+_log = logging.getLogger("app.storefront")
+
 
 def normalize_allow_cart(value) -> int:
     """Coerce item.allow_cart to 0/1 for templates and checkout."""
     try:
         return 1 if int(value or 0) else 0
     except (TypeError, ValueError):
+        _log.debug("allow_cart_coerce_failed", exc_info=True, extra={"op": "normalize_allow_cart"})
         return 0
 
 
@@ -177,6 +183,7 @@ def _parse_deal_datetime(value: str | None) -> datetime | None:
     try:
         return datetime.fromisoformat(text.replace("Z", ""))
     except ValueError:
+        _log.debug("deal_datetime_parse_failed", exc_info=True, extra={"op": "parse_deal_datetime"})
         return None
 
 
@@ -368,6 +375,7 @@ def parse_hours_json(raw: str | None) -> dict[str, dict[str, str | None]]:
     try:
         data = json.loads(raw)
     except (TypeError, json.JSONDecodeError):
+        _log.debug("hours_json_parse_failed", exc_info=True, extra={"op": "parse_hours_json"})
         return {}
     if not isinstance(data, dict):
         return {}
@@ -423,6 +431,7 @@ def _parse_clock(value: str) -> time | None:
     try:
         return time(int(value[:2]), int(value[3:5]))
     except (TypeError, ValueError):
+        _log.debug("clock_time_parse_failed", exc_info=True, extra={"op": "parse_clock"})
         return None
 
 
@@ -443,6 +452,7 @@ def hours_status(store: dict | Any, *, now: datetime | None = None) -> dict[str,
     try:
         tz = ZoneInfo(tz_name)
     except Exception:
+        _log.debug("store_timezone_fallback", exc_info=True, extra={"op": "hours_status"})
         tz = ZoneInfo(DEFAULT_TIMEZONE)
         tz_name = DEFAULT_TIMEZONE
 
@@ -610,12 +620,14 @@ def geocode_address(address: str | None) -> tuple[float, float] | None:
         with urllib.request.urlopen(req, timeout=8) as resp:
             data = json.loads(resp.read().decode())
     except (urllib.error.URLError, TimeoutError, json.JSONDecodeError, ValueError):
+        _log.debug("geocode_request_failed", exc_info=True, extra={"op": "geocode_address"})
         return None
     if not data:
         return None
     try:
         return float(data[0]["lat"]), float(data[0]["lon"])
     except (KeyError, TypeError, ValueError):
+        _log.debug("geocode_response_parse_failed", exc_info=True, extra={"op": "geocode_address"})
         return None
 
 
@@ -786,6 +798,7 @@ def _count_landing_scans(conn, store_id: int, period: str) -> int:
         ).fetchone()
         return int(row["c"] or 0)
     except Exception:
+        logging.getLogger("app.storefront").error("landing_scan_count_failed", exc_info=True)  # SUSPECT: swallow may hide bug — see Phase 1.1
         return 0
 
 

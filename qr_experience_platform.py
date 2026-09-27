@@ -3,10 +3,13 @@
 from __future__ import annotations
 
 import json
+import logging
 import secrets
 from datetime import datetime
 
 from flask import abort, jsonify, request, session
+
+_log = logging.getLogger("app.qr_experience")
 
 EXPERIENCE_TYPES = (
     "information",
@@ -49,83 +52,11 @@ TYPE_LABELS = {
     "business_card": "Business Card Experience",
 }
 
-# Starting templates — industry packs that seed customer_flow in experience_config
-EXPERIENCE_TEMPLATES = (
-    {
-        "id": "restaurant",
-        "label": "Restaurant Table",
-        "description": "Menu → Reservation → Feedback",
-        "default_name": "Restaurant Table Experience",
-        "type": "menu",
-        "customer_flow": [
-            {"id": "menu", "label": "Menu", "role": "first"},
-            {"id": "booking", "label": "Reservation", "role": "optional"},
-            {"id": "feedback", "label": "Feedback", "role": "completion"},
-        ],
-        "connected": ["booking", "feedback"],
-    },
-    {
-        "id": "event",
-        "label": "Event",
-        "description": "Event info → Check-in → Survey",
-        "default_name": "Event Experience",
-        "type": "event",
-        "customer_flow": [
-            {"id": "info", "label": "Information", "role": "first"},
-            {"id": "check_in", "label": "Check-in", "role": "optional"},
-            {"id": "survey", "label": "Survey", "role": "completion"},
-        ],
-        "connected": ["checkin", "feedback"],
-    },
-    {
-        "id": "product",
-        "label": "Product Information",
-        "description": "Product page → Information → Feedback",
-        "default_name": "Product Information Experience",
-        "type": "product",
-        "customer_flow": [
-            {"id": "product", "label": "Product Information", "role": "first"},
-            {"id": "feedback", "label": "Feedback", "role": "completion"},
-        ],
-        "connected": ["feedback"],
-    },
-    {
-        "id": "service",
-        "label": "Service",
-        "description": "Booking, arrival check-in, and feedback",
-        "default_name": "Service QR",
-        "type": "booking",
-        "customer_flow": [
-            {"id": "booking", "label": "Booking", "role": "first"},
-            {"id": "check_in", "label": "Check-in", "role": "optional"},
-            {"id": "feedback", "label": "Feedback", "role": "completion"},
-        ],
-        "connected": ["booking", "checkin", "feedback"],
-    },
-    {
-        "id": "feedback_only",
-        "label": "Feedback",
-        "description": "Survey → Submit feedback",
-        "default_name": "Feedback Experience",
-        "type": "feedback",
-        "customer_flow": [
-            {"id": "feedback", "label": "Feedback", "role": "first"},
-            {"id": "survey", "label": "Survey", "role": "completion"},
-        ],
-        "connected": ["feedback"],
-    },
-    {
-        "id": "check_in_only",
-        "label": "Check-in",
-        "description": "Verification → Check-in complete",
-        "default_name": "Check-in Experience",
-        "type": "check_in",
-        "customer_flow": [
-            {"id": "check_in", "label": "Check-in", "role": "first"},
-        ],
-        "connected": ["checkin"],
-    },
-)
+# Compatibility view generated from the canonical template catalog. New code should
+# use qr_experience_templates directly.
+from qr_experience_templates import CORE_TEMPLATES, template_to_api
+
+EXPERIENCE_TEMPLATES = tuple(template_to_api(template) for template in CORE_TEMPLATES)
 
 SCHEMA_SQL = """
 CREATE TABLE IF NOT EXISTS qr_experiences (
@@ -199,6 +130,8 @@ def init_qr_experience_tables(conn) -> None:
     init_template_tables(conn)
     from qr_experience_workflow import init_workflow_tables
     init_workflow_tables(conn)
+    from qr_experience_revisions import init_revision_tables
+    init_revision_tables(conn)
     from qr_customer_data import init_qr_customer_tables
     init_qr_customer_tables(conn)
 
@@ -320,6 +253,7 @@ def register_qr_experience_platform(app) -> None:
         try:
             analytics_cfg = json.loads(row["analytics_config"] or "{}")
         except (TypeError, json.JSONDecodeError):
+            _log.debug("analytics_config_parse_failed", exc_info=True, extra={"op": "experience_to_api"})
             pass
         qr = None
         if row["qr_code_id"]:
@@ -380,6 +314,8 @@ def register_qr_experience_platform(app) -> None:
             "created_by": row["created_by"],
             "created_at": row["created_at"],
             "updated_at": row["updated_at"],
+            "draft_revision_id": row["draft_revision_id"] if "draft_revision_id" in row.keys() else None,
+            "published_revision_id": row["published_revision_id"] if "published_revision_id" in row.keys() else None,
             "code": code,
             "scan_url": scan_path,
             "public_slug": slug_val,
@@ -427,6 +363,12 @@ def register_qr_experience_platform(app) -> None:
             {"id": t, "label": TYPE_LABELS[t], "pass_type": TYPE_TO_PASS[t]}
             for t in EXPERIENCE_TYPES
         ])
+
+    @app.get("/api/builder/registry")
+    @login_required
+    def api_builder_registry():
+        from builder_components import registry_payload
+        return jsonify(registry_payload())
 
     @app.get("/api/qr-experiences/templates")
     @login_required
@@ -639,6 +581,9 @@ def register_qr_experience_platform(app) -> None:
                 href=manage_landing_qr_href(conn, eid, builder=True),
             )
             row = conn.execute("SELECT * FROM qr_experiences WHERE id=?", (eid,)).fetchone()
+            from qr_experience_revisions import create_revision
+            create_revision(conn, row, kind="draft", created_by=uid(), note="Initial draft")
+            row = conn.execute("SELECT * FROM qr_experiences WHERE id=?", (eid,)).fetchone()
             return jsonify(experience_to_api(conn, row)), 201
 
     @app.get("/api/qr-experiences/<int:experience_id>")
@@ -720,7 +665,12 @@ def register_qr_experience_platform(app) -> None:
                 cfg["description"] = str(data["description"] or "").strip()
                 cfg_changed = True
             if "branding" in data and isinstance(data["branding"], dict):
-                cfg["branding"] = {**(cfg.get("branding") or {}), **data["branding"]}
+                from i18n_platform import normalize_language
+
+                merged = {**(cfg.get("branding") or {}), **data["branding"]}
+                if "language" in merged:
+                    merged["language"] = normalize_language(merged.get("language"))
+                cfg["branding"] = merged
                 cfg_changed = True
             if "customer_flow" in data:
                 cfg["customer_flow"] = data["customer_flow"]
@@ -760,6 +710,7 @@ def register_qr_experience_platform(app) -> None:
                     cfg2 = json.loads(row["experience_config"] or "{}")
                     ref_id = cfg2.get("ref_id")
                 except (TypeError, json.JSONDecodeError):
+                    _log.debug("experience_config_ref_id_parse_failed", exc_info=True, extra={"op": "api_qr_experience_update"})
                     pass
                 qr_status = "active" if row["status"] == "active" else row["status"]
                 conn.execute(
@@ -838,6 +789,47 @@ def register_qr_experience_platform(app) -> None:
             payload["preview"] = True
             return jsonify(payload)
 
+    @app.get("/api/qr-experiences/<int:experience_id>/revisions")
+    @login_required
+    def api_qr_experience_revisions(experience_id):
+        ws = ws_id()
+        if not ws:
+            abort(400)
+        with db() as conn:
+            _guard(conn, "qr_experience.read")
+            get_experience(conn, experience_id, int(ws))
+            from qr_experience_revisions import list_revisions
+            return jsonify({"revisions": list_revisions(conn, experience_id, int(ws))})
+
+    @app.post("/api/qr-experiences/<int:experience_id>/revisions")
+    @login_required
+    def api_qr_experience_revision_create(experience_id):
+        ws = ws_id()
+        if not ws:
+            abort(400)
+        data = request.get_json(silent=True) or {}
+        with db() as conn:
+            _guard(conn, "qr_experience.update")
+            row = get_experience(conn, experience_id, int(ws))
+            from qr_experience_revisions import create_revision
+            return jsonify(create_revision(
+                conn, row, kind="draft", created_by=uid(), note=str(data.get("note") or "Saved draft")
+            )), 201
+
+    @app.post("/api/qr-experiences/<int:experience_id>/revisions/<int:revision_id>/rollback")
+    @login_required
+    def api_qr_experience_revision_rollback(experience_id, revision_id):
+        ws = ws_id()
+        if not ws:
+            abort(400)
+        with db() as conn:
+            _guard(conn, "qr_experience.update")
+            row = get_experience(conn, experience_id, int(ws))
+            from qr_experience_revisions import restore_revision
+            revision = restore_revision(conn, row, revision_id, uid())
+            restored = conn.execute("SELECT * FROM qr_experiences WHERE id=?", (experience_id,)).fetchone()
+            return jsonify({"revision": revision, "experience": experience_to_api(conn, restored)})
+
     @app.post("/api/qr-experiences/<int:experience_id>/publish")
     @login_required
     def api_qr_experience_publish(experience_id):
@@ -876,6 +868,9 @@ def register_qr_experience_platform(app) -> None:
                 title=f"Landing page published: {row['name']}",
                 href=manage_landing_qr_href(conn, experience_id),
             )
+            from qr_experience_revisions import create_revision
+            create_revision(conn, row, kind="published", created_by=uid(), note="Published")
+            row = conn.execute("SELECT * FROM qr_experiences WHERE id=?", (experience_id,)).fetchone()
             return jsonify(experience_to_api(conn, row))
 
     @app.post("/api/qr-experiences/<int:experience_id>/duplicate")
@@ -952,17 +947,18 @@ def register_qr_experience_platform(app) -> None:
         new_id = int(cur.lastrowid)
         conn.execute("UPDATE qr_codes SET experience_id=? WHERE id=?", (new_id, qr_id))
         from qr_experience_builder import list_blocks, list_actions
+        from builder_components import new_node_key
         for b in list_blocks(conn, source["id"]):
             conn.execute(
-                """INSERT INTO qr_experience_blocks (experience_id, type, content, sort_order)
-                   VALUES (?, ?, ?, ?)""",
-                (new_id, b["type"], json.dumps(b.get("content") or {}), b.get("order", 0)),
+                """INSERT INTO qr_experience_blocks (experience_id, block_key, type, content, sort_order)
+                   VALUES (?, ?, ?, ?, ?)""",
+                (new_id, new_node_key(), b["type"], json.dumps(b.get("content") or {}), b.get("order", 0)),
             )
         for a in list_actions(conn, source["id"]):
             conn.execute(
-                """INSERT INTO qr_experience_actions (experience_id, type, label, configuration, sort_order)
-                   VALUES (?, ?, ?, ?, ?)""",
-                (new_id, a["type"], a["label"], json.dumps(a.get("configuration") or {}), a.get("order", 0)),
+                """INSERT INTO qr_experience_actions (experience_id, action_key, type, label, configuration, sort_order)
+                   VALUES (?, ?, ?, ?, ?, ?)""",
+                (new_id, new_node_key("act"), a["type"], a["label"], json.dumps(a.get("configuration") or {}), a.get("order", 0)),
             )
         from qr_experience_workflow import get_workflow_for_experience, workflow_to_api
         src_wf = get_workflow_for_experience(conn, source["id"], workspace_id)

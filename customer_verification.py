@@ -3,11 +3,15 @@
 from __future__ import annotations
 
 import hashlib
+import logging
 import os
 import re
 import secrets
 import sqlite3
+import uuid
 from datetime import datetime, timedelta
+
+_log = logging.getLogger("app.customer_verification")
 
 OTP_LENGTH = 6
 OTP_TTL_MINUTES = 10
@@ -187,7 +191,8 @@ def deliver_otp(app, *, channel: str, target: str, code: str) -> None:
 
 
 def _deliver_email(app, to: str, subject: str, body: str) -> None:
-    app.logger.warning("Customer verification email to %s — %s: %s", to, subject, body)
+    to_domain = to.split("@", 1)[1] if "@" in to else "unknown"
+    app.logger.warning("verification_email_send to_domain=%s body_len=%d", to_domain, len(body))
 
 
 def _deliver_sms(app, phone: str, body: str) -> None:
@@ -201,8 +206,8 @@ def _deliver_sms(app, phone: str, body: str) -> None:
             Client(sid, token).messages.create(to=phone, from_=from_num, body=body)
             return
         except Exception as exc:
-            app.logger.exception("Twilio SMS failed: %s", exc)
-    app.logger.warning("Customer verification SMS to %s — %s", phone, body)
+            app.logger.warning("twilio_sms_failed error=%s", type(exc).__name__)
+    app.logger.warning("verification_sms_fallback body_len=%d", len(body))
 
 
 def send_verification_code(app, conn, *, channel: str, target: str, purpose: str = "signup") -> tuple[bool, str, dict | None]:
@@ -349,7 +354,7 @@ def customer_needs_onboarding(conn, user_id: int) -> bool:
 
 
 def register_customer_verification_routes(app, *, db, get_customer, finish_customer_sign_in, customer_auth_wants_json, _safe_next_url, user_account_kind, ACCOUNT_KIND_CUSTOMER, ACCOUNT_KIND_MERCHANT, user_owns_store, ensure_shopper_account_kind, sign_in_customer, csrf_token, attach_visitor_to_customer, ensure_visitor_key, user_has_customer_profile):
-    from flask import jsonify, request, session
+    from flask import jsonify, request, session, url_for
 
     from customer_account_platform import customer_auth_json_fail, customer_auth_json_ok
 
@@ -366,24 +371,35 @@ def register_customer_verification_routes(app, *, db, get_customer, finish_custo
         payload = request.get_json(silent=True) or {}
         channel = (payload.get("channel") or request.form.get("channel") or "").strip().lower()
         purpose = (payload.get("purpose") or request.form.get("purpose") or "signup").strip().lower()
-        if purpose not in ("signup", "login"):
+        if purpose not in ("signup", "login", "link_email"):
             purpose = "signup"
         raw_target = payload.get("target") or request.form.get("target") or ""
-        if channel == "email":
+        if purpose == "signup":
+            if channel == "email":
+                return json_or_error(
+                    "Sign up with your phone number first. You can link an email after registration."
+                )
+            channel = "phone"
+            target = normalize_phone(raw_target)
+            if not target:
+                return json_or_error(
+                    "Enter a valid phone number with country code (e.g. +60123456789)."
+                )
+            consent = payload.get("legal_consent") or request.form.get("legal_consent")
+            if not consent or str(consent).lower() in ("0", "false", "no", "off"):
+                return json_or_error("Please accept the Terms of Service and Privacy Policy to continue.")
+        elif channel == "email":
             target = normalize_email(raw_target)
             if not target:
                 return json_or_error("Enter a valid email address.")
         elif channel == "phone":
             target = normalize_phone(raw_target)
             if not target:
-                return json_or_error("Enter a valid phone number with country code (e.g. +60123456789).")
+                return json_or_error(
+                    "Enter a valid phone number with country code (e.g. +60123456789)."
+                )
         else:
-            return json_or_error("Choose email or phone.")
-
-        if purpose == "signup":
-            consent = payload.get("legal_consent") or request.form.get("legal_consent")
-            if not consent or str(consent).lower() in ("0", "false", "no", "off"):
-                return json_or_error("Please accept the Terms of Service and Privacy Policy to continue.")
+            return json_or_error("Use your phone number to sign in.")
 
         signup_eligibility = None
         with db() as conn:
@@ -392,12 +408,16 @@ def register_customer_verification_routes(app, *, db, get_customer, finish_custo
                 user = find_user_by_login(conn, target)
                 if not user:
                     return json_or_error("No shopper account found for this contact.")
+                if channel == "email" and is_synthetic_customer_email(user["email"]):
+                    return json_or_error(
+                        "Use your phone number to sign in, or link an email in Account first."
+                    )
                 uid = int(user["id"])
                 from customer_account_platform import user_can_use_personal_mode, user_has_shopper_profile
 
                 if not user_has_shopper_profile(conn, uid) and user_account_kind(user) == ACCOUNT_KIND_MERCHANT:
                     return json_or_error(
-                        "No personal profile yet. Use Sign up to activate shopping on this email."
+                        "No personal profile yet. Use Sign up to activate shopping on this phone."
                     )
                 if not user_can_use_personal_mode(conn, uid):
                     return json_or_error("No shopper account found for this contact.")
@@ -423,7 +443,7 @@ def register_customer_verification_routes(app, *, db, get_customer, finish_custo
             if signup_eligibility and signup_eligibility["status"] == "activate":
                 meta = meta or {}
                 meta["mode"] = "activate"
-                meta["hint"] = "We'll add personal shopping to this email — same account, two modes."
+                meta["hint"] = "We'll add personal shopping to this phone — same account, two modes."
         body = {"ok": True, "message": message, **(meta or {})}
         return jsonify(body) if customer_auth_wants_json() or request.is_json else body
 
@@ -683,67 +703,113 @@ def register_customer_verification_routes(app, *, db, get_customer, finish_custo
                 remember_device=parse_remember_device(request.form.get("remember_device")),
             )
             if customer_auth_wants_json() or request.is_json:
-                return {"ok": True, "redirect": next_url}
+                return {
+                    "ok": True,
+                    "redirect": next_url,
+                    "needs_link_email": True,
+                }
             from flask import flash, redirect
 
             flash(
-                "Shopping is now active on this email." if activating else "Welcome! Your account is ready.",
+                "Shopping is now active on this phone." if activating else "Welcome! Your account is ready.",
                 "success",
             )
             return redirect(next_url)
         except sqlite3.IntegrityError:
             return json_or_error("Could not create account. Try a different username.")
 
-    @app.post("/account/onboarding/google")
-    def customer_onboarding_google_complete():
-        """Finish profile after Google sign-in when username is still missing."""
-        customer = get_customer()
-        if not customer:
-            return json_or_error("Sign in with Google first.", 401)
-        username_raw = (request.form.get("username") or "").strip().lower()
-        display_name = (request.form.get("display_name") or "").strip() or None
-        bio = (request.form.get("bio") or "").strip() or None
-        username = validate_username(username_raw)
-        if not username:
-            return json_or_error("Pick a valid username.")
+    @app.post("/account/link-email/send")
+    def customer_link_email_send():
+        """Send OTP to link a real email after phone registration (customer or merchant)."""
+        from customer_account_platform import current_customer_id
 
-        from app import save_uploaded_image
+        payload = request.get_json(silent=True) or {}
+        email = normalize_email(payload.get("email") or request.form.get("email") or "")
+        if not email:
+            return json_or_error("Enter a valid email address.")
+        if is_synthetic_customer_email(email):
+            return json_or_error("Enter a real email address.")
 
-        avatar_url = None
-        try:
-            avatar_url = save_uploaded_image("avatar")
-        except ValueError as exc:
-            return json_or_error(str(exc))
+        uid = current_customer_id() or session.get("user_id")
+        if not uid:
+            return json_or_error("Sign in first.", 401)
 
         with db() as conn:
             migrate_verification_tables(conn)
-            if not username_available(conn, username, exclude_user_id=int(customer["id"])):
-                return json_or_error("That username is taken.")
-            now = _now()
-            conn.execute(
-                """INSERT INTO customer_account_profiles
-                   (user_id, display_name, username, avatar_url, bio, linked_visitor_key, updated_at)
-                   VALUES (?, ?, ?, ?, ?, ?, ?)
-                   ON CONFLICT(user_id) DO UPDATE SET
-                     display_name = COALESCE(excluded.display_name, customer_account_profiles.display_name),
-                     username = excluded.username,
-                     avatar_url = COALESCE(excluded.avatar_url, customer_account_profiles.avatar_url),
-                     bio = COALESCE(excluded.bio, customer_account_profiles.bio),
-                     updated_at = excluded.updated_at""",
-                (
-                    int(customer["id"]),
-                    display_name or username,
-                    username,
-                    avatar_url,
-                    bio,
-                    ensure_visitor_key(session),
-                    now,
-                ),
+            taken = conn.execute(
+                "SELECT id FROM users WHERE email = ? AND id != ?",
+                (email, int(uid)),
+            ).fetchone()
+            if taken:
+                return json_or_error("That email is already linked to another account.")
+            ok, message, meta = send_verification_code(
+                app, conn, channel="email", target=email, purpose="link_email"
             )
-        next_url = _safe_next_url(request.form.get("next"))
-        if customer_auth_wants_json() or request.is_json:
-            return {"ok": True, "redirect": next_url}
-        from flask import flash, redirect
+            if not ok:
+                return json_or_error(message, 429)
+            session["pending_link_email"] = email
+        return jsonify({"ok": True, "message": message, **(meta or {})})
 
-        flash("Profile updated.", "success")
-        return redirect(next_url)
+    @app.post("/account/link-email/check")
+    def customer_link_email_check():
+        from customer_account_platform import current_customer_id
+
+        payload = request.get_json(silent=True) or {}
+        email = normalize_email(
+            payload.get("email") or session.get("pending_link_email") or ""
+        )
+        code = (payload.get("code") or "").strip()
+        uid = current_customer_id() or session.get("user_id")
+        if not uid:
+            return json_or_error("Sign in first.", 401)
+        if not email or not code.isdigit() or len(code) != 6:
+            return json_or_error("Enter the 6-digit code.")
+
+        with db() as conn:
+            migrate_verification_tables(conn)
+            ok, message = verify_code(
+                conn, channel="email", target=email, code=code, purpose="link_email"
+            )
+            if not ok:
+                return json_or_error(message)
+            taken = conn.execute(
+                "SELECT id FROM users WHERE email = ? AND id != ?",
+                (email, int(uid)),
+            ).fetchone()
+            if taken:
+                return json_or_error("That email is already linked to another account.")
+            conn.execute("UPDATE users SET email = ? WHERE id = ?", (email, int(uid)))
+            # Enable email as a login option once linked
+            try:
+                cols = {r["name"] for r in conn.execute("PRAGMA table_info(users)").fetchall()}
+                if "allow_email_login" not in cols:
+                    conn.execute(
+                        "ALTER TABLE users ADD COLUMN allow_email_login INTEGER NOT NULL DEFAULT 0"
+                    )
+            except Exception:
+                rid = uuid.uuid4().hex[:12]
+                app.logger.error("customer_verification_alter_failed uid=%s reference=%s", uid, rid, exc_info=True)
+                return jsonify({"ok": False, "error": "schema_migration_failed", "reference": rid}), 500
+            try:
+                conn.execute(
+                    "UPDATE users SET allow_email_login = 1 WHERE id = ?", (int(uid),)
+                )
+            except Exception:
+                rid = uuid.uuid4().hex[:12]
+                app.logger.error("customer_verification_update_failed uid=%s reference=%s", uid, rid, exc_info=True)
+                return jsonify({"ok": False, "error": "account_link_failed", "reference": rid}), 500
+        session.pop("pending_link_email", None)
+        # Merchant vs customer redirect
+        if session.get("user_id") and not current_customer_id():
+            try:
+                next_url = url_for("bos.store")
+            except Exception:
+                _log.debug("customer_verification_url_for_failed", exc_info=True, extra={"op": "customer_verification_redirect"})
+                next_url = "/app/stores"
+        else:
+            next_url = _safe_next_url(payload.get("next"))
+        return jsonify({"ok": True, "redirect": next_url, "email": email})
+
+    @app.post("/account/onboarding/google")
+    def customer_onboarding_google_complete():
+        return json_or_error("Google sign-in has been removed. Use phone verification.", 410)

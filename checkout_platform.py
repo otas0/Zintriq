@@ -3,12 +3,14 @@
 from __future__ import annotations
 
 import json
+import logging
 import os
 import secrets
 import sqlite3
 import urllib.error
 import urllib.parse
 import urllib.request
+import uuid
 from datetime import datetime, timezone
 from typing import Any
 
@@ -27,6 +29,8 @@ from payment_connect_plugin import (
     paypal_create_checkout_order,
 )
 from storefront_platform import deals_map_for_items
+
+_log = logging.getLogger("app.checkout")
 
 CHECKOUT_SCHEMA = """
 CREATE TABLE IF NOT EXISTS checkout_sessions (
@@ -81,6 +85,7 @@ def platform_fee_cap() -> float | None:
     try:
         cap = float(raw)
     except (TypeError, ValueError):
+        _log.debug("platform_fee_cap_parse_failed", exc_info=True, extra={"op": "platform_fee_cap"})
         return None
     return cap if cap > 0 else None
 
@@ -382,7 +387,7 @@ def fulfill_checkout(conn, session_row, *, visitor_key: str = "") -> int:
             metadata={"checkout_id": session_row["public_id"], "total": session_row["total"]},
         )
     except Exception:
-        pass
+        logging.getLogger("app.checkout").debug("record_store_event_failed", exc_info=True, extra={"op": "checkout_paid"})
     return int(oid)
 
 
@@ -499,7 +504,9 @@ def register_checkout_platform(app) -> None:
                 except (urllib.error.HTTPError, RuntimeError) as exc:
                     detail = exc.read().decode()[:200] if isinstance(exc, urllib.error.HTTPError) and exc.fp else str(exc)
                     conn.execute("UPDATE checkout_sessions SET status='failed' WHERE id=?", (session_id,))
-                    return jsonify({"error": f"Stripe checkout failed: {detail}"}), 502
+                    rid = uuid.uuid4().hex[:12]
+                    app.logger.error("payment_provider_error provider=stripe reference=%s detail=%s", rid, detail, exc_info=True)
+                    return jsonify({"error": "Payment could not be processed.", "reference": rid}), 502
 
             if provider == "paypal":
                 try:
@@ -536,7 +543,9 @@ def register_checkout_platform(app) -> None:
                 except (urllib.error.HTTPError, RuntimeError) as exc:
                     detail = exc.read().decode()[:200] if isinstance(exc, urllib.error.HTTPError) and exc.fp else str(exc)
                     conn.execute("UPDATE checkout_sessions SET status='failed' WHERE id=?", (session_id,))
-                    return jsonify({"error": f"PayPal checkout failed: {detail}"}), 502
+                    rid = uuid.uuid4().hex[:12]
+                    app.logger.error("payment_provider_error provider=paypal reference=%s detail=%s", rid, detail, exc_info=True)
+                    return jsonify({"error": "Payment could not be processed.", "reference": rid}), 502
 
             try:
                 fields = merchant_payment_fields(conn, app, int(store["owner_id"]), provider)
@@ -565,7 +574,9 @@ def register_checkout_platform(app) -> None:
             except (urllib.error.HTTPError, RuntimeError) as exc:
                 detail = exc.read().decode()[:200] if isinstance(exc, urllib.error.HTTPError) and exc.fp else str(exc)
                 conn.execute("UPDATE checkout_sessions SET status='failed' WHERE id=?", (session_id,))
-                return jsonify({"error": f"{provider_info.get('name', provider)} checkout failed: {detail}"}), 502
+                rid = uuid.uuid4().hex[:12]
+                app.logger.error("payment_provider_error provider=%s reference=%s detail=%s", provider_info.get('name', provider), rid, detail, exc_info=True)
+                return jsonify({"error": "Payment could not be processed.", "reference": rid}), 502
 
     @app.get("/store/<slug>/checkout")
     def store_checkout_page(slug: str):
@@ -610,6 +621,7 @@ def register_checkout_platform(app) -> None:
                     from payment_checkout_adapters import _braintree_client_token
                     braintree_token = _braintree_client_token(fields)
                 except Exception:
+                    _log.debug("braintree_client_token_failed", exc_info=True, extra={"op": "store_checkout_pay"})
                     braintree_token = ""
         return render_template(
             "customer/checkout_pay.html",
@@ -667,8 +679,10 @@ def register_checkout_platform(app) -> None:
                         "Braintree-Version": "2019-01-01",
                     },
                 )
-            except RuntimeError as exc:
-                return jsonify({"error": str(exc)}), 502
+            except (urllib.error.URLError, urllib.error.HTTPError, TimeoutError, RuntimeError) as exc:
+                rid = uuid.uuid4().hex[:12]
+                app.logger.error("braintree_network_error provider=braintree reference=%s error=%s", rid, type(exc).__name__, exc_info=True)
+                return jsonify({"error": "Payment could not be processed.", "reference": rid}), 502
             status = (
                 ((result.get("data") or {}).get("chargePaymentMethod") or {})
                 .get("transaction", {})
@@ -676,7 +690,9 @@ def register_checkout_platform(app) -> None:
                 or ""
             )
             if status.lower() not in ("settled", "submitted_for_settlement", "settling", "authorized"):
-                return jsonify({"error": result.get("errors") or f"Braintree status: {status or 'failed'}"}), 402
+                rid = uuid.uuid4().hex[:12]
+                app.logger.error("payment_provider_error provider=braintree reference=%s detail=%s", rid, str(result.get("errors") or f"status={status or 'failed'}")[:200])
+                return jsonify({"error": "Payment could not be processed.", "reference": rid}), 402
             fulfill_checkout(conn, row, visitor_key=ensure_visitor_key(session))
         return jsonify({"ok": True, "success_url": f"/store/{slug}/checkout/{public_id}/success"})
 
@@ -706,6 +722,7 @@ def register_checkout_platform(app) -> None:
         store = public_store_or_404(slug)
         stripe_session_id = request.args.get("session_id")
         paypal_token = request.args.get("token")
+        rid = None
         with db() as conn:
             init_checkout_tables(conn)
             row = conn.execute(
@@ -715,6 +732,8 @@ def register_checkout_platform(app) -> None:
             if not row:
                 from flask import abort
                 abort(404)
+            payment_verified = row["status"] == "paid"
+            fulfillment_ok = row["status"] == "paid"
             if row["status"] != "paid" and stripe_session_id and row["provider"] == "stripe":
                 try:
                     secret, _, _ = _merchant_stripe_secret(conn, app, int(store["owner_id"]))
@@ -726,13 +745,26 @@ def register_checkout_platform(app) -> None:
                     with urllib.request.urlopen(req, timeout=10) as resp:
                         stripe_sess = json.loads(resp.read().decode())
                     if stripe_sess.get("payment_status") == "paid":
+                        payment_verified = True
+                    else:
+                        payment_verified = False
+                except Exception:
+                    rid = uuid.uuid4().hex[:12]
+                    app.logger.error("checkout_verify_failed provider=stripe checkout_id=%s reference=%s recover=true", public_id, rid, exc_info=True)
+                    payment_verified = False
+                if payment_verified:
+                    try:
                         from guest_platform import ensure_visitor_key
                         fulfill_checkout(conn, row, visitor_key=ensure_visitor_key(session))
                         row = conn.execute(
                             "SELECT * FROM checkout_sessions WHERE id=?", (row["id"],)
                         ).fetchone()
-                except Exception:
-                    pass
+                        fulfillment_ok = True
+                    except Exception:
+                        if rid is None:
+                            rid = uuid.uuid4().hex[:12]
+                        app.logger.error("checkout_fulfill_failed provider=stripe checkout_id=%s reference=%s recover=true", public_id, rid, exc_info=True)
+                        fulfillment_ok = False
             if row["status"] != "paid" and row["provider"] == "paypal":
                 order_id = paypal_token or row["provider_session_id"] or ""
                 if order_id:
@@ -745,13 +777,26 @@ def register_checkout_platform(app) -> None:
                         )
                         status = capture.get("status") or ""
                         if status in ("COMPLETED", "PARTIALLY_COMPLETED"):
+                            payment_verified = True
+                        else:
+                            payment_verified = False
+                    except Exception:
+                        rid = uuid.uuid4().hex[:12]
+                        app.logger.error("checkout_verify_failed provider=paypal checkout_id=%s reference=%s recover=true", public_id, rid, exc_info=True)
+                        payment_verified = False
+                    if payment_verified:
+                        try:
                             from guest_platform import ensure_visitor_key
                             fulfill_checkout(conn, row, visitor_key=ensure_visitor_key(session))
                             row = conn.execute(
                                 "SELECT * FROM checkout_sessions WHERE id=?", (row["id"],)
                             ).fetchone()
-                    except Exception:
-                        pass
+                            fulfillment_ok = True
+                        except Exception:
+                            if rid is None:
+                                rid = uuid.uuid4().hex[:12]
+                            app.logger.error("checkout_fulfill_failed provider=paypal checkout_id=%s reference=%s recover=true", public_id, rid, exc_info=True)
+                            fulfillment_ok = False
             if row["status"] != "paid" and row["provider"] not in ("stripe", "paypal", "demo"):
                 try:
                     fields = merchant_payment_fields(conn, app, int(store["owner_id"]), row["provider"])
@@ -762,14 +807,32 @@ def register_checkout_platform(app) -> None:
                         session_id=row["provider_session_id"] or "",
                         query=query,
                     ):
+                        payment_verified = True
+                    else:
+                        payment_verified = False
+                except Exception:
+                    rid = uuid.uuid4().hex[:12]
+                    app.logger.error("checkout_verify_failed provider=%s checkout_id=%s reference=%s recover=true", row["provider"], public_id, rid, exc_info=True)
+                    payment_verified = False
+                if payment_verified:
+                    try:
                         from guest_platform import ensure_visitor_key
                         fulfill_checkout(conn, row, visitor_key=ensure_visitor_key(session))
                         row = conn.execute(
                             "SELECT * FROM checkout_sessions WHERE id=?", (row["id"],)
                         ).fetchone()
-                except Exception:
-                    pass
+                        fulfillment_ok = True
+                    except Exception:
+                        if rid is None:
+                            rid = uuid.uuid4().hex[:12]
+                        app.logger.error("checkout_fulfill_failed provider=%s checkout_id=%s reference=%s recover=true", row["provider"], public_id, rid, exc_info=True)
+                        fulfillment_ok = False
             line_items = json.loads(row["line_items"] or "[]")
+        if not payment_verified or not fulfillment_ok:
+            if rid is None:
+                rid = uuid.uuid4().hex[:12]
+            app.logger.error("checkout_success_error checkout_id=%s reference=%s payment_verified=%s fulfillment_ok=%s recover=true", public_id, rid, payment_verified, fulfillment_ok)
+            return render_template("customer/checkout_error.html", store=store, reference=rid), 500
         return render_template(
             "customer/checkout_success.html",
             store=store,

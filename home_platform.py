@@ -3,8 +3,11 @@
 from __future__ import annotations
 
 from datetime import datetime
+import logging
 
 from flask import abort, jsonify, session
+
+_log = logging.getLogger("app.home")
 
 
 def _today() -> str:
@@ -176,6 +179,7 @@ def register_home_platform(app) -> None:
             try:
                 data = json.loads(r["data"] or "{}")
             except (TypeError, json.JSONDecodeError):
+                _log.debug("recent_responses_json_parse_failed", exc_info=True, extra={"op": "_recent_responses"})
                 pass
             items.append({
                 "id": r["id"],

@@ -3,6 +3,9 @@
 from __future__ import annotations
 
 import json
+import logging
+
+_log = logging.getLogger("app.bos")
 
 # MVP QR Experience types (spec v1.0)
 MVP_QR_TYPES = ("information", "feedback", "survey")
@@ -156,6 +159,7 @@ def experience_content_from_row(row) -> dict:
         parsed = json.loads(raw or "{}")
         return parsed if isinstance(parsed, dict) else {}
     except (TypeError, json.JSONDecodeError):
+        _log.debug("experience_content_json_parse_failed", exc_info=True, extra={"op": "experience_content_from_row"})
         return {}
 
 

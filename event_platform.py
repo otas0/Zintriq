@@ -3,10 +3,13 @@
 from __future__ import annotations
 
 import json
+import logging
 
 from flask import abort, jsonify, request, session
 
 from bos.events import init_event_tables, register_default_subscribers
+
+_log = logging.getLogger("app.event")
 
 
 def register_event_platform(app) -> None:
@@ -48,6 +51,7 @@ def register_event_platform(app) -> None:
         try:
             meta = json.loads(row["metadata"] or "{}")
         except (json.JSONDecodeError, TypeError):
+            _log.debug("event_row_json_parse_failed", exc_info=True, extra={"op": "event_row_to_api"})
             pass
         return {
             "event_id": row["event_id"],

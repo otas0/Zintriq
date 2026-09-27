@@ -3,9 +3,12 @@
 from __future__ import annotations
 
 import json
+import logging
 import uuid
 
 from flask import abort, flash, jsonify, redirect, render_template, request, url_for
+
+_log = logging.getLogger("app.feedback")
 
 FEEDBACK_TYPES = ("review", "survey", "suggestion", "complaint", "nps", "internal", "employee", "custom")
 FEEDBACK_STATUSES = ("new", "read", "replied", "archived", "hidden", "flagged")
@@ -452,6 +455,7 @@ def register_feedback_platform(app) -> None:
         try:
             return json.loads(row["blocks"] or "[]")
         except json.JSONDecodeError:
+            _log.debug("feedback_blocks_parse_failed", exc_info=True, extra={"op": "parse_blocks"})
             return []
 
     def extract_from_responses(responses: dict, blocks: list) -> dict:
@@ -466,6 +470,7 @@ def register_feedback_platform(app) -> None:
                 try:
                     out["rating"] = int(val)
                 except (TypeError, ValueError):
+                    _log.debug("feedback_rating_parse_failed", exc_info=True, extra={"op": "extract_from_responses"})
                     pass
             elif btype == "long_text" and not out["comment"]:
                 out["comment"] = str(val)
@@ -832,7 +837,7 @@ def register_feedback_platform(app) -> None:
                 template = get_template_or_404(store["id"], record["template_id"])
                 blocks = parse_blocks(template)
             except Exception:
-                pass
+                logging.getLogger("app.feedback").error("feedback_template_load_failed", exc_info=True)  # SUSPECT: swallow may hide bug — see Phase 1.1
         responses = json.loads(record["responses"] or "{}")
         return render_template(
             "owner/feedback_detail.html", **fb_ctx(store, "inbox"),

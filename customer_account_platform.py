@@ -3,8 +3,11 @@
 from __future__ import annotations
 
 import secrets
+import logging
 import sqlite3
 from functools import wraps
+
+_log = logging.getLogger("app.customer_account")
 
 ACCOUNT_KIND_MERCHANT = "merchant"
 ACCOUNT_KIND_CUSTOMER = "customer"
@@ -194,6 +197,7 @@ def current_customer_id(flask_session) -> int | None:
     try:
         return int(raw)
     except (TypeError, ValueError):
+        _log.debug("customer_id_parse_failed", exc_info=True, extra={"op": "current_customer_id"})
         return None
 
 
@@ -510,66 +514,7 @@ def register_customer_account_platform(app) -> None:
 
     @app.post("/auth/firebase/customer")
     def firebase_customer_login():
-        payload = request.get_json(silent=True) or {}
-        try:
-            decoded = verify_firebase_token(payload.get("idToken", ""))
-        except Exception:
-            return {"error": "Social sign-in is not configured or the sign-in token was invalid."}, 401
-        email = (decoded.get("email") or "").strip().lower()
-        firebase_uid = decoded.get("uid")
-        if not email or not decoded.get("email_verified") or not firebase_uid:
-            return {"error": "Your social account needs a verified email address."}, 400
-        display_name = (decoded.get("name") or "").strip() or None
-        with db() as conn:
-            user = conn.execute(
-                "SELECT * FROM users WHERE firebase_uid = ? OR email = ?",
-                (firebase_uid, email),
-            ).fetchone()
-            if user:
-                if user_account_kind(user) == ACCOUNT_KIND_CUSTOMER:
-                    pass  # personal-only — continue below
-                elif user_account_kind(user) == ACCOUNT_KIND_MERCHANT:
-                    from customer_verification import customer_needs_onboarding
-
-                    if customer_needs_onboarding(conn, int(user["id"])) and not user_has_shopper_profile(conn, int(user["id"])):
-                        return {"error": "Activate personal mode with Sign up first (same email)."}, 400
-                if not user["firebase_uid"]:
-                    conn.execute(
-                        "UPDATE users SET firebase_uid = ? WHERE id = ?",
-                        (firebase_uid, user["id"]),
-                    )
-            else:
-                cur = conn.execute(
-                    """INSERT INTO users (email, password_hash, firebase_uid, account_kind)
-                       VALUES (?, ?, ?, ?)""",
-                    (
-                        email,
-                        generate_password_hash(secrets.token_urlsafe(32), method="pbkdf2:sha256:600000"),
-                        firebase_uid,
-                        ACCOUNT_KIND_CUSTOMER,
-                    ),
-                )
-                user = conn.execute("SELECT * FROM users WHERE id=?", (cur.lastrowid,)).fetchone()
-        uid = int(user["id"])
-        with db() as conn:
-            from customer_verification import customer_needs_onboarding, generate_username, migrate_verification_tables
-
-            migrate_verification_tables(conn)
-            needs_onboarding = customer_needs_onboarding(conn, uid)
-            suggested_username = generate_username(conn) if needs_onboarding else None
-        from session_remember import parse_remember_device
-
-        finish_customer_sign_in(
-            uid,
-            email=email,
-            display_name=display_name,
-            remember_device=parse_remember_device(payload.get("remember_device")),
-        )
-        next_url = _safe_next_url(payload.get("next"))
-        body = {"next": next_url, "needs_onboarding": needs_onboarding}
-        if suggested_username:
-            body["username"] = suggested_username
-        return body
+        return {"error": "Google sign-in has been removed. Use phone verification."}, 410
 
     @app.route("/account/forgot-password", methods=["GET", "POST"])
     def customer_forgot_password():

@@ -3,9 +3,12 @@
 from __future__ import annotations
 
 import json
+import logging
 import secrets
 import uuid
 from datetime import datetime
+
+_log = logging.getLogger("app.qr_experience")
 
 WORKFLOW_STATUSES = ("draft", "active", "paused")
 WORKFLOW_TRIGGERS = ("qr_scanned",)
@@ -107,6 +110,7 @@ def _parse_steps(raw) -> list[dict]:
         steps = json.loads(raw or "[]")
         return steps if isinstance(steps, list) else []
     except json.JSONDecodeError:
+        _log.debug("workflow_steps_parse_failed", exc_info=True, extra={"op": "parse_steps"})
         return []
 
 
@@ -235,11 +239,15 @@ def sync_workflow_to_builder(conn, experience_id: int, steps: list[dict], ctx: d
         stype = step["type"]
         cfg = step.get("config") or {}
         label = step.get("label") or ""
+        step_key = str(step.get("id") or f"step-{order}")
+        block_key = f"blk_step_{step_key}"
+        action_key = f"act_step_{step_key}"
 
         if stype == "display_content":
             ctype = cfg.get("content_type") or "text"
             if ctype == "header":
                 blocks.append({
+                    "key": block_key,
                     "type": "header",
                     "content": {
                         "title": cfg.get("title") or label or name,
@@ -249,12 +257,14 @@ def sync_workflow_to_builder(conn, experience_id: int, steps: list[dict], ctx: d
                 })
             elif ctype == "image":
                 blocks.append({
+                    "key": block_key,
                     "type": "image",
                     "content": {"src": cfg.get("src") or "", "alt": label},
                     "order": order,
                 })
             elif ctype == "info":
                 blocks.append({
+                    "key": block_key,
                     "type": "info",
                     "content": {
                         "title": cfg.get("title") or label,
@@ -264,6 +274,7 @@ def sync_workflow_to_builder(conn, experience_id: int, steps: list[dict], ctx: d
                 })
             else:
                 blocks.append({
+                    "key": block_key,
                     "type": "text",
                     "content": {"body": cfg.get("body") or label},
                     "order": order,
@@ -272,6 +283,7 @@ def sync_workflow_to_builder(conn, experience_id: int, steps: list[dict], ctx: d
         elif stype == "customer_input":
             fields = cfg.get("fields") or ["name", "email"]
             blocks.append({
+                "key": block_key,
                 "type": "info",
                 "content": {
                     "title": label or "Your details",
@@ -281,24 +293,24 @@ def sync_workflow_to_builder(conn, experience_id: int, steps: list[dict], ctx: d
             })
             order += 1
         elif stype == "survey":
-            blocks.append({"type": "survey", "content": {"title": label or "Survey"}, "order": order})
-            actions.append({"type": "start_survey", "label": label or "Start Survey", "configuration": cfg, "order": len(actions)})
+            blocks.append({"key": block_key, "type": "survey", "content": {"title": label or "Survey"}, "order": order})
+            actions.append({"key": action_key, "type": "start_survey", "label": label or "Start Survey", "configuration": cfg, "order": len(actions)})
             order += 1
         elif stype == "feedback":
-            blocks.append({"type": "survey", "content": {"title": label or "Feedback"}, "order": order})
-            actions.append({"type": "start_survey", "label": label or "Leave Feedback", "configuration": cfg, "order": len(actions)})
+            blocks.append({"key": block_key, "type": "survey", "content": {"title": label or "Feedback"}, "order": order})
+            actions.append({"key": action_key, "type": "start_survey", "label": label or "Leave Feedback", "configuration": cfg, "order": len(actions)})
             order += 1
         elif stype == "booking":
-            blocks.append({"type": "booking", "content": {"title": label or "Booking"}, "order": order})
-            actions.append({"type": "create_booking", "label": label or "Book Now", "configuration": cfg, "order": len(actions)})
+            blocks.append({"key": block_key, "type": "booking", "content": {"title": label or "Booking"}, "order": order})
+            actions.append({"key": action_key, "type": "create_booking", "label": label or "Book Now", "configuration": cfg, "order": len(actions)})
             order += 1
         elif stype == "check_in":
-            blocks.append({"type": "check_in", "content": {"title": label or "Check-in"}, "order": order})
-            actions.append({"type": "start_checkin", "label": label or "Check-in", "configuration": cfg, "order": len(actions)})
+            blocks.append({"key": block_key, "type": "check_in", "content": {"title": label or "Check-in"}, "order": order})
+            actions.append({"key": action_key, "type": "start_checkin", "label": label or "Check-in", "configuration": cfg, "order": len(actions)})
             order += 1
 
     if actions:
-        blocks.append({"type": "actions", "content": {"title": "Next steps"}, "order": order})
+        blocks.append({"key": "blk_workflow_actions", "type": "actions", "content": {"title": "Next steps"}, "order": order})
 
     replace_blocks(conn, experience_id, blocks)
     replace_actions(conn, experience_id, actions)

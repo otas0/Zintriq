@@ -3,9 +3,12 @@
 from __future__ import annotations
 
 import json
+import logging
 from datetime import datetime
 
 from bos.mvp_schema import MVP_RESPONSE_TYPES
+
+_log = logging.getLogger("app.bos")
 
 RESPONSE_SCHEMA_SQL = """
 CREATE TABLE IF NOT EXISTS responses (
@@ -31,6 +34,7 @@ def _parse_data(raw: str | None) -> dict:
         parsed = json.loads(raw or "{}")
         return parsed if isinstance(parsed, dict) else {}
     except (TypeError, json.JSONDecodeError):
+        _log.debug("response_data_parse_failed", exc_info=True, extra={"op": "_parse_data"})
         return {}
 
 

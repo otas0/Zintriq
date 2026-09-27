@@ -3,10 +3,13 @@
 from __future__ import annotations
 
 import json
+import logging
 import re
 from datetime import datetime
 
 from flask import abort, jsonify, request, session
+
+_log = logging.getLogger("app.workspace")
 
 WORKSPACE_STATUSES = ("active", "archived", "suspended")
 WORKSPACE_ROLES = ("owner", "administrator", "manager", "member", "viewer")
@@ -790,6 +793,7 @@ def register_workspace_platform(app) -> None:
             try:
                 settings = json.loads(row["settings_json"])
             except json.JSONDecodeError:
+                _log.debug("workspace_settings_json_parse_failed", exc_info=True, extra={"op": "api_workspace_settings_get"})
                 pass
         branding = row["branding"]
         if isinstance(branding, str) and branding.strip():
@@ -826,20 +830,37 @@ def register_workspace_platform(app) -> None:
             branding_val = data.get("branding", row["branding"])
             if isinstance(branding_val, dict):
                 branding_val = json.dumps(branding_val)
+            from i18n_platform import normalize_language, set_active_language
+
+            lang = normalize_language(data.get("language", row["language"]))
             conn.execute(
                 """UPDATE workspaces SET name=?, logo_url=?, timezone=?, language=?,
                    region=?, currency=?, default_store_id=?, branding=?, settings_json=?, updated_at=?
                    WHERE id=?""",
                 (
                     data.get("name", row["name"]), data.get("logo_url", row["logo_url"]),
-                    data.get("timezone", row["timezone"]), data.get("language", row["language"]),
+                    data.get("timezone", row["timezone"]), lang,
                     data.get("region", row["region"]), data.get("currency", row["currency"]),
                     data.get("default_store_id", row["default_store_id"]), branding_val,
                     json.dumps(extra) if extra is not None else row["settings_json"], _now(), workspace_id,
                 ),
             )
             log_workspace_activity(conn, workspace_id, "settings_updated", "Workspace settings saved", actor_id=uid)
-        return jsonify({"ok": True})
+        # Apply workspace language to this user's UI immediately
+        set_active_language(lang)
+        from flask import make_response
+        from i18n_platform import LANG_COOKIE, language_meta, translate
+
+        body = {
+            "ok": True,
+            "language": lang,
+            "reload": True,
+            "message": translate("settings.saved", lang),
+            "dir": language_meta(lang).get("dir", "ltr"),
+        }
+        resp = make_response(jsonify(body))
+        resp.set_cookie(LANG_COOKIE, lang, max_age=60 * 60 * 24 * 365, samesite="Lax", path="/")
+        return resp
 
     app.active_workspace_id = active_workspace_id
     app.log_workspace_activity = log_workspace_activity

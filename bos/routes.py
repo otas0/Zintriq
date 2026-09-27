@@ -3,10 +3,13 @@
 from __future__ import annotations
 
 from functools import wraps
+import logging
 
 from flask import Blueprint, abort, flash, redirect, render_template, request, url_for
 
-from bos.models import BOS_MODULES, module_for_id
+from bos.models import BOS_MODULES
+
+_log = logging.getLogger("app.bos")
 
 bos_bp = Blueprint("bos", __name__, url_prefix="/app")
 
@@ -33,7 +36,7 @@ def _login_required(view):
 
         if current_customer_id(session) and not session.get("user_id"):
             flash("You are signed in as a shopper. Business tools need a separate business sign-in.", "error")
-            return redirect(url_for("guest_home"))
+            return redirect(url_for("login"))
         if not current_user():
             flash("Please sign in to manage a storefront.", "error")
             return redirect(url_for("login", next=request.path))
@@ -55,25 +58,13 @@ def inject_bos_modules():
                 row = conn.execute("SELECT name FROM workspaces WHERE id=?", (int(ws_id),)).fetchone()
                 ws_name = row["name"] if row else ""
         except (TypeError, ValueError):
+            _log.debug("bos_ws_name_lookup_failed", exc_info=True, extra={"op": "inject_bos_modules"})
             pass
     return {
         "bos_modules": BOS_MODULES,
         "bos_active_workspace_id": ws_id,
         "bos_active_workspace_name": ws_name,
     }
-
-
-def _render_module(module_id: str, title: str, subtitle: str = ""):
-    module = module_for_id(module_id)
-    if not module:
-        abort(404)
-    return render_template(
-        "bos/module.html",
-        module_id=module_id,
-        module=module,
-        page_title=title,
-        page_subtitle=subtitle,
-    )
 
 
 def _redirect_removed():
@@ -83,37 +74,15 @@ def _redirect_removed():
 @bos_bp.get("")
 @_login_required
 def home():
-    return redirect(url_for("bos.store"))
+    return redirect("/app/builder")
 
 
 @bos_bp.get("/store")
-@_login_required
-def store():
-    from app import workspace_snapshot
-
-    user = _current_user()
-    return render_template(
-        "bos/store_module.html",
-        module_id="store",
-        page_title="Stores",
-        page_subtitle="Manage storefronts, customer QR, and responses.",
-        workspace=workspace_snapshot(user["id"]),
-        workspace_mode="all",
-    )
-
-
 @bos_bp.get("/store/organize")
+@bos_bp.get("/team")
 @_login_required
-def store_organize():
-    from app import workspace_snapshot
-
-    user = _current_user()
-    return render_template(
-        "bos/store_organize.html",
-        module_id="store",
-        page_title="Groups & labels",
-        workspace=workspace_snapshot(user["id"]),
-    )
+def legacy_store_routes():
+    return redirect("/app/builder")
 
 
 @bos_bp.get("/responses")
@@ -166,13 +135,19 @@ def deferred_operations():
 @bos_bp.get("/team")
 @_login_required
 def team():
-    return _render_module("team", "Team", "Invite members and manage access")
+    return redirect("/app/builder")
 
 
 @bos_bp.get("/settings")
 @_login_required
 def settings():
-    return _render_module("settings", "Settings", "Workspace configuration")
+    from app import workspace_snapshot
+    owner_id = _current_user()["id"]
+    return render_template(
+        "zintriq/settings.html",
+        page_title="Settings",
+        workspace=workspace_snapshot(owner_id),
+    )
 
 
 @bos_bp.get("/workspaces")

@@ -3,10 +3,13 @@
 from __future__ import annotations
 
 from datetime import datetime, timezone
+import logging
 
 from flask import abort, jsonify
 
 from integration_catalog import all_plugin_seeds, catalog_api_payload, plugin_logo_url, plugin_public_meta
+
+_log = logging.getLogger("app.integration")
 
 REMOVED_PLUGIN_SLUGS = (
     "google_calendar",
@@ -108,6 +111,7 @@ def init_integration_tables(conn) -> None:
         from payment_connect_plugin import init_payment_connection_tables
         init_payment_connection_tables(conn)
     except ImportError:
+        _log.debug("payment_connect_import_skipped", exc_info=True, extra={"op": "init_integration_tables"})
         pass
 
 

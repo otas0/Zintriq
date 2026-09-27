@@ -3,10 +3,13 @@
 from __future__ import annotations
 
 import json
+import logging
 import queue
 import re
 import threading
 from datetime import datetime
+
+_log = logging.getLogger("app.qr_experience")
 
 # Spec-aligned experience event types
 ANALYTICS_EVENT_TYPES = (
@@ -175,6 +178,7 @@ def enqueue_analytics_event(app, payload: dict) -> None:
     try:
         _event_queue.put_nowait(payload)
     except queue.Full:
+        _log.debug("analytics_queue_full", exc_info=True, extra={"op": "enqueue_analytics_event"})
         pass
 
 
@@ -196,7 +200,7 @@ def start_analytics_worker(app) -> None:
                     with db() as conn:
                         insert_analytics_event(conn, item)
             except Exception:
-                pass
+                logging.getLogger("app.qr_experience").debug("analytics_worker_insert_failed", exc_info=True)
             finally:
                 _event_queue.task_done()
 

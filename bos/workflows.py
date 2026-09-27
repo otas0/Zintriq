@@ -9,11 +9,14 @@ Workflows connect platforms via the Event Bus. Platforms never hard-code automat
 from __future__ import annotations
 
 import json
+import logging
 import secrets
 import sqlite3
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from typing import Any
+
+_log = logging.getLogger("app.bos")
 
 WORKFLOW_STATUSES = ("draft", "active", "paused", "archived")
 RUN_STATUSES = ("running", "completed", "failed", "cancelled")
@@ -180,6 +183,7 @@ def _parse_json(raw: str | None, default: Any) -> Any:
     try:
         return json.loads(raw)
     except (json.JSONDecodeError, TypeError):
+        _log.debug("workflow_json_parse_failed", exc_info=True, extra={"op": "_parse_json"})
         return default
 
 
@@ -206,6 +210,7 @@ def evaluate_conditions(conditions: list[dict], context: dict[str, Any]) -> bool
                 actual = float(actual) if actual is not None else None
                 expected = float(expected)
             except (TypeError, ValueError):
+                _log.debug("condition_float_convert_failed", exc_info=True, extra={"op": "evaluate_conditions"})
                 return False
         if op == "eq" and actual != expected:
             return False
@@ -434,7 +439,7 @@ def workflow_subscriber(conn: sqlite3.Connection, event: Any) -> None:
     try:
         process_domain_event(conn, event)
     except Exception:
-        pass  # workflows must not break emit
+        logging.getLogger("app.bos").debug("workflow_subscriber_failed", exc_info=True)  # workflows must not break emit
 
 
 def workflow_to_api(row) -> dict[str, Any]:

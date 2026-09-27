@@ -3,6 +3,9 @@
 from __future__ import annotations
 
 from typing import Any
+import logging
+
+_log = logging.getLogger("app.discover")
 
 DEFAULT_DISCOVER_LIMIT = 100
 DEFAULT_NEARBY_RADIUS_KM = 25.0
@@ -57,6 +60,7 @@ def _store_discover_payload(
             distance_km = haversine_km(origin_lat, origin_lng, float(store_lat), float(store_lng))
             distance_label = format_distance_km(distance_km)
         except (TypeError, ValueError):
+            _log.debug("discover_haversine_failed", exc_info=True, extra={"op": "_store_discover_payload"})
             pass
 
     owner_name = (store.get("owner_name") or "").strip() or None

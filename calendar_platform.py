@@ -3,9 +3,12 @@
 from __future__ import annotations
 
 import json
+import logging
 from datetime import datetime, timedelta
 
 from flask import abort, jsonify, request, session
+
+_log = logging.getLogger("app.calendar")
 
 EVENT_TYPES = ("booking", "meeting", "appointment", "check_in", "business_event", "reminder")
 EVENT_SOURCES = ("business_os", "google_calendar", "microsoft_calendar")
@@ -125,6 +128,7 @@ def _default_end(start_time: str) -> str:
         start = datetime.fromisoformat(raw)
         return (start + timedelta(hours=1)).strftime("%Y-%m-%d %H:%M:%S")
     except ValueError:
+        _log.debug("calendar_default_end_parse_failed", exc_info=True, extra={"op": "_default_end"})
         return _normalize_time(start_time)
 
 

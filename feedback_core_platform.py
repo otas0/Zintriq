@@ -3,12 +3,15 @@
 from __future__ import annotations
 
 import json
+import logging
 import uuid
 from datetime import datetime
 
 from flask import abort, jsonify, redirect, render_template, request, session, url_for
 
 from integration_catalog import REPUTATION_PLUGINS as CATALOG_REPUTATION
+
+_log = logging.getLogger("app.feedback")
 
 FEEDBACK_SOURCES = (
     "business_os", "qr_survey",
@@ -212,6 +215,7 @@ def _submit_survey_response(conn, survey_id: int, data: dict, *, experience_id: 
             try:
                 rating = int(val)
             except (TypeError, ValueError):
+                _log.debug("survey_rating_parse_failed", exc_info=True, extra={"op": "_submit_survey_response"})
                 pass
         elif q["type"] == "text":
             comment_parts.append(str(val))
@@ -699,7 +703,7 @@ def register_feedback_core_platform(app) -> None:
                         )
                         complete_session(conn, session_row)
                 except Exception:
-                    pass
+                    logging.getLogger("app.feedback").debug("survey_event_recording_failed", exc_info=True)
             survey_row = conn.execute("SELECT * FROM surveys WHERE id=?", (survey_id,)).fetchone()
             survey_payload = _survey_to_api(conn, survey_row, include_questions=True)
         if request.is_json or (request.content_type and "json" in request.content_type):

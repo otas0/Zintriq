@@ -3,6 +3,9 @@
 from __future__ import annotations
 
 from typing import Any
+import logging
+
+_log = logging.getLogger("app.session")
 
 # Stored in the signed session so we can re-apply permanent=True on every request.
 REMEMBER_SESSION_KEY = "_remember_device"
@@ -65,4 +68,5 @@ def customer_id_from_remember_token(secret_key: str, token: str) -> int | None:
         data = serializer.loads(token, max_age=CUSTOMER_REMEMBER_MAX_AGE)
         return int(data["uid"])
     except (BadSignature, SignatureExpired, KeyError, TypeError, ValueError):
+        _log.debug("remember_token_invalid", exc_info=True, extra={"op": "customer_id_from_remember_token"})
         return None

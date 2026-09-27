@@ -3,11 +3,14 @@
 from __future__ import annotations
 
 import hashlib
+import logging
 import secrets
 import sqlite3
 import time
 from datetime import datetime
 from typing import Any
+
+_log = logging.getLogger("app.guest")
 
 GUEST_SCHEMA_SQL = """
 CREATE TABLE IF NOT EXISTS guest_store_visits (
@@ -488,6 +491,7 @@ def _store_field(store: dict | Any, key: str, default=None):
     try:
         return store[key]
     except (KeyError, TypeError):
+        _log.debug("guest_store_field_failed", exc_info=True, extra={"op": "_store_field"})
         return default
 
 
@@ -559,6 +563,7 @@ def brand_hub_for_store(conn, store: dict | Any) -> dict[str, Any] | None:
                 distance_km = haversine_km(origin_lat, origin_lng, float(lat), float(lng))
                 distance_label = format_distance_km(distance_km)
             except (TypeError, ValueError):
+                _log.debug("brand_hub_haversine_failed", exc_info=True, extra={"op": "brand_hub_for_store"})
                 pass
         locations.append({
             "store_id": row["id"],

@@ -6,12 +6,15 @@ import base64
 import hashlib
 import hmac
 import json
+import logging
 import secrets
 import time
 import urllib.error
 import urllib.parse
 import urllib.request
 from typing import Any
+
+_log = logging.getLogger("app.payment_checkout")
 
 
 def _http_json(
@@ -1148,6 +1151,7 @@ def _payme_sign(fields: dict[str, Any], method: str, path: str, date: str, diges
     try:
         raw = base64.b64decode(signing_key)
     except Exception:
+        _log.debug("checkout_signing_key_b64_decode_failed", exc_info=True, extra={"op": "_signing_key_raw"})
         raw = signing_key.encode()
     return base64.b64encode(hmac.new(raw, signing_string.encode(), hashlib.sha256).digest()).decode()
 

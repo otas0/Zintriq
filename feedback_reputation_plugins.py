@@ -3,9 +3,12 @@
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
+import logging
 from datetime import datetime, timezone
 
 from integration_catalog import REPUTATION_PLUGINS, reputation_plugin_slugs
+
+_log = logging.getLogger("app.feedback")
 
 REPUTATION_PLUGIN_SLUGS = reputation_plugin_slugs()
 
@@ -108,6 +111,7 @@ class ReputationPlugin(FeedbackReputationPlugin):
                         (connection_id,),
                     ).fetchone()[0] or ""
             except Exception:
+                _log.debug("reputation_metadata_fetch_failed", exc_info=True, extra={"op": "reputation_plugin_metadata"})
                 meta_raw = ""
             reviews = []
             if meta_raw:
@@ -115,6 +119,7 @@ class ReputationPlugin(FeedbackReputationPlugin):
                     meta = json.loads(meta_raw)
                     reviews = meta.get("reviews") or meta.get("imported_reviews") or []
                 except Exception:
+                    _log.debug("reputation_reviews_parse_failed", exc_info=True, extra={"op": "reputation_plugin_reviews"})
                     reviews = []
             for i, rev in enumerate(reviews[:50]):
                 if not isinstance(rev, dict):

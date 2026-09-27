@@ -5,6 +5,7 @@ import hashlib
 import hmac
 import io
 import json
+import logging
 import os
 import secrets
 import socket
@@ -25,6 +26,8 @@ try:
     from firebase_admin import credentials
 except ImportError:
     firebase_admin = firebase_auth = credentials = None
+
+_log = logging.getLogger("app.core")
 
 
 BASE_DIR = Path(__file__).resolve().parent
@@ -76,35 +79,61 @@ app.config.update(
     PERMANENT_SESSION_LIFETIME=timedelta(days=400),
 )
 
+from observability import init_logging
+init_logging(app=app)
 
-@app.get("/favicon.ico")
-def favicon():
-    resp = send_from_directory(app.static_folder, "favicon.ico", mimetype="image/vnd.microsoft.icon")
+from observability.errors import register_error_handlers
+from observability.health import register_health_routes
+from observability.metrics import increment_requests
+
+register_error_handlers(app)
+register_health_routes(app)
+
+
+def _no_store(resp):
     resp.headers["Cache-Control"] = "no-store, max-age=0, must-revalidate"
     resp.headers["Pragma"] = "no-cache"
     return resp
 
 
+@app.get("/favicon.ico")
+def favicon():
+    """Prefer Safari-safe PNG. Dark tabs invert colors — use pre-inverted asset when requested."""
+    from flask import Response
+
+    # Hint via query or Accept — default to true yellow; Safari often ignores query on ico.
+    # Serve the light (yellow) PNG; JS data-URI handles dark-tab correction for HTML pages.
+    path = os.path.join(app.static_folder, "z-fav-v2.png")
+    with open(path, "rb") as f:
+        data = f.read()
+    resp = Response(data, mimetype="image/png")
+    resp.headers["Cache-Control"] = "no-store, no-cache, max-age=0, must-revalidate"
+    resp.headers["Pragma"] = "no-cache"
+    resp.headers["Expires"] = "0"
+    resp.headers["Content-Disposition"] = "inline; filename=favicon.ico"
+    return resp
+
+
+@app.get("/z-fav-v2.png")
+@app.get("/z-fav-safari-dark.png")
+@app.get("/safari-tab-icon-yellow.png")
+def safari_tab_icon(filename=None):
+    name = request.path.rsplit("/", 1)[-1]
+    if name not in {"z-fav-v2.png", "z-fav-safari-dark.png", "safari-tab-icon-yellow.png"}:
+        name = "z-fav-v2.png"
+    if name == "safari-tab-icon-yellow.png":
+        name = "z-fav-v2.png"
+    return _no_store(send_from_directory(app.static_folder, name, mimetype="image/png"))
+
+
+@app.get("/z-touch-v2.png")
 @app.get("/apple-touch-icon.png")
 @app.get("/apple-touch-icon-precomposed.png")
 @app.get("/safari-touch-icon-yellow.png")
 def apple_touch_icon():
-    resp = send_from_directory(
-        app.static_folder, "safari-touch-icon-yellow.png", mimetype="image/png"
+    return _no_store(
+        send_from_directory(app.static_folder, "z-touch-v2.png", mimetype="image/png")
     )
-    resp.headers["Cache-Control"] = "no-store, max-age=0, must-revalidate"
-    resp.headers["Pragma"] = "no-cache"
-    return resp
-
-
-@app.get("/safari-tab-icon-yellow.png")
-def safari_tab_icon():
-    resp = send_from_directory(
-        app.static_folder, "safari-tab-icon-yellow.png", mimetype="image/png"
-    )
-    resp.headers["Cache-Control"] = "no-store, max-age=0, must-revalidate"
-    resp.headers["Pragma"] = "no-cache"
-    return resp
 
 
 @contextmanager
@@ -432,6 +461,7 @@ def init_db() -> None:
                 notes TEXT,
                 scenario TEXT DEFAULT 'visitor',
                 status TEXT DEFAULT 'published',
+                scan_count INTEGER DEFAULT 0,
                 created_at TEXT DEFAULT CURRENT_TIMESTAMP,
                 updated_at TEXT,
                 FOREIGN KEY(store_id) REFERENCES stores(id) ON DELETE CASCADE
@@ -450,6 +480,9 @@ def init_db() -> None:
             conn.execute("ALTER TABLE qr_codes ADD COLUMN pass_type TEXT DEFAULT 'storefront'")
         if "ref_id" not in qr_columns:
             conn.execute("ALTER TABLE qr_codes ADD COLUMN ref_id INTEGER")
+        checkin_columns = {row["name"] for row in conn.execute("PRAGMA table_info(check_in_points)")}
+        if "scan_count" not in checkin_columns:
+            conn.execute("ALTER TABLE check_in_points ADD COLUMN scan_count INTEGER DEFAULT 0")
         from feedback_platform import init_feedback_tables
         init_feedback_tables(conn)
         from customer_platform import init_customer_tables
@@ -482,6 +515,8 @@ def init_db() -> None:
         init_feedback_core_tables(conn)
         from qr_experience_platform import init_qr_experience_tables
         init_qr_experience_tables(conn)
+        from universal_builder_core import init_universal_builder_tables
+        init_universal_builder_tables(conn)
         from checkout_platform import init_checkout_tables
         init_checkout_tables(conn)
         from bos.mvp_schema import init_mvp_schema
@@ -611,7 +646,7 @@ def inject_guest_context():
                 recent_stores_for_visitor(conn, key, limit=6) if hub_shell else []
             )
             places_count = recent_store_count(conn, key)
-            from help_platform import HOW_IT_WORKS_STEPS
+            from help_platform import localized_how_it_works_steps
 
             return {
                 "guest_recent_count": places_count,
@@ -625,7 +660,7 @@ def inject_guest_context():
                 "show_onboarding_popup": hub_intro,
                 "onboarding_mode": onboarding_mode,
                 "onboarding_open": onboarding_open,
-                "onboarding_steps": HOW_IT_WORKS_STEPS,
+                "onboarding_steps": localized_how_it_works_steps(),
                 "show_storefront_shell": storefront_shell,
                 "hub_user_lat": hub_lat,
                 "hub_user_lng": hub_lng,
@@ -637,6 +672,7 @@ def inject_guest_context():
                 "active_mode": "personal",
             }
     except Exception:
+        logging.getLogger("app.guest").error("guest_stats_fallback_failed", exc_info=True)  # SUSPECT: swallow may hide bug — see Phase 1.1
         return {
             "guest_recent_count": 0,
             "guest_contact": {},
@@ -680,6 +716,25 @@ def _safe_guest_redirect(target: str | None, *, fallback: str) -> str:
 def _dismiss_guest_remember_offer() -> None:
     if request.args.get("dismiss_remember"):
         session.pop("guest_remember_offer", None)
+
+
+@app.before_request
+def observability_set_context():
+    """Register FIRST: populate request context for structured logging."""
+    import uuid as _uuid
+    from flask import g
+    from observability.context import set_context
+    rid = request.headers.get("X-Request-ID") or _uuid.uuid4().hex
+    g.request_id = rid
+    set_context(
+        request_id=rid,
+        route=request.path,
+        method=request.method,
+        start_time=time.time(),
+    )
+    uid = session.get("user_id")
+    if uid:
+        set_context(user_id=str(uid))
 
 
 @app.before_request
@@ -737,6 +792,17 @@ def sync_customer_remember_cookie(response):
     return response
 
 
+@app.after_request
+def observability_attach_request_id(response):
+    """Register LAST: attach X-Request-ID header, increment counter, clear context."""
+    from flask import g
+    rid = getattr(g, "request_id", None)
+    if rid:
+        response.headers["X-Request-ID"] = rid
+    increment_requests()
+    return response
+
+
 @app.before_request
 def enforce_auth_separation():
     """Keep shopper and business sessions mutually exclusive."""
@@ -765,9 +831,9 @@ def login_required(view):
             with db() as conn:
                 if user_can_use_business_mode(conn, int(cid)):
                     flash("Switch to Business mode to manage your store.", "info")
-                    return redirect(url_for("customer_account_home"))
+                    return redirect(url_for("login"))
             flash("You are signed in to personal mode. Business tools need a business sign-in.", "error")
-            return redirect(url_for("guest_home"))
+            return redirect(url_for("login"))
         user = current_user()
         if not user:
             flash("Please sign in to manage a storefront.", "error")
@@ -777,7 +843,7 @@ def login_required(view):
                 from team_platform import touch_user_presence
                 touch_user_presence(conn, user["id"])
         except Exception:
-            pass
+            logging.getLogger("app.presence").error("touch_user_presence_failed", exc_info=True)  # SUSPECT: swallow may hide bug — see Phase 1.1
         return view(*args, **kwargs)
     return wrapped
 
@@ -1042,6 +1108,7 @@ def parse_item_group_arg(raw: str | None) -> str | int | None:
     try:
         return int(raw)
     except (TypeError, ValueError):
+        _log.debug("item_group_int_parse_failed", exc_info=True, extra={"op": "parse_item_group_arg"})
         return None
 
 
@@ -1335,7 +1402,7 @@ def perform_check_in(code: str) -> dict:
             from qr_experience_runtime import bridge_legacy_checkin
             bridge_legacy_checkin(conn, point)
     except Exception:
-        pass
+        logging.getLogger("app.checkin").debug("bridge_legacy_checkin_failed", exc_info=True)
     validation["message"] = f"Checked in at {point['name']}"
     validation["checked_in"] = True
     validation["time"] = time.strftime("%Y-%m-%d %H:%M")
@@ -1608,7 +1675,14 @@ def workspace_snapshot(owner_id: int) -> dict:
     groups = [row_to_dict(row) for row in fetch_group_stats(owner_id)]
     labels = [row_to_dict(row) for row in owner_store_labels(owner_id)]
     stores = fetch_workspace_stores(owner_id)
-    return {"stores": stores, "groups": groups, "labels": labels}
+    ws_id = session.get("active_workspace_id")
+    ws_name = ""
+    if ws_id:
+        with db() as conn:
+            row = conn.execute("SELECT name FROM workspaces WHERE id=?", (ws_id,)).fetchone()
+            if row:
+                ws_name = row["name"]
+    return {"id": ws_id, "name": ws_name, "stores": stores, "groups": groups, "labels": labels}
 
 
 def owned_store_ids(owner_id: int, store_ids: list[int]) -> list[int]:
@@ -1759,6 +1833,7 @@ def lan_ip() -> str | None:
             sock.connect(("8.8.8.8", 80))
             return sock.getsockname()[0]
     except OSError:
+        _log.debug("lan_ip_detect_failed", exc_info=True, extra={"op": "lan_ip"})
         return None
 
 
@@ -1767,9 +1842,9 @@ def index():
     from customer_account_platform import current_customer_id
 
     if current_user():
-        return redirect(url_for("bos.store"))
+        return redirect(url_for("universal_builder_home"))
     if current_customer_id(session):
-        return redirect(url_for("guest_home"))
+        return redirect(url_for("universal_builder_home"))
     return render_template("index.html")
 
 
@@ -1789,7 +1864,7 @@ def sign_in_user(user_id: int, *, remember_device: bool = True):
 @app.route("/register", methods=["GET", "POST"])
 def register():
     if current_user():
-        return redirect(url_for("bos.store"))
+        return redirect(url_for("universal_builder_home"))
     if request.method == "POST":
         email, password, confirm = request.form.get("email", "").strip().lower(), request.form.get("password", ""), request.form.get("confirm_password", "")
         if not request.form.get("legal_consent"):
@@ -1816,7 +1891,7 @@ def register():
                         ),
                     )
                 sign_in_user(cursor.lastrowid, remember_device=parse_remember_device(request.form.get("remember_device")))
-                return redirect(url_for("bos.store"))
+                return redirect(url_for("universal_builder_home"))
             except sqlite3.IntegrityError:
                 with db() as conn:
                     existing = conn.execute(
@@ -1829,7 +1904,7 @@ def register():
                         "This email is registered for shopping. Use shopper sign-in or another email for business.",
                         "error",
                     )
-                    return redirect(url_for("customer_register"))
+                    return redirect(url_for("register"))
                 flash("An account with that email already exists. Please sign in.", "error")
     return render_template("register.html")
 
@@ -1837,74 +1912,35 @@ def register():
 @app.route("/login", methods=["GET", "POST"])
 def login():
     if current_user():
-        return redirect(url_for("bos.store"))
+        return redirect(url_for("universal_builder_home"))
     if request.method == "POST":
+        from customer_verification import find_user_by_login
+
+        identifier = (request.form.get("email") or "").strip()
         with db() as conn:
-            user = conn.execute("SELECT * FROM users WHERE email = ?", (request.form.get("email", "").strip().lower(),)).fetchone()
+            user = find_user_by_login(conn, identifier)
         if user and check_password_hash(user["password_hash"], request.form.get("password", "")):
             from customer_account_platform import ACCOUNT_KIND_CUSTOMER, user_account_kind
             from session_remember import parse_remember_device
 
             remember = parse_remember_device(request.form.get("remember_device"))
             if user_account_kind(user) == ACCOUNT_KIND_CUSTOMER:
-                flash("This is a personal account. Use Sign in from the shop menu (/account).", "error")
-                return redirect(url_for("customer_login"))
+                flash("This is a personal account. Use the builder to manage your projects.", "error")
+                return redirect(url_for("login"))
             if user["two_factor_secret"]:
                 session["pending_2fa_user_id"] = user["id"]
                 session["pending_remember_device"] = remember
                 return redirect(url_for("two_factor_login"))
             sign_in_user(user["id"], remember_device=remember)
             destination = request.args.get("next", "")
-            return redirect(destination if destination.startswith("/") and not destination.startswith("//") else url_for("bos.store"))
-        flash("Email or password is incorrect.", "error")
+            return redirect(destination if destination.startswith("/") and not destination.startswith("//") else url_for("universal_builder_home"))
+        flash("Phone/email or password is incorrect.", "error")
     return render_template("login.html")
 
 
 @app.post("/auth/firebase")
 def firebase_login():
-    payload = request.get_json(silent=True) or {}
-    try:
-        decoded = verify_firebase_token(payload.get("idToken", ""))
-    except Exception:
-        return {"error": "Social sign-in is not configured or the sign-in token was invalid."}, 401
-    email = (decoded.get("email") or "").strip().lower()
-    firebase_uid = decoded.get("uid")
-    if not email or not decoded.get("email_verified") or not firebase_uid:
-        return {"error": "Your social account needs a verified email address."}, 400
-    with db() as conn:
-        user = conn.execute("SELECT * FROM users WHERE firebase_uid = ? OR email = ?", (firebase_uid, email)).fetchone()
-        is_new = False
-        if user:
-            from customer_account_platform import ACCOUNT_KIND_CUSTOMER, user_account_kind
-
-            if user_account_kind(user) == ACCOUNT_KIND_CUSTOMER:
-                return {"error": "This Google account is linked to a personal login."}, 400
-            if not user["firebase_uid"]:
-                conn.execute("UPDATE users SET firebase_uid = ? WHERE id = ?", (firebase_uid, user["id"]))
-        else:
-            is_new = True
-            cursor = conn.execute("INSERT INTO users (email, password_hash, firebase_uid, account_kind) VALUES (?, ?, ?, ?)",
-                (email, generate_password_hash(secrets.token_urlsafe(32), method="pbkdf2:sha256:600000"), firebase_uid, "merchant"))
-            user = conn.execute("SELECT * FROM users WHERE id=?", (cursor.lastrowid,)).fetchone()
-        from integrations.auth.service import AuthService
-        AuthService.link_user(conn, int(user["id"]), {
-            "auth_provider": "firebase",
-            "auth_provider_id": firebase_uid,
-            "email": email,
-            "full_name": decoded.get("name") or "",
-        })
-    from session_remember import parse_remember_device
-
-    remember = parse_remember_device(payload.get("remember_device"))
-    if user["two_factor_secret"]:
-        session["pending_2fa_user_id"] = user["id"]
-        session["pending_remember_device"] = remember
-        return {"next": url_for("two_factor_login")}
-    sign_in_user(user["id"], remember_device=remember)
-    intent = payload.get("intent", "login")
-    if is_new and intent == "signup":
-        return {"next": url_for("bos.store")}
-    return {"next": url_for("bos.store")}
+    return {"error": "Google sign-in has been removed. Use phone verification."}, 410
 
 
 @app.route("/login/2fa", methods=["GET", "POST"])
@@ -1924,7 +1960,7 @@ def two_factor_login():
             remember = parse_remember_device(session.pop("pending_remember_device", True))
             sign_in_user(user["id"], remember_device=remember)
             session.pop("pending_2fa_user_id", None)
-            return redirect(url_for("bos.store"))
+            return redirect(url_for("universal_builder_home"))
         flash("That verification code is not valid. Try the newest code in your app.", "error")
     return render_template("two_factor_login.html")
 
@@ -1988,7 +2024,7 @@ def magic_signin(token: str):
         session["pending_remember_device"] = True
         return redirect(url_for("two_factor_login"))
     sign_in_user(user["id"], remember_device=True)
-    return redirect(url_for("bos.store"))
+    return redirect(url_for("universal_builder_home"))
 
 
 @app.post("/logout")
@@ -2006,7 +2042,7 @@ def logout():
         session["customer_user_id"] = customer_id
         apply_remember_device(session, remember)
     flash("You have been signed out of your business account.", "success")
-    return redirect(url_for("guest_home") if customer_id else url_for("index"))
+    return redirect(url_for("index") if customer_id else url_for("index"))
 
 
 @app.route("/app/account", methods=["GET", "POST"])
@@ -2038,6 +2074,7 @@ def account():
         user=record,
         two_factor_enabled=bool(record["two_factor_secret"]),
         show_delete_confirm=show_delete_confirm,
+        workspace=workspace_snapshot(user["id"]),
     )
 
 
@@ -2048,7 +2085,7 @@ def account_two_factor():
     with db() as conn:
         record = conn.execute("SELECT * FROM users WHERE id = ?", (user["id"],)).fetchone()
     if record["two_factor_secret"]:
-        return render_template("two_factor_settings.html", module_id="account", page_title="Two-factor authentication", enabled=True)
+        return render_template("two_factor_settings.html", module_id="account", page_title="Two-factor authentication", enabled=True, workspace=workspace_snapshot(user["id"]))
     if request.method == "POST":
         secret = session.get("two_factor_setup_secret")
         if secret and valid_totp(secret, request.form.get("code", "").strip()):
@@ -2060,7 +2097,7 @@ def account_two_factor():
         flash("That code is not valid. Try again with a new code from your app.", "error")
     secret = session.setdefault("two_factor_setup_secret", base64.b32encode(secrets.token_bytes(20)).decode().rstrip("="))
     uri = f"otpauth://totp/Zintriq:{user['email']}?secret={secret}&issuer=Zintriq"
-    return render_template("two_factor_settings.html", module_id="account", page_title="Two-factor authentication", enabled=False, secret=secret, qr_image=qr_data_uri(uri))
+    return render_template("two_factor_settings.html", module_id="account", page_title="Two-factor authentication", enabled=False, secret=secret, qr_image=qr_data_uri(uri), workspace=workspace_snapshot(user["id"]))
 
 
 @app.post("/account/2fa/disable")
@@ -2201,6 +2238,12 @@ def cancel_delete_account():
 @login_required
 def my_stores():
     return redirect(url_for("bos.store", _anchor="stores"))
+
+
+@app.get("/workspace")
+@login_required
+def workspace_dashboard():
+    return redirect(url_for("universal_builder_home"))
 
 
 @app.get("/my-stores/groups/<int:group_id>")
@@ -2521,11 +2564,12 @@ def store_groups_manage():
 @app.route("/create", methods=["GET", "POST"])
 @login_required
 def create_store():
+    user = current_user()
     if request.method == "POST":
         name = request.form.get("name", "").strip()
         if not name:
             flash("Your business name is required.", "error")
-            return render_template("create_store.html")
+            return render_template("create_store.html", workspace=workspace_snapshot(user["id"]))
         slug = secrets.token_urlsafe(6).replace("-", "").replace("_", "")[:8].lower()
         with db() as conn:
             cursor = conn.execute(
@@ -2547,7 +2591,7 @@ def create_store():
                 (store_id, "Default", new_qr_code()),
             )
         return redirect(url_for("manage_store", slug=slug))
-    return render_template("create_store.html")
+    return render_template("create_store.html", workspace=workspace_snapshot(user["id"]))
 
 
 @app.route("/manage/<slug>", methods=["GET", "POST"])
@@ -2864,7 +2908,7 @@ def store_settings(slug: str):
         weekday_labels=WEEKDAY_LABELS,
         default_timezone=DEFAULT_TIMEZONE,
         discover_readiness=discover_listing_readiness(dict(store)),
-        discover_url=url_for("guest_discover"),
+        discover_url=url_for("universal_builder_home"),
     )
 
 
@@ -3194,6 +3238,25 @@ def reorder_items(slug: str):
 @app.get("/qr/<code>")
 def qr_entry(code: str):
     code = code.lower()
+    # Universal Builder entry points are optional. Existing QR behavior below
+    # remains the compatibility fallback when a code has no explicit mapping.
+    try:
+        with db() as conn:
+            entry = conn.execute(
+                """SELECT p.slug, d.document_key FROM builder_entry_points e
+                   JOIN builder_projects p ON p.id=e.project_id
+                   JOIN builder_documents d ON d.id=e.document_id
+                   JOIN builder_deployments dep ON dep.project_id=p.id
+                     AND dep.environment='production' AND dep.channel='web'
+                     AND dep.status='active' AND dep.revision_id IS NOT NULL
+                   WHERE e.entry_type='qr' AND e.entry_key=? AND e.status='active'""",
+                (code,),
+            ).fetchone()
+        if entry:
+            return redirect(f"/build/{entry['slug']}/{entry['document_key']}?from=qr")
+    except sqlite3.OperationalError:
+        # Supports databases that have not run the additive Builder migration yet.
+        pass
     attendee = attendee_by_code(code)
     if attendee:
         return redirect(url_for("event_pass_view", code=code))
@@ -3231,7 +3294,7 @@ def qr_entry(code: str):
                     slug = exp["public_slug"] if exp["public_slug"] else code
                     return redirect(f"/e/{slug}?from=qr")
         except Exception:
-            pass
+            logging.getLogger("app.qr_experience").error("qr_experience_redirect_failed", exc_info=True)  # SUSPECT: swallow may hide bug — see Phase 1.1
     pass_type = (qr["pass_type"] if qr["pass_type"] else "storefront") if "pass_type" in qr.keys() else "storefront"
     if pass_type == "experience":
         with db() as conn:
@@ -4541,128 +4604,6 @@ def manage_store_place_membership(slug: str):
     )
 
 
-@app.get("/venues")
-def guest_venues():
-    from place_platform import public_places
-
-    with db() as conn:
-        venues = public_places(conn, limit=24)
-    return render_template(
-        "customer/venues.html",
-        preview_mode=False,
-        venues=venues,
-    )
-
-
-@app.get("/home")
-def guest_home():
-    from customer_home_platform import home_feed
-    from guest_platform import ensure_visitor_key
-
-    lat = request.args.get("lat", type=float)
-    lng = request.args.get("lng", type=float)
-    visitor_key = ensure_visitor_key(session)
-    with db() as conn:
-        feed = home_feed(conn, visitor_key, lat=lat, lng=lng)
-    return render_template(
-        "customer/home.html",
-        preview_mode=False,
-        user_lat=lat,
-        user_lng=lng,
-        **feed,
-    )
-
-
-@app.get("/discover")
-def guest_discover():
-    """Discover browse is disabled — in-store QR scan only."""
-    return redirect(url_for("guest_home"))
-
-
-@app.get("/api/discover/stores")
-def api_discover_stores():
-    from discover_platform import discoverable_stores
-
-    lat = request.args.get("lat", type=float)
-    lng = request.args.get("lng", type=float)
-    q = (request.args.get("q") or "").strip() or None
-    category = (request.args.get("category") or "").strip() or None
-    open_only = request.args.get("open") == "1"
-    with db() as conn:
-        stores = discoverable_stores(
-            conn,
-            q=q,
-            category=category,
-            open_only=open_only,
-            lat=lat,
-            lng=lng,
-        )
-    return jsonify({"stores": stores})
-
-
-@app.get("/places")
-def guest_recent_places():
-    from guest_platform import ensure_visitor_key, recent_stores_for_visitor
-
-    visitor_key = ensure_visitor_key(session)
-    with db() as conn:
-        places = recent_stores_for_visitor(conn, visitor_key)
-        places_open_count = sum(1 for p in places if p.get("is_open"))
-    return render_template(
-        "customer/recent_places.html",
-        places=places,
-        places_open_count=places_open_count,
-        preview_mode=False,
-    )
-
-
-@app.post("/places/remember")
-def guest_remember_request():
-    from guest_platform import create_guest_remember_token, ensure_visitor_key, send_guest_remember_email, upsert_guest_profile
-
-    email = (request.form.get("email") or "").strip().lower()
-    if not email or "@" not in email:
-        flash("Please enter a valid email address.", "error")
-        return redirect(_safe_guest_redirect(request.form.get("next"), fallback=url_for("guest_recent_places") + "#remember"))
-
-    visitor_key = ensure_visitor_key(session)
-    with db() as conn:
-        upsert_guest_profile(conn, visitor_key, email=email)
-        token = create_guest_remember_token(conn, email, visitor_key)
-
-    remember_url = url_for("guest_remember_signin", token=token, _external=True)
-    sent = send_guest_remember_email(remember_url, email)
-    session.pop("guest_remember_offer", None)
-    if sent:
-        flash("Check your email for a link to save your places on other devices.", "success")
-    else:
-        app.logger.warning("Development guest remember link: %s", remember_url)
-        flash(
-            "If that email works, we sent a remember-me link. "
-            "In local development, check the Flask terminal for the link.",
-            "success",
-        )
-
-    return redirect(_safe_guest_redirect(request.form.get("next"), fallback=url_for("guest_recent_places") + "#remember"))
-
-
-@app.get("/guest/remember/<token>")
-def guest_remember_signin(token: str):
-    from guest_platform import apply_guest_remember_link, consume_guest_remember_token, ensure_visitor_key
-
-    current_key = ensure_visitor_key(session)
-    with db() as conn:
-        row = consume_guest_remember_token(conn, token)
-        if not row:
-            flash("This link is invalid or expired. Request a new one from Your places.", "error")
-            return redirect(url_for("guest_recent_places"))
-        canonical = apply_guest_remember_link(conn, row, current_key)
-
-    session["visitor_key"] = canonical
-    flash("Your places are saved on this device.", "success")
-    return redirect(url_for("guest_recent_places"))
-
-
 @app.route("/store/<slug>")
 def storefront(slug: str):
     store = public_store_or_404(slug)
@@ -4773,11 +4714,17 @@ register_qr_experience_templates(app)
 from qr_experience_workflow import register_qr_experience_workflow
 register_qr_experience_workflow(app)
 
+from universal_builder_core import register_universal_builder_core
+register_universal_builder_core(app)
+
 from qr_customer_data import register_qr_customer_data
 register_qr_customer_data(app)
 
 from customer_platform import register_customer_platform
 register_customer_platform(app)
+
+from customer_account_platform import register_customer_account_platform
+register_customer_account_platform(app)
 
 from help_platform import register_help_platform
 register_help_platform(app)
@@ -4839,8 +4786,11 @@ register_mobile_platform(app)
 from legal_platform import register_legal_platform
 register_legal_platform(app)
 
-from customer_account_platform import register_customer_account_platform
-register_customer_account_platform(app)
+from i18n_platform import register_i18n_platform
+register_i18n_platform(app)
+
+from merchant_phone_auth import register_merchant_phone_auth
+register_merchant_phone_auth(app, db=db, sign_in_user=sign_in_user)
 
 
 @app.errorhandler(404)
@@ -4856,11 +4806,11 @@ if __name__ == "__main__":
     port = int(os.environ.get("PORT", "5001"))
     host = os.environ.get("HOST", "0.0.0.0")
     ip = lan_ip()
-    print(f" * Local:   http://127.0.0.1:{port}")
+    app.logger.debug("dev_server_local url=http://127.0.0.1:%d", port)
     if ip:
-        print(f" * Network: http://{ip}:{port}")
+        app.logger.debug("dev_server_network url=http://%s:%d", ip, port)
         if not os.environ.get("PUBLIC_BASE_URL"):
-            print(f" * QR tip:  PUBLIC_BASE_URL=http://{ip}:{port} python3 app.py")
+            app.logger.debug("dev_server_qr_hint PUBLIC_BASE_URL=http://%s:%d python3 app.py", ip, port)
     app.run(
         debug=True,
         host=host,

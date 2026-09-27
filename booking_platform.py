@@ -3,8 +3,11 @@
 from __future__ import annotations
 
 from datetime import datetime, timedelta
+import logging
 
 from flask import abort, jsonify, request, session
+
+_log = logging.getLogger("app.booking")
 
 BOOKING_STATUSES = ("pending", "confirmed", "checked_in", "completed", "cancelled", "no_show")
 
@@ -53,6 +56,7 @@ def _default_end(starts_at: str) -> str:
         start = datetime.fromisoformat(raw)
         return (start + timedelta(hours=1)).strftime("%Y-%m-%d %H:%M:%S")
     except ValueError:
+        _log.debug("booking_default_end_parse_failed", exc_info=True, extra={"op": "_default_end"})
         return starts_at
 
 

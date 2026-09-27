@@ -3,7 +3,10 @@
 from __future__ import annotations
 
 import json
+import logging
 from datetime import datetime
+
+_log = logging.getLogger("app.qr_customer")
 
 INTERACTION_TYPES = (
     "qr_scan",
@@ -132,6 +135,7 @@ def _enrich_customer_profile(
     try:
         meta = json.loads(row["metadata"] or "{}")
     except json.JSONDecodeError:
+        _log.debug("customer_profile_metadata_parse_failed", exc_info=True, extra={"op": "enrich_customer_profile"})
         pass
     if name or email or phone:
         meta["anonymous"] = False
@@ -335,6 +339,7 @@ def list_qr_customers(conn, workspace_id: int, *, q: str = "", interaction_type:
         try:
             meta = json.loads(r["metadata"] or "{}")
         except json.JSONDecodeError:
+            _log.debug("qr_customer_list_metadata_parse_failed", exc_info=True, extra={"op": "list_qr_customers"})
             pass
         result.append({
             "id": r["id"],
@@ -365,6 +370,7 @@ def customer_detail(conn, customer_id: int, workspace_id: int) -> dict | None:
     try:
         meta = json.loads(cp["metadata"] or "{}")
     except json.JSONDecodeError:
+        _log.debug("customer_detail_metadata_parse_failed", exc_info=True, extra={"op": "customer_detail"})
         pass
 
     interactions = [

@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import hashlib
+import logging
 import secrets
 from datetime import datetime, timedelta, timezone
 
@@ -19,6 +20,8 @@ from bos.permissions import (
     permissions_for_role,
     require_permission,
 )
+
+_log = logging.getLogger("app.team")
 
 MEMBER_STATUSES = ("active", "invited", "suspended", "removed")
 INVITATION_STATUSES = ("pending", "accepted", "expired", "cancelled")
@@ -107,6 +110,7 @@ def _presence_state(last_active_at: str | None) -> str:
         delta = datetime.now(timezone.utc) - ts
         return "online" if delta.total_seconds() <= PRESENCE_ONLINE_SECONDS else "offline"
     except (ValueError, TypeError):
+        _log.debug("presence_timestamp_parse_failed", exc_info=True, extra={"op": "_presence_state"})
         return "offline"
 
 
@@ -595,6 +599,7 @@ def register_team_platform(app) -> None:
                     (inv["workspace_id"], user_id, inv["role"], inv["created_at"], _now(), inv["invited_by"]),
                 )
             except Exception:
+                _log.debug("team_member_upsert_fallback", exc_info=True, extra={"op": "accept_invitation"})
                 conn.execute(
                     """UPDATE workspace_members SET role=?, status='active', joined_at=?, invited_by=?
                        WHERE workspace_id=? AND user_id=?""",

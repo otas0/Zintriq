@@ -3,11 +3,14 @@
 from __future__ import annotations
 
 import json
+import logging
 import secrets
 from datetime import date, datetime, timezone
 from pathlib import Path
 
 from flask import abort, jsonify, request, session
+
+_log = logging.getLogger("app.task")
 
 TASK_STATUSES = ("not_started", "in_progress", "blocked", "completed", "archived")
 TASK_PRIORITIES = ("low", "medium", "high", "critical")
@@ -148,6 +151,7 @@ def _due_bucket(due_date: str | None) -> str | None:
             return "today"
         return "upcoming"
     except ValueError:
+        _log.debug("task_due_date_parse_failed", exc_info=True, extra={"op": "_due_bucket"})
         return None
 
 

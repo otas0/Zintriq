@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import base64
 import json
+import logging
 import os
 import secrets
 import urllib.error
@@ -21,6 +22,8 @@ from integration_platform import (
 )
 
 from integration_catalog import get_payment_plugin, payment_plugin_slugs
+
+_log = logging.getLogger("app.payment")
 
 PAYMENT_PLUGIN_SLUGS = payment_plugin_slugs()
 
@@ -271,10 +274,12 @@ def merchant_payment_fields(conn, app, owner_id: int, slug: str) -> dict:
     try:
         access = decrypt_token(row["access_token_enc"], sk) if row["access_token_enc"] else ""
     except Exception:
+        _log.debug("payment_access_token_decrypt_failed", exc_info=True, extra={"op": "payment_connect_fields"})
         access = ""
     try:
         refresh = decrypt_token(row["refresh_token_enc"], sk) if row["refresh_token_enc"] else ""
     except Exception:
+        _log.debug("payment_refresh_token_decrypt_failed", exc_info=True, extra={"op": "payment_connect_fields"})
         refresh = ""
     fields = {k: v for k, v in meta.items() if k not in ("connect_mode", "checkout_ready", "note")}
     if access and "secret_key" not in fields and "api_key" not in fields and "access_token" not in fields:
@@ -354,6 +359,7 @@ def _connection_metadata(conn, connection_id: int) -> dict:
     try:
         return json.loads(pay["metadata_json"] or "{}")
     except json.JSONDecodeError:
+        _log.debug("connection_metadata_json_parse_failed", exc_info=True, extra={"op": "_connection_metadata"})
         return {}
 
 
@@ -406,7 +412,7 @@ def _rollback_request_db() -> None:
         if conn is not None:
             conn.rollback()
     except Exception:
-        pass
+        logging.getLogger("app.payment").debug("rollback_helper_failed", exc_info=True)
 
 
 def _purge_fake_integration_connections(conn) -> int:
@@ -584,6 +590,7 @@ def payment_connection_to_api(payment_row) -> dict | None:
     try:
         meta = json.loads(payment_row["metadata_json"] or "{}")
     except json.JSONDecodeError:
+        _log.debug("payment_connection_metadata_parse_failed", exc_info=True, extra={"op": "payment_connection_to_api"})
         pass
     return {
         "provider": payment_row["provider_slug"],
@@ -948,13 +955,13 @@ def register_payment_connect_plugin(app) -> None:
                 try:
                     _refresh_stripe_from_connection(conn, app, conn_row)
                 except Exception:
-                    pass
+                    logging.getLogger("app.payment").error("stripe_status_refresh_failed", exc_info=True)  # SUSPECT: swallow may hide bug — see Phase 1.1
                 connection = get_user_connection(conn, user_id, provider)
             elif conn_row and provider == "paypal" and conn_row.get("access_token_enc"):
                 try:
                     _refresh_paypal_account(conn, app, conn_row)
                 except Exception:
-                    pass
+                    logging.getLogger("app.payment").error("paypal_status_refresh_failed", exc_info=True)  # SUSPECT: swallow may hide bug — see Phase 1.1
             payload = build_status_payload(app, conn, user_id, provider)
         return jsonify(payload)
 
@@ -1195,9 +1202,9 @@ def register_payment_connect_plugin(app) -> None:
                 init_payment_connection_tables(conn)
                 n = _purge_fake_integration_connections(conn)
                 if n:
-                    print(f" * Purged {n} fake/unverified integration connection(s)")
+                    app.logger.info("payment_integration_purge count=%d", n)
         except Exception as exc:
-            print(f" * Integration purge skipped: {exc}")
+            app.logger.warning("payment_integration_purge_skipped error=%s", type(exc).__name__)
 
 
 def _payment_connect_modes(app, slug: str) -> list[str]:
