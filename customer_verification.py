@@ -791,9 +791,13 @@ def register_customer_verification_routes(app, *, db, get_customer, finish_custo
                 app.logger.error("customer_verification_alter_failed uid=%s reference=%s", uid, rid, exc_info=True)
                 return jsonify({"ok": False, "error": "schema_migration_failed", "reference": rid}), 500
             try:
-                conn.execute(
+                cur = conn.execute(
                     "UPDATE users SET allow_email_login = 1 WHERE id = ?", (int(uid),)
                 )
+                if cur.rowcount == 0:
+                    rid = uuid.uuid4().hex[:12]
+                    app.logger.error("customer_verification_update_0rows uid=%s reference=%s", uid, rid)
+                    return jsonify({"ok": False, "error": "account_link_failed", "reference": rid}), 500
             except Exception:
                 rid = uuid.uuid4().hex[:12]
                 app.logger.error("customer_verification_update_failed uid=%s reference=%s", uid, rid, exc_info=True)
