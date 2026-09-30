@@ -116,3 +116,9 @@ UC-4 and UC-5 remain MEDIUM risk: if decryption fails, payment connection silent
 - Test 5 finding: SQLite UPDATE on nonexistent row silently affects 0 rows. Not a bug in 2.0.5 (upstream guards prevent it), but worth noting for future auth path hardening.
 
 ---
+
+## Orphaned working-tree changes
+
+- **wip/ux-reset-continuation** (commit 4c1d8e7): UX Reset V0.1 continuation work including workspace context for help pages, template deletions, brand asset updates, and BOS shell refinements. Includes bugfix for business_help_platform.py current_user guard (changed `if current_user` to `if current_user()`). Not merged — pending UX Reset review.
+
+---
