@@ -447,3 +447,24 @@ The original audit header claimed **72** silent except blocks. A RULE 1 second-p
 | **Total** | | **95** | | **All converted** |
 
 **Correction:** Header updated from 72 → 95. All 95 silent except blocks now have Pattern A/B logging. Zero silent swallowing remains in production code.
+
+---
+
+## Correction — Route Count (2026-09-30)
+
+Line 19 and line 284 state "~380 routes across 26 files." This was a manual per-file estimate that undercounted the actual total.
+
+**Actual route count** from `app.url_map.iter_rules()`: **514**
+
+**Breakdown**:
+- 154 GET routes without URL parameters (tested by smoke test)
+- 139 GET routes with URL parameters (not tested by smoke test)
+- 66 POST-only routes without URL parameters (tested by smoke test)
+- 102 POST-only routes with URL parameters (not tested by smoke test)
+- 52 other method routes (PUT/DELETE) with URL parameters (not tested by smoke test)
+- 1 static file route (skipped by smoke test)
+
+**Total tested by smoke test**: 220 routes (154 + 66)  
+**Total not tested**: 294 routes (all require URL parameter values)
+
+The per-file table in lines 286-316 sums to ~376, which was rounded to "~380" in the header. The discrepancy of ~134 routes comes from modules not included in the 26-file table (customer_verification.py, observability/health.py, legal_platform.py, business_help_platform.py, etc.) and likely double-counted blueprint endpoints.
