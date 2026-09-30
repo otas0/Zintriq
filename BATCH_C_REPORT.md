@@ -394,3 +394,36 @@ All items from Batch C are new additions, not tracked in PHASE_1_TODO.md (which 
 **Report prepared by**: Observability Hardening Phase 1.0  
 **Date**: 2026-09-27  
 **Status**: ACCEPTED
+
+---
+
+## Correction — 2026-09-30
+
+Step 2.7 (commit 0295f87) introduced a `get_context()` TypeError in the `after_request` access log hook. The code called `get_context()` without the required `key` argument:
+
+```python
+# Buggy code (commit 0295f87, app.py:803-806):
+if start is None:
+    from observability.context import get_context
+    ctx = get_context()  # TypeError: missing required argument 'key'
+    start = ctx.get("start_time") if ctx else None
+```
+
+This caused every request to crash in the `after_request` hook between commits 0295f87 and dfced84. The error was caught by the global exception handler and logged, but the access log itself was never written.
+
+**Fixed in**: commit dfced84 (2026-09-30)
+
+```python
+# Fixed code (commit dfced84, app.py:803-805):
+if start is None:
+    from observability.context import get_context
+    start = get_context("start_time") or None
+```
+
+**Impact**: This invalidates the "Zero Behavior Changes" claim for the interim window between 0295f87 and dfced84. During that window, all requests returned 500 errors due to the uncaught TypeError in the after_request hook.
+
+All other Batch C claims stand. The bug was discovered during Batch C.5 GAP 2 (smoke testing) and fixed immediately.
+
+**Root cause**: The report was written before the access log hook was tested with a real request. The implementation was correct in intent but had a calling convention error that was not caught until runtime testing.
+
+**Process fix**: All future observability reports require at least one real-request smoke test before the "zero behavior change" claim can be made. Unit tests of the hook function are not sufficient; the hook must be exercised via the Flask test client to verify the full request lifecycle.
