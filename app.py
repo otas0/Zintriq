@@ -1922,6 +1922,88 @@ def guest_recent_places():
     )
 
 
+@app.get("/home")
+def guest_home():
+    from customer_home_platform import home_feed
+    from guest_platform import ensure_visitor_key
+
+    lat = request.args.get("lat", type=float)
+    lng = request.args.get("lng", type=float)
+    visitor_key = ensure_visitor_key(session)
+    with db() as conn:
+        feed = home_feed(conn, visitor_key, lat=lat, lng=lng)
+    return render_template(
+        "customer/home.html",
+        preview_mode=False,
+        user_lat=lat,
+        user_lng=lng,
+        **feed,
+    )
+
+
+@app.get("/api/discover/stores")
+def api_discover_stores():
+    from discover_platform import discoverable_stores
+
+    lat = request.args.get("lat", type=float)
+    lng = request.args.get("lng", type=float)
+    q = (request.args.get("q") or "").strip() or None
+    category = (request.args.get("category") or "").strip() or None
+    open_only = request.args.get("open") == "1"
+    with db() as conn:
+        stores = discoverable_stores(
+            conn,
+            q=q,
+            category=category,
+            open_only=open_only,
+            lat=lat,
+            lng=lng,
+        )
+    return jsonify({"stores": stores})
+
+
+@app.post("/places/remember")
+def guest_remember_request():
+    from guest_platform import create_guest_remember_token, ensure_visitor_key, send_guest_remember_email, upsert_guest_profile
+
+    email = (request.form.get("email") or "").strip().lower()
+    if not email or "@" not in email:
+        flash("Please enter a valid email address.", "error")
+        return redirect(_safe_guest_redirect(request.form.get("next"), fallback=url_for("guest_recent_places") + "#remember"))
+
+    visitor_key = ensure_visitor_key(session)
+    with db() as conn:
+        upsert_guest_profile(conn, visitor_key, email=email)
+        token = create_guest_remember_token(conn, email, visitor_key)
+
+    remember_url = url_for("guest_remember_signin", token=token, _external=True)
+    sent = send_guest_remember_email(remember_url, email)
+    session.pop("guest_remember_offer", None)
+    if sent:
+        flash("Check your email for a link to save your places on other devices.", "success")
+    else:
+        app.logger.warning("Development guest remember link: %s", remember_url)
+        flash("Check your email for a link to save your places.", "success")
+    return redirect(_safe_guest_redirect(request.form.get("next"), fallback=url_for("guest_recent_places")))
+
+
+@app.get("/guest/remember/<token>")
+def guest_remember_signin(token: str):
+    from guest_platform import apply_guest_remember_link, consume_guest_remember_token, ensure_visitor_key
+
+    current_key = ensure_visitor_key(session)
+    with db() as conn:
+        row = consume_guest_remember_token(conn, token)
+        if not row:
+            flash("This link is invalid or expired. Request a new one from Your places.", "error")
+            return redirect(url_for("guest_recent_places"))
+        canonical = apply_guest_remember_link(conn, row, current_key)
+
+    session["visitor_key"] = canonical
+    flash("Your places are saved on this device.", "success")
+    return redirect(url_for("guest_recent_places"))
+
+
 def sign_in_user(user_id: int, *, remember_device: bool = True):
     from customer_account_platform import sign_out_customer
     from session_remember import apply_remember_device
