@@ -301,7 +301,7 @@ def register_customer_account_platform(app) -> None:
     from flask import flash, redirect, render_template, request, session, url_for
     from werkzeug.security import check_password_hash, generate_password_hash
 
-    from app import consume_auth_token, create_auth_token, csrf_token, db, verify_firebase_token
+    from app import consume_auth_token, create_auth_token, csrf_token, db
     from guest_platform import ensure_visitor_key
 
     def get_customer():
@@ -511,10 +511,6 @@ def register_customer_account_platform(app) -> None:
         sign_out_customer(session, forget_device=True)
         flash("Signed out of your shopper account.", "success")
         return redirect(_safe_next_url(request.form.get("next") or request.referrer))
-
-    @app.post("/auth/firebase/customer")
-    def firebase_customer_login():
-        return {"error": "Google sign-in has been removed. Use phone verification."}, 410
 
     @app.route("/account/forgot-password", methods=["GET", "POST"])
     def customer_forgot_password():

@@ -39,7 +39,7 @@ def register_integrations_core(app) -> None:
             profile = AuthService.profile(conn, uid())
             if not profile:
                 from integrations.config import auth_provider_name
-                provider = "firebase" if user["firebase_uid"] else auth_provider_name()
+                provider = auth_provider_name()
                 profile = sync_profile_from_user_row(conn, user, auth_provider=provider)
             memberships = [
                 dict(r) for r in conn.execute(

@@ -140,7 +140,7 @@ class EmailLoginStandaloneTest(unittest.TestCase):
         firebase_mock.initialize_app = MagicMock(side_effect=AssertionError("firebase_admin.initialize_app called during email login"))
 
         patches = []
-        if app_module.firebase_admin is not None:
+        if getattr(app_module, "firebase_admin", None) is not None:
             p1 = patch.object(app_module, "firebase_admin", firebase_mock)
             patches.append(p1)
         if getattr(app_module, "firebase_auth", None) is not None:

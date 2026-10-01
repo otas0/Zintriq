@@ -813,7 +813,3 @@ def register_customer_verification_routes(app, *, db, get_customer, finish_custo
         else:
             next_url = _safe_next_url(payload.get("next"))
         return jsonify({"ok": True, "redirect": next_url, "email": email})
-
-    @app.post("/account/onboarding/google")
-    def customer_onboarding_google_complete():
-        return json_or_error("Google sign-in has been removed. Use phone verification.", 410)

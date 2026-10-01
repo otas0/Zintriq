@@ -86,11 +86,7 @@ def profile_to_api(row) -> dict:
 
 def sync_profile_from_user_row(conn, user_row, *, auth_provider: str = "local") -> dict:
     """Ensure profile exists for a users-table row."""
-    provider_id = None
-    if auth_provider == "firebase" and user_row["firebase_uid"] if "firebase_uid" in user_row.keys() else None:
-        provider_id = user_row["firebase_uid"]
-    elif auth_provider == "local":
-        provider_id = str(user_row["id"])
+    provider_id = str(user_row["id"]) if auth_provider == "local" else None
     pid = upsert_user_profile(
         conn,
         int(user_row["id"]),

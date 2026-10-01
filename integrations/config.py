@@ -6,7 +6,7 @@ import os
 
 
 def auth_provider_name() -> str:
-    return (os.environ.get("AUTH_PROVIDER") or "firebase").strip().lower()
+    return (os.environ.get("AUTH_PROVIDER") or "local").strip().lower()
 
 
 def payment_provider_name() -> str:
@@ -23,8 +23,6 @@ def calendar_provider_name() -> str:
 
 def auth_configured() -> bool:
     provider = auth_provider_name()
-    if provider == "firebase":
-        return bool(os.environ.get("FIREBASE_SERVICE_ACCOUNT_JSON") or os.environ.get("GOOGLE_APPLICATION_CREDENTIALS"))
     if provider in ("auth0", "clerk", "supabase"):
         return bool(os.environ.get("AUTH_PROVIDER_KEY") or os.environ.get(f"{provider.upper()}_CLIENT_ID"))
     return provider == "local"

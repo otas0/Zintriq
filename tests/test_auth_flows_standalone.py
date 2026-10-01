@@ -90,7 +90,7 @@ def _get_csrf(client):
 def _firebase_guard(app_module):
     """Return a list of patchers that make Firebase raise if touched."""
     patches = []
-    if app_module.firebase_admin is not None:
+    if getattr(app_module, "firebase_admin", None) is not None:
         fb_mock = MagicMock()
         fb_mock.initialize_app = MagicMock(
             side_effect=AssertionError("firebase_admin.initialize_app must not be called")

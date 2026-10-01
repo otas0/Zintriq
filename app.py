@@ -20,13 +20,6 @@ import qrcode
 from flask import Flask, abort, flash, g, has_app_context, jsonify, redirect, render_template, request, send_from_directory, session, url_for
 from werkzeug.security import check_password_hash, generate_password_hash
 
-try:
-    import firebase_admin
-    from firebase_admin import auth as firebase_auth
-    from firebase_admin import credentials
-except ImportError:
-    firebase_admin = firebase_auth = credentials = None
-
 _log = logging.getLogger("app.core")
 
 
@@ -1837,16 +1830,6 @@ def valid_totp(secret: str, code: str) -> bool:
     return bool(code.isdigit() and len(code) == 6 and any(secrets.compare_digest(totp_code(secret, time.time() + step * 30), code) for step in (-1, 0, 1)))
 
 
-def verify_firebase_token(id_token: str):
-    """Verify an ID token on the server; never trust browser profile data alone."""
-    service_account = os.environ.get("FIREBASE_SERVICE_ACCOUNT")
-    if not firebase_admin or not service_account:
-        raise RuntimeError("Firebase Admin is not configured")
-    if not firebase_admin._apps:
-        firebase_admin.initialize_app(credentials.Certificate(service_account))
-    return firebase_auth.verify_id_token(id_token, check_revoked=True)
-
-
 def qr_data_uri(link: str) -> str:
     image = qrcode.make(link)
     buffer = io.BytesIO()
@@ -2090,11 +2073,6 @@ def login():
             return redirect(destination if destination.startswith("/") and not destination.startswith("//") else url_for("universal_builder_home"))
         flash("Phone/email or password is incorrect.", "error")
     return render_template("login.html")
-
-
-@app.post("/auth/firebase")
-def firebase_login():
-    return {"error": "Google sign-in has been removed. Use phone verification."}, 410
 
 
 @app.route("/login/2fa", methods=["GET", "POST"])

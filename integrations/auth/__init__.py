@@ -39,27 +39,5 @@ class LocalAuthProvider(AuthProvider):
         return True
 
 
-class FirebaseAuthProvider(AuthProvider):
-    slug = "firebase"
-
-    def verify_token(self, token: str) -> dict[str, Any]:
-        from app import verify_firebase_token
-        decoded = verify_firebase_token(token)
-        return self.normalized_claims({
-            "uid": decoded.get("uid"),
-            "email": decoded.get("email"),
-            "email_verified": decoded.get("email_verified"),
-            "name": decoded.get("name"),
-        })
-
-    def is_configured(self) -> bool:
-        from integrations.config import auth_configured
-        return auth_configured()
-
-
 def get_auth_provider(name: str | None = None) -> AuthProvider:
-    from integrations.config import auth_provider_name
-    slug = (name or auth_provider_name()).lower()
-    if slug == "firebase":
-        return FirebaseAuthProvider()
     return LocalAuthProvider()
