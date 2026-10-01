@@ -19,6 +19,8 @@ from werkzeug.security import generate_password_hash
 
 TEST_EMAIL = "g0-test-merchant@example.com"
 TEST_PASSWORD = "G0StandaloneTest12!"
+FIREBASE_ONLY_EMAIL = "g17-firebase-only@example.com"
+FIREBASE_ONLY_UID = "firebase-uid-g17-test"
 
 
 def _create_test_db(path: str) -> None:
@@ -63,6 +65,10 @@ def _create_test_db(path: str) -> None:
     conn.execute(
         "INSERT INTO users (email, password_hash, account_kind) VALUES (?, ?, ?)",
         (TEST_EMAIL, generate_password_hash(TEST_PASSWORD, method="pbkdf2:sha256:600000"), "merchant"),
+    )
+    conn.execute(
+        "INSERT INTO users (email, password_hash, firebase_uid, account_kind) VALUES (?, ?, ?, ?)",
+        (FIREBASE_ONLY_EMAIL, "firebase-only", FIREBASE_ONLY_UID, "merchant"),
     )
     conn.commit()
     conn.close()
@@ -173,6 +179,40 @@ class EmailLoginStandaloneTest(unittest.TestCase):
             follow_redirects=False,
         )
         self.assertEqual(response.status_code, 200, "Wrong password should re-render login form")
+
+    def test_firebase_only_dummy_password_rejected(self):
+        """G-1.7: Firebase-only accounts cannot be accessed with dummy password guesses.
+
+        A Firebase-only account has password_hash="firebase-only" (not a real
+        PBKDF2 hash). This test verifies that common guesses are all rejected.
+        """
+        password_guesses = [
+            "firebase-only",
+            "",
+            "firebase_only",
+            "FIREBASE-ONLY",
+            "firebase only",
+        ]
+
+        for guess in password_guesses:
+            client = _client_with_csrf(self.flask_app)
+            with client.session_transaction() as sess:
+                csrf = sess["csrf_token"]
+
+            response = client.post(
+                "/login",
+                data={"email": FIREBASE_ONLY_EMAIL, "password": guess, "csrf_token": csrf},
+                follow_redirects=False,
+            )
+            self.assertEqual(
+                response.status_code, 200,
+                f"Password guess '{guess}' must be rejected (got {response.status_code})"
+            )
+            with client.session_transaction() as sess:
+                self.assertNotIn(
+                    "user_id", sess,
+                    f"Password guess '{guess}' must NOT set user_id in session"
+                )
 
 
 if __name__ == "__main__":
