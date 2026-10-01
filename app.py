@@ -801,7 +801,7 @@ def observability_access_log(response):
     """Log one line per request with method, path, status, duration, request_id."""
     from flask import g
     path = request.path
-    if path.startswith("/static/") or path in ("/health", "/healthz", "/ready"):
+    if path.startswith("/static/") or path in ("/health", "/healthz", "/readyz"):
         return response
     start = getattr(g, "request_start_time", None)
     if start is None:
@@ -1885,6 +1885,41 @@ def index():
     if current_customer_id(session):
         return redirect(url_for("universal_builder_home"))
     return render_template("index.html")
+
+
+@app.get("/discover")
+def guest_discover():
+    """Discover browse is disabled — in-store QR scan only."""
+    return redirect(url_for("index"))
+
+
+@app.get("/venues")
+def guest_venues():
+    from place_platform import public_places
+
+    with db() as conn:
+        venues = public_places(conn, limit=24)
+    return render_template(
+        "customer/venues.html",
+        preview_mode=False,
+        venues=venues,
+    )
+
+
+@app.get("/places")
+def guest_recent_places():
+    from guest_platform import ensure_visitor_key, recent_stores_for_visitor
+
+    visitor_key = ensure_visitor_key(session)
+    with db() as conn:
+        places = recent_stores_for_visitor(conn, visitor_key)
+        places_open_count = sum(1 for p in places if p.get("is_open"))
+    return render_template(
+        "customer/recent_places.html",
+        places=places,
+        places_open_count=places_open_count,
+        preview_mode=False,
+    )
 
 
 def sign_in_user(user_id: int, *, remember_device: bool = True):
