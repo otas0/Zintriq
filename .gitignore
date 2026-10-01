@@ -18,3 +18,6 @@ static/uploads/*
 
 .tmp_logo_fix/
 scripts/.cache/
+
+logs/
+*.log
