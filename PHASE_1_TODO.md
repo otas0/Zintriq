@@ -4,6 +4,26 @@ This file is append-only. Never delete entries, only mark [DONE].
 
 ---
 
+## Phase 1.1 — P0: init_db() gating causes /build 500
+
+**Discovered**: Batch C.8 (2026-10-01)
+**Severity**: P0 — any request to `/build/<slug>/<doc>` returns 500 on fresh deploy
+
+**Root cause**: `init_db()` at `app.py:241` is only called under `if __name__ == "__main__":` (line 4864). When the app is loaded via WSGI (gunicorn, etc.) or imported (test_client), the DDL never runs. This means all 23 builder tables (`builder_projects`, `builder_documents`, `builder_nodes`, etc. defined in `universal_builder_core.py:22-363`) are missing.
+
+**Impact**: `universal_builder_core.py:2274` and `universal_builder_runtime.py:369` query `builder_projects` table → `sqlite3.OperationalError: no such table: builder_projects` → 500.
+
+**Secondary issue**: `seed_official_system_template(conn)` (called by `init_universal_builder_tables` at `universal_builder_core.py:512`) fails with `FileNotFoundError: builder_templates/zintriq-system/manifest.json`. The DDL runs before the seed, so tables are created even though seed fails — but the seed failure should also be handled.
+
+**Fix required for Phase 1.1**:
+1. Move `init_db()` call out of `if __name__ == "__main__":` guard — run on first request or app factory
+2. Guard `seed_official_system_template` with try/except or check manifest existence before seeding
+3. Ensure DDL is idempotent (uses `CREATE TABLE IF NOT EXISTS`)
+
+**Temporary workaround applied**: DDL run manually on `marketqr.db` — 23 builder tables created. Route now returns 404 (correct — no test data). This workaround does NOT survive a fresh deploy.
+
+---
+
 ## Phase 1.1 — SUSPECT Blocks (behavior fix, not just logging)
 
 13 remaining SWALLOW_SUSPECT blocks from OBSERVABILITY_AUDIT.md.
