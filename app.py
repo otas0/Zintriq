@@ -3318,8 +3318,10 @@ def qr_entry(code: str):
             "SELECT qr_codes.*, stores.slug, stores.status FROM qr_codes JOIN stores ON qr_codes.store_id = stores.id WHERE qr_codes.code = ?",
             (code,),
         ).fetchone()
+    if not qr:
+        abort(404)
     qr_status = qr["status"] if "status" in qr.keys() and qr["status"] else "active"
-    if not qr or qr_status == "archived":
+    if qr_status == "archived":
         abort(404)
     # Track QR Experience scan — runtime handles session on /e/ landing
     if "experience_id" in qr.keys() and qr["experience_id"]:
