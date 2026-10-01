@@ -151,3 +151,31 @@ UC-4 and UC-5 remain MEDIUM risk: if decryption fails, payment connection silent
   Reason: 3.7MB SQLite DB is tracked in git. Should not be.
 
 ---
+
+## Audit: 76e92d9 Additions (7 feature files)
+
+**Discovered**: Forensic audit (2026-10-01)
+**Context**: Commit 76e92d9 ("feat(observability): convert remaining 59 silent excepts") added 7 feature files totaling 4,509 lines. Commit message claimed "No behavior changes."
+
+| File | Lines | Public Funcs | Routes | Imported by app.py | Template Refs | Tests | Classification |
+|------|-------|--------------|--------|-------------------|---------------|-------|----------------|
+| universal_builder_core.py | 2341 | 17 | 54 | Yes (register_universal_builder_core) | 9 (url_for universal_builder_home) | None | **COMPLETE** — actively used |
+| universal_builder_creator.py | 356 | 13 | 0 | No | 0 | None | **ORPHAN** — not wired |
+| universal_builder_marketplace.py | 883 | 15 | 15 | No | 0 | None | **ORPHAN** — routes defined but not registered |
+| universal_builder_migration.py | 118 | 3 | 0 | No | 0 | None | **PARTIAL** — migration helper, may be called manually |
+| universal_builder_runtime.py | 375 | 3 | 0 | No | 0 | None | **ORPHAN** — runtime support, not wired |
+| i18n_platform.py | 236 | 9 | 3 | Yes | 0 | None | **COMPLETE** — imported, routes registered |
+| qr_experience_revisions.py | 200 | 8 | 0 | No | 0 | None | **ORPHAN** — revision support, not wired |
+
+**Summary**:
+- 2 COMPLETE (universal_builder_core.py, i18n_platform.py) — actively used
+- 1 PARTIAL (universal_builder_migration.py) — helper module
+- 4 ORPHAN (creator, marketplace, migration, runtime) — not imported, routes not registered
+
+**Action required**:
+- Decide if 4 orphan files should be wired in or removed
+- Add tests for universal_builder_core.py (0 tests currently)
+- Document i18n_platform.py usage (no template refs found)
+
+---
+
