@@ -6,8 +6,8 @@
 <p class="os-page-subtitle">{{ group_stats.total or 0 }} stores · {{ group_stats.active_count or 0 }} active · {{ group_stats.archived_count or 0 }} archived</p>
 {% endblock %}
 {% block os_actions %}
-<a class="os-btn os-btn-ghost" href="{{ url_for('bos.store_organize') }}">Groups &amp; labels</a>
-<a class="os-btn os-btn-ghost" href="{{ url_for('bos.store') }}">← All stores</a>
+<a class="os-btn os-btn-ghost" href="{{ url_for('store_groups_manage') }}">Groups &amp; labels</a>
+<a class="os-btn os-btn-ghost" href="{{ url_for('universal_builder_home') }}">← All stores</a>
 <button type="button" class="os-btn os-btn-ghost" id="rename-group-btn" data-group-id="{{ group.id }}">Rename</button>
 <button type="button" class="os-btn os-btn-danger" id="delete-group-btn" data-group-id="{{ group.id }}">Delete group</button>
 {% endblock %}

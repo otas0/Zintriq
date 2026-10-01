@@ -15,7 +15,7 @@
   <div class="os-app">
     <aside class="material-panel os-sidebar" id="os-sidebar" aria-label="Main navigation">
       <div class="os-sidebar-top">
-        <a class="os-brand" href="{{ url_for('bos.store') }}" aria-label="zintriq">
+        <a class="os-brand" href="{{ url_for('universal_builder_home') }}" aria-label="zintriq">
           {% with variant='light', class='os-brand__logo zintriq-logo', width=168, height=44 %}
           {% include 'partials/brand_logo.html' %}
           {% endwith %}
@@ -23,7 +23,7 @@
         <button type="button" class="os-sidebar-close" id="os-sidebar-close" aria-label="Close menu">×</button>
       </div>
       <nav class="os-nav">
-        <a href="{{ url_for('bos.store') }}" class="os-nav-item{% if os_nav == 'stores' %} is-active{% endif %}">
+        <a href="{{ url_for('universal_builder_home') }}" class="os-nav-item{% if os_nav == 'stores' %} is-active{% endif %}">
           Stores &amp; QR
         </a>
         <a href="{{ url_for('bos.team') }}" class="os-nav-item{% if os_nav == 'team' %} is-active{% endif %}">

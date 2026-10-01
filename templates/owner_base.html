@@ -3,7 +3,7 @@
 {% block os_sidebar_extra %}
 {% if store %}
 <section class="os-store-context">
-  <a class="os-context-back" href="{{ url_for('bos.store') }}">← All stores</a>
+  <a class="os-context-back" href="{{ url_for('universal_builder_home') }}">← All stores</a>
 </section>
 {% endif %}
 {% endblock %}
@@ -23,7 +23,7 @@
         <span class="os-tag os-tag-sm os-tag-{{ s.status }}">{{ s.status }}</span>
       </a>
       {% endfor %}
-      <a class="os-store-switcher__item os-store-switcher__all" href="{{ url_for('bos.store') }}">All stores in Zintriq →</a>
+      <a class="os-store-switcher__item os-store-switcher__all" href="{{ url_for('universal_builder_home') }}">All stores in Zintriq →</a>
     </div>
   </div>
   <nav class="os-tabs os-tabs--store" aria-label="Store sections">

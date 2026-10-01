@@ -41,7 +41,7 @@
     <div class="guest-remember__form-wrap">
       <p class="guest-remember__label">Sync across devices</p>
       <p class="guest-remember__hint">Email yourself a link — no password needed.</p>
-      <form class="guest-remember__form" method="post" action="{{ url_for('guest_remember_request') }}">
+      <form class="guest-remember__form" method="post" action="{{ url_for('index') }}">
         <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
         <label class="guest-remember__field">
           <span class="guest-remember__field-label">Email</span>
@@ -81,7 +81,7 @@
   <aside class="places-tip material-module">
     <h2 class="places-tip__title">Tip</h2>
     <p class="places-tip__text">Each scan adds or updates a shop here. Use search when you visit markets with many vendors.</p>
-    <a class="ch-home__section-link" href="{{ url_for('guest_venues') }}">Browse markets &amp; venues →</a>
+    <a class="ch-home__section-link" href="{{ url_for('index') }}">Browse markets &amp; venues →</a>
   </aside>
   {% endif %}
 </section>

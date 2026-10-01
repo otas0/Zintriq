@@ -482,7 +482,7 @@ def register_customer_account_platform(app) -> None:
         with db() as conn:
             if not user_can_use_business_mode(conn, cid):
                 flash("This account does not have a business profile.", "error")
-                return redirect(url_for("guest_home"))
+                return redirect(url_for("index"))
         sign_in_user(int(cid))
         flash("Switched to Business mode.", "success")
         return redirect(url_for("bos.store"))
@@ -504,7 +504,7 @@ def register_customer_account_platform(app) -> None:
         flash("Switched to Personal mode.", "success")
         if needs:
             return redirect(url_for("customer_account_home"))
-        return redirect(url_for("guest_home"))
+        return redirect(url_for("index"))
 
     @app.post("/account/logout")
     def customer_logout():
@@ -589,7 +589,7 @@ def register_customer_account_platform(app) -> None:
             return redirect(url_for("customer_login"))
         finish_customer_sign_in(int(user["id"]), email=user["email"])
         flash("You're signed in.", "success")
-        return redirect(url_for("guest_home"))
+        return redirect(url_for("index"))
 
     @app.get("/account")
     def customer_account_home():

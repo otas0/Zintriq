@@ -13,13 +13,13 @@
       <h1 class="guest-discover__title">Browse</h1>
       <p class="guest-page-head__lead">Discover shops near you — list or map.</p>
     </div>
-    <a class="guest-page-head__link" href="{{ url_for('guest_venues') }}">Markets &amp; venues →</a>
+    <a class="guest-page-head__link" href="{{ url_for('index') }}">Markets &amp; venues →</a>
   </header>
   {% endif %}
 
   <div class="guest-discover__toolbar material-module">
     {% if not show_customer_tabbar|default(false) %}
-    <form class="guest-discover__search" method="get" action="{{ url_for('guest_discover') }}" role="search">
+    <form class="guest-discover__search" method="get" action="{{ url_for('index') }}" role="search">
       {% if user_lat is not none %}<input type="hidden" name="lat" value="{{ user_lat }}">{% endif %}
       {% if user_lng is not none %}<input type="hidden" name="lng" value="{{ user_lng }}">{% endif %}
       {% if active_category %}<input type="hidden" name="category" value="{{ active_category }}">{% endif %}
@@ -62,7 +62,7 @@
   <section class="guest-discover__recent" aria-labelledby="discover-recent-title">
     <div class="guest-discover__section-head">
       <h2 class="guest-discover__section-title" id="discover-recent-title">Your places</h2>
-      <a class="guest-discover__section-link" href="{{ url_for('guest_recent_places') }}">View all →</a>
+      <a class="guest-discover__section-link" href="{{ url_for('index') }}">View all →</a>
     </div>
     <ul class="guest-discover__chips">
       {% for place in recent_places %}
@@ -141,7 +141,7 @@
     <div class="mq-empty guest-discover__empty">
       <p><strong>No matching shops</strong></p>
       <p>Try a different search, turn off filters, or check back when more merchants enable Discover.</p>
-      <a class="mq-btn mq-btn-ghost" href="{{ url_for('guest_discover') }}">Clear filters</a>
+      <a class="mq-btn mq-btn-ghost" href="{{ url_for('index') }}">Clear filters</a>
     </div>
     {% endif %}
   </div>

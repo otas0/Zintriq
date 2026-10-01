@@ -1,6 +1,6 @@
 <aside class="material-panel bos-sidebar bos-sidebar--merchant" id="bos-sidebar" aria-label="Zintriq navigation">
   <div class="bos-sidebar__top">
-    <a class="bos-brand" href="{{ url_for('bos.store') }}" aria-label="zintriq">
+    <a class="bos-brand" href="{{ url_for('universal_builder_home') }}" aria-label="zintriq">
       {% with variant='light', class='bos-brand__logo zintriq-logo', width=168, height=44 %}
       {% include 'partials/brand_logo.html' %}
       {% endwith %}
@@ -11,7 +11,7 @@
   <div class="bos-sidebar__workspace hidden" id="bos-workspace-switcher" aria-hidden="true"></div>
 
   <nav class="bos-nav" aria-label="Platforms">
-    <a href="{{ url_for('bos.store') }}"
+    <a href="{{ url_for('universal_builder_home') }}"
        class="bos-nav__item{% if module_id|default('') == 'store' %} is-active{% endif %}"
        data-module-id="store">
       <span class="bos-nav__label">Stores</span>

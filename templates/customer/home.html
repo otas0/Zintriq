@@ -43,7 +43,7 @@
   {% endif %}
 
   {% if places_total > 0 %}
-  <a class="ch-home__places-link material-module material-module--interactive ch-animate-in" href="{{ url_for('guest_recent_places') }}">
+  <a class="ch-home__places-link material-module material-module--interactive ch-animate-in" href="{{ url_for('index') }}">
     <div class="ch-home__places-avatars" aria-hidden="true">
       {% for place in recent_places[:3] %}
       <span class="ch-home__places-avatar">

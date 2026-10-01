@@ -646,7 +646,11 @@ def inject_guest_context():
                 recent_stores_for_visitor(conn, key, limit=6) if hub_shell else []
             )
             places_count = recent_store_count(conn, key)
-            from help_platform import localized_how_it_works_steps
+            try:
+                from help_platform import localized_how_it_works_steps
+                onboarding_steps = localized_how_it_works_steps()
+            except ImportError:
+                onboarding_steps = []
 
             return {
                 "guest_recent_count": places_count,
@@ -660,7 +664,7 @@ def inject_guest_context():
                 "show_onboarding_popup": hub_intro,
                 "onboarding_mode": onboarding_mode,
                 "onboarding_open": onboarding_open,
-                "onboarding_steps": localized_how_it_works_steps(),
+                "onboarding_steps": onboarding_steps,
                 "show_storefront_shell": storefront_shell,
                 "hub_user_lat": hub_lat,
                 "hub_user_lng": hub_lng,

@@ -21,7 +21,7 @@
   <aside class="sf-remember-offer material-module" id="remember-offer">
     <p class="sf-remember-offer__label">Save this shop for next time</p>
     <p class="sf-remember-offer__hint">Email yourself a link — no password — to find this store and others on any device.</p>
-    <form class="sf-remember-offer__form" method="post" action="{{ url_for('guest_remember_request') }}">
+    <form class="sf-remember-offer__form" method="post" action="{{ url_for('index') }}">
       <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
       <input type="hidden" name="email" value="{{ guest_remember_offer }}">
       <input type="hidden" name="next" value="{{ request.path }}#sf-contact">

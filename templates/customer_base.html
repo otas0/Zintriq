@@ -36,14 +36,14 @@
   {% else %}
   <header class="material-panel mq-public-header" id="mq-public-header">
     <div class="mq-public-header__inner">
-      <a class="mq-shell-brand" href="{{ url_for('guest_home') }}" aria-label="zintriq">
+      <a class="mq-shell-brand" href="{{ url_for('index') }}" aria-label="zintriq">
         {% with variant='light', class='mq-shell-brand__logo zintriq-logo', width=180, height=48 %}
         {% include 'partials/brand_logo.html' %}
         {% endwith %}
       </a>
       <div class="mq-public-header__actions">
-        <a class="mq-public-header__guest-link" href="{{ url_for('guest_home') }}">Home</a>
-        <a class="mq-public-header__guest-link" href="{{ url_for('guest_recent_places') }}">
+        <a class="mq-public-header__guest-link" href="{{ url_for('index') }}">Home</a>
+        <a class="mq-public-header__guest-link" href="{{ url_for('index') }}">
           Places{% if guest_recent_count|default(0) > 0 %}<span class="guest-link-count">{{ guest_recent_count }}</span>{% endif %}
         </a>
         {% if customer_logged_in and current_customer %}
