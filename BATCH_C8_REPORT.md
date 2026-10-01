@@ -177,3 +177,22 @@ All sign-off conditions met:
 - Checkout recovery queue
 
 **Git status: will be clean after commits**
+
+---
+
+## Correction — 2026-10-01
+
+Original claim: "3 routes deleted, ACCIDENTAL_REGRESSION."
+Actual: 11 routes deleted, 10 functions removed, 7 feature files added (4,509 lines) in 76e92d9.
+
+Forensic audit revealed commit 76e92d9 ("feat(observability): convert remaining 59 silent excepts") was a mislabeled feature dump that:
+- Deleted 11 routes (not 3)
+- Deleted 10 functions (not 3)
+- Added 7 new feature files totaling 4,509 lines
+- Claimed "No behavior changes" in commit message (false)
+
+4 routes remained missing after C.8: `/home`, `/api/discover/stores`, `/places/remember`, `/guest/remember/<token>`. Restored in commit `e08c63f`.
+
+7 feature files audited: 2 COMPLETE (universal_builder_core.py, i18n_platform.py), 1 PARTIAL (universal_builder_migration.py), 4 ORPHAN (creator, marketplace, runtime, revisions).
+
+See FORENSIC_76e92d9.md for full audit.
