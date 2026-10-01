@@ -18,7 +18,6 @@ export const MVP_FLAGS = {
   /** Plugin marketplace & external integrations. */
   plugins: false,
   reputationPlugins: true,
-  googleCalendarSync: false,
   connectedApps: true,
   /** Deprecated — integrations load from /api/integrations/plugins. */
   integrationsPlaceholder: false,

@@ -11,7 +11,7 @@ from flask import abort, jsonify, request, session
 _log = logging.getLogger("app.calendar")
 
 EVENT_TYPES = ("booking", "meeting", "appointment", "check_in", "business_event", "reminder")
-EVENT_SOURCES = ("business_os", "google_calendar", "microsoft_calendar")
+EVENT_SOURCES = ("business_os", "microsoft_calendar")
 VISIBILITY_LEVELS = ("private", "team", "workspace")
 EVENT_STATUSES = ("confirmed", "cancelled", "deleted", "archived")
 OPERATIONAL_STATUSES = ("scheduled", "checked_in", "completed")
@@ -79,26 +79,6 @@ CREATE TABLE IF NOT EXISTS calendar_permissions (
     UNIQUE(workspace_id, user_id, role, permission)
 );
 CREATE INDEX IF NOT EXISTS idx_calendar_permissions_ws ON calendar_permissions(workspace_id, role);
-
-CREATE TABLE IF NOT EXISTS calendar_sync_conflicts (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    workspace_id INTEGER NOT NULL,
-    user_id INTEGER NOT NULL,
-    calendar_event_id INTEGER NOT NULL,
-    external_event_id TEXT NOT NULL,
-    os_start_time TEXT NOT NULL,
-    google_start_time TEXT NOT NULL,
-    os_title TEXT DEFAULT '',
-    google_title TEXT DEFAULT '',
-    os_end_time TEXT,
-    google_end_time TEXT,
-    status TEXT NOT NULL DEFAULT 'open',
-    resolution TEXT,
-    created_at TEXT DEFAULT CURRENT_TIMESTAMP,
-    resolved_at TEXT,
-    FOREIGN KEY(calendar_event_id) REFERENCES calendar_events(id) ON DELETE CASCADE
-);
-CREATE INDEX IF NOT EXISTS idx_calendar_conflicts_ws ON calendar_sync_conflicts(workspace_id, status);
 """
 
 
@@ -707,104 +687,5 @@ def register_calendar_platform(app) -> None:
             )
             _emit(conn, "calendar.deleted", event_id, "Calendar event archived")
         return jsonify({"ok": True})
-
-    def conflict_to_api(row) -> dict:
-        return {
-            "id": row["id"],
-            "calendar_event_id": row["calendar_event_id"],
-            "external_event_id": row["external_event_id"],
-            "os_start_time": row["os_start_time"],
-            "google_start_time": row["google_start_time"],
-            "os_title": row["os_title"],
-            "google_title": row["google_title"],
-            "os_end_time": row["os_end_time"],
-            "google_end_time": row["google_end_time"],
-            "status": row["status"],
-            "resolution": row["resolution"],
-            "created_at": row["created_at"],
-            "resolved_at": row["resolved_at"],
-        }
-
-    @app.get("/api/calendar/conflicts")
-    @login_required
-    def api_calendar_conflicts():
-        ws = ws_id()
-        if not ws:
-            return jsonify([])
-        with db() as conn:
-            _guard(conn, "calendar.read")
-            rows = conn.execute(
-                """SELECT * FROM calendar_sync_conflicts
-                   WHERE workspace_id=? AND user_id=? AND status='open'
-                   ORDER BY created_at DESC LIMIT 50""",
-                (int(ws), uid()),
-            ).fetchall()
-            return jsonify([conflict_to_api(r) for r in rows])
-
-    @app.post("/api/calendar/conflicts/<int:conflict_id>/resolve")
-    @login_required
-    def api_calendar_resolve_conflict(conflict_id):
-        ws = ws_id()
-        if not ws:
-            abort(400)
-        data = request.get_json(silent=True) or {}
-        action = (data.get("action") or "").strip()
-        if action not in ("keep_os", "keep_google", "duplicate"):
-            return jsonify({"error": "action must be keep_os, keep_google, or duplicate"}), 400
-        user_id = uid()
-        with db() as conn:
-            _guard(conn, "calendar.update")
-            conflict = conn.execute(
-                """SELECT * FROM calendar_sync_conflicts
-                   WHERE id=? AND workspace_id=? AND user_id=? AND status='open'""",
-                (conflict_id, int(ws), user_id),
-            ).fetchone()
-            if not conflict:
-                abort(404)
-            event = conn.execute(
-                "SELECT * FROM calendar_events WHERE id=? AND workspace_id=?",
-                (conflict["calendar_event_id"], int(ws)),
-            ).fetchone()
-            if not event:
-                abort(404)
-
-            if action == "keep_os":
-                pass
-            elif action == "keep_google":
-                conn.execute(
-                    """UPDATE calendar_events SET title=?, start_time=?, end_time=?,
-                       updated_by=?, updated_at=? WHERE id=?""",
-                    (
-                        conflict["google_title"], conflict["google_start_time"],
-                        conflict["google_end_time"], user_id, _now(), event["id"],
-                    ),
-                )
-                conn.execute(
-                    "UPDATE external_references SET updated_at=? WHERE object_type='calendar_event' AND business_object_id=? AND user_id=?",
-                    (_now(), event["id"], user_id),
-                )
-            elif action == "duplicate":
-                conn.execute(
-                    """INSERT INTO calendar_events
-                       (workspace_id, created_by, title, description, event_type, start_time, end_time,
-                        location, visibility, source, status, operational_status, updated_by, updated_at)
-                       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'business_os', 'confirmed', 'scheduled', ?, ?)""",
-                    (
-                        event["workspace_id"], user_id,
-                        conflict["google_title"], event["description"], event["event_type"],
-                        conflict["google_start_time"], conflict["google_end_time"],
-                        event["location"], event["visibility"], user_id, _now(),
-                    ),
-                )
-
-            conn.execute(
-                """UPDATE calendar_sync_conflicts SET status='resolved', resolution=?, resolved_at=?
-                   WHERE id=?""",
-                (action, _now(), conflict_id),
-            )
-            row = conn.execute(
-                "SELECT * FROM calendar_sync_conflicts WHERE id=?", (conflict_id,)
-            ).fetchone()
-        return jsonify(conflict_to_api(row))
 
     app.init_calendar_tables = init_calendar_tables

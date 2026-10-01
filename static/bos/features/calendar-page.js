@@ -3,7 +3,6 @@
 import { statusBadge } from "../components/index.js";
 import { showToast, openDrawer, closeDrawer, apiPost } from "../services/api.js";
 import { fetchJson, esc, wsQuery } from "../services/bos-api.js";
-import { PRODUCT_FLAGS } from "../product-focus.js";
 
 const VIEWS = [
   { id: "day", label: "Day" },
@@ -22,7 +21,6 @@ const EVENT_TYPE_LABELS = {
 
 const SOURCE_LABELS = {
   business_os: "Zintriq",
-  google_calendar: "Google Calendar",
   microsoft_calendar: "Microsoft Calendar",
 };
 
@@ -106,9 +104,6 @@ function eventCard(ev, compact = false) {
   const participants = ev.participants?.length
     ? `<span class="cp-muted">${ev.participants.length} participant${ev.participants.length > 1 ? "s" : ""}</span>`
     : "";
-  const googleLink = ev.external_event_id
-    ? `<span class="bos-badge bos-badge--active">Google linked</span>`
-    : "";
   if (compact) {
     return `<button type="button" class="cal-event-chip" data-id="${ev.id}" title="${esc(ev.title)}">
       <span class="cal-event-chip__time">${formatTime(ev.start_time)}</span>
@@ -119,7 +114,7 @@ function eventCard(ev, compact = false) {
     <div class="cal-event-row__time">${formatTime(ev.start_time)}${ev.end_time ? ` – ${formatTime(ev.end_time)}` : ""}</div>
     <div class="cal-event-row__body">
       <strong>${esc(ev.title)}</strong>
-      <div class="cal-event-row__meta">${related} ${participants} ${sourceBadge(ev)} ${operationalBadge(ev)} ${googleLink} ${ev.status !== "confirmed" ? statusBadge(ev.status) : ""}</div>
+      <div class="cal-event-row__meta">${related} ${participants} ${sourceBadge(ev)} ${operationalBadge(ev)} ${ev.status !== "confirmed" ? statusBadge(ev.status) : ""}</div>
     </div>
   </article>`;
 }
@@ -139,7 +134,7 @@ async function openEventDrawer(id) {
     <dl class="cp-meta">
       <dt>Time</dt><dd>${esc((ev.start_time || "").slice(0, 16))}${ev.end_time ? ` – ${esc((ev.end_time || "").slice(0, 16))}` : ""}</dd>
       <dt>Type</dt><dd>${esc(EVENT_TYPE_LABELS[ev.event_type] || ev.event_type)}</dd>
-      <dt>Source</dt><dd>${sourceBadge(ev)}${ev.external_event_id ? ` <span class="bos-badge bos-badge--active">Linked to Google</span>` : ""}</dd>
+      <dt>Source</dt><dd>${sourceBadge(ev)}</dd>
       <dt>Status</dt><dd>${statusBadge(ev.status)} ${operationalBadge(ev)}</dd>
       <dt>Location</dt><dd>${esc(ev.location || "—")}</dd>
       <dt>Visibility</dt><dd>${esc(ev.visibility)}</dd>
@@ -169,52 +164,6 @@ async function openEventDrawer(id) {
     showToast("Event archived");
     closeDrawer();
     window.dispatchEvent(new CustomEvent("calendar:refresh"));
-  });
-}
-
-async function resolveConflict(conflictId, action) {
-  await apiPost(`/api/calendar/conflicts/${conflictId}/resolve`, { action });
-  showToast(`Conflict resolved (${action.replace("_", " ")})`);
-  window.dispatchEvent(new CustomEvent("calendar:refresh"));
-}
-
-async function openConflictsPanel() {
-  let conflicts = [];
-  try {
-    conflicts = await fetchJson(`/api/calendar/conflicts${wsQuery()}`);
-  } catch {
-    conflicts = [];
-  }
-  if (!conflicts.length) {
-    openDrawer("Sync conflicts", `<p class="cp-muted">No open sync conflicts.</p>`);
-    return;
-  }
-  openDrawer("Sync conflicts", `
-    <p class="cp-muted">Google Calendar and Zintriq both changed these events. Choose which version to keep.</p>
-    <div class="cal-conflicts-list">
-      ${conflicts.map((c) => `
-        <article class="cal-conflict-card" data-conflict-id="${c.id}">
-          <strong>${esc(c.os_title || "Event")}</strong>
-          <dl class="cp-meta">
-            <dt>OS time</dt><dd>${esc((c.os_start_time || "").slice(0, 16))}</dd>
-            <dt>Google time</dt><dd>${esc((c.google_start_time || "").slice(0, 16))}</dd>
-          </dl>
-          <div class="bos-form-actions">
-            <button type="button" class="bos-btn bos-btn-sm bos-btn-primary" data-resolve="keep_os">Keep OS</button>
-            <button type="button" class="bos-btn bos-btn-sm bos-btn-ghost" data-resolve="keep_google">Keep Google</button>
-            <button type="button" class="bos-btn bos-btn-sm bos-btn-ghost" data-resolve="duplicate">Duplicate</button>
-          </div>
-        </article>`).join("")}
-    </div>
-  `);
-  document.querySelectorAll("[data-resolve]").forEach((btn) => {
-    btn.addEventListener("click", async () => {
-      const card = btn.closest("[data-conflict-id]");
-      const conflictId = Number(card?.dataset.conflictId);
-      if (!conflictId) return;
-      await resolveConflict(conflictId, btn.dataset.resolve);
-      closeDrawer();
-    });
   });
 }
 
@@ -332,39 +281,18 @@ function bindEventClicks(root) {
 
 /** @param {HTMLElement} root */
 export async function mountCalendarPage(root) {
-  const tryGoogleSync = async () => {
-    try {
-      await apiPost("/api/integrations/google-calendar/sync", {});
-    } catch {
-      /* not connected — ignore */
-    }
-  };
-
   const render = async () => {
     root.innerHTML = `<div class="bos-loading">Loading calendar…</div>`;
     try {
       const params = new URLSearchParams(wsQuery().replace("?", ""));
       params.set("view", state.view);
       params.set("date", state.date);
-      const [events, conflictsRaw] = await Promise.all([
-        fetchJson(`/api/calendar?${params}`),
-        PRODUCT_FLAGS.googleCalendarSync
-          ? fetchJson(`/api/calendar/conflicts${wsQuery()}`).catch(() => [])
-          : Promise.resolve([]),
-      ]);
-      const conflicts = conflictsRaw;
+      const events = await fetchJson(`/api/calendar?${params}`);
 
       let body = "";
       if (state.view === "week") body = renderWeekView(events);
       else if (state.view === "month") body = renderMonthView(events);
       else body = renderDayView(events);
-
-      const conflictBanner = PRODUCT_FLAGS.googleCalendarSync && conflicts.length
-        ? `<div class="cal-conflict-banner">
-            <span>${conflicts.length} sync conflict${conflicts.length > 1 ? "s" : ""} need resolution</span>
-            <button type="button" class="bos-btn bos-btn-sm bos-btn-primary" id="cal-conflicts">Resolve</button>
-          </div>`
-        : "";
 
       root.innerHTML = `
         <nav class="bos-subnav" aria-label="Calendar views">
@@ -372,7 +300,6 @@ export async function mountCalendarPage(root) {
             `<button type="button" class="bos-subnav__item${v.id === state.view ? " is-active" : ""}" data-view="${v.id}">${v.label}</button>`
           ).join("")}
         </nav>
-        ${conflictBanner}
         <div class="cal-toolbar">
           <button type="button" class="bos-btn bos-btn-ghost bos-btn-sm" id="cal-prev">←</button>
           <button type="button" class="bos-btn bos-btn-ghost bos-btn-sm" id="cal-today">Today</button>
@@ -397,7 +324,6 @@ export async function mountCalendarPage(root) {
       });
       root.querySelector("#cal-today")?.addEventListener("click", () => { state.date = todayIso(); render(); });
       root.querySelector("#cal-new")?.addEventListener("click", () => openCreateEvent(render));
-      root.querySelector("#cal-conflicts")?.addEventListener("click", openConflictsPanel);
       bindEventClicks(root);
     } catch (err) {
       root.innerHTML = `<div class="bos-empty"><p class="bos-empty__title">Could not load calendar</p><p>${esc(err.message)}</p></div>`;
@@ -405,6 +331,5 @@ export async function mountCalendarPage(root) {
   };
 
   window.addEventListener("calendar:refresh", render);
-  if (PRODUCT_FLAGS.googleCalendarSync) await tryGoogleSync();
   await render();
 }

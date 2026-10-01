@@ -891,8 +891,6 @@ def login_required(view):
 def protect_forms():
     if request.method != "POST":
         return
-    if request.path == "/api/integrations/google-calendar/webhook":
-        return
     if request.path.startswith("/api/integrations/webhooks/"):
         return
     submitted = (
