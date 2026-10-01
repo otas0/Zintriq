@@ -584,7 +584,7 @@ def maps_directions_url(address: str | None) -> str | None:
     text = (address or "").strip()
     if not text:
         return None
-    return f"https://www.google.com/maps/search/?api=1&query={quote(text)}"
+    return f"https://www.openstreetmap.org/search?query={quote(text)}"
 
 
 def maps_embed_url(lat: float, lng: float, *, zoom: int = 15) -> str:
