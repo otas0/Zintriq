@@ -1539,10 +1539,6 @@ body.ig-auth-open {
 .ig-auth__divider::before { left: 0; }
 .ig-auth__divider::after { right: 0; }
 
-.ig-auth__google {
-  width: 100%;
-}
-
 .ig-auth__switch,
 .ig-auth__business {
   margin: 16px 0 0;

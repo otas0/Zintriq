@@ -195,7 +195,6 @@ export function openCustomerAuth(mode = "login", opts = {}) {
     window.location.href = "/account?open=" + (mode === "signup" ? "signup" : "login");
     return;
   }
-  import("./firebase-auth.js").catch(() => {});
   state.panelStack = [];
   state.setupDraft = {};
   state.skipPassword = false;
@@ -203,11 +202,8 @@ export function openCustomerAuth(mode = "login", opts = {}) {
   setSignupPasswordFields(false);
   setNextUrl(opts.next || window.location.pathname + window.location.search);
   clearErrors("ig-");
-  const start = mode === "signup" ? "signup-start" : mode === "google-setup" ? "google-setup" : "login";
+  const start = mode === "signup" ? "signup-start" : "login";
   showPanel(start, { push: false });
-  if (opts.username && document.getElementById("ig-google-username")) {
-    document.getElementById("ig-google-username").value = opts.username;
-  }
   if (opts.email) {
     const loginInput = document.querySelector("#ig-auth-login-form input[name=identifier]");
     if (loginInput) loginInput.value = opts.email;
@@ -481,34 +477,6 @@ function bindAuthSheet() {
     window.location.assign(data.redirect || "/home");
   });
 
-  const googleUsername = document.getElementById("ig-google-username");
-  const googleHint = document.getElementById("ig-google-username-hint");
-  let googleTimer;
-  googleUsername?.addEventListener("input", () => {
-    clearTimeout(googleTimer);
-    googleTimer = setTimeout(() => checkUsername(googleUsername, googleHint), 350);
-  });
-
-  document.getElementById("ig-google-setup-form")?.addEventListener("submit", async (e) => {
-    e.preventDefault();
-    showError("ig-google-setup-error", "");
-    const fd = new FormData(e.target);
-    fd.set("csrf_token", csrfToken());
-    const res = await fetch("/account/onboarding/google", {
-      method: "POST",
-      body: fd,
-      credentials: "same-origin",
-      headers: { [AUTH_HEADER]: "1", "X-CSRF-Token": csrfToken() },
-    });
-    const data = await res.json().catch(() => ({}));
-    if (!res.ok || !data.ok) {
-      showError("ig-google-setup-error", data.error || "Could not save profile.");
-      return;
-    }
-    closeCustomerAuth();
-    window.location.assign(data.redirect || "/home");
-  });
-
   const params = new URLSearchParams(window.location.search);
   const open = params.get("open");
   if (open === "login" || open === "signup" || open === "signup-start") {
@@ -521,7 +489,3 @@ function bindAuthSheet() {
 }
 
 bindAuthSheet();
-
-export function openGoogleOnboarding(username) {
-  openCustomerAuth("google-setup", { username });
-}

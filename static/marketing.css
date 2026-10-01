@@ -497,24 +497,6 @@
   background: var(--color-border);
 }
 
-.mq-google-btn {
-  width: 100%;
-  min-height: var(--tool-h);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 10px;
-  border: 2px solid var(--color-text-primary);
-  border-radius: var(--mq-radius-sm);
-  background: var(--module-bg);
-  color: var(--color-text-primary);
-  font: var(--weight-semibold) var(--font-small) var(--font-family);
-  cursor: pointer;
-  transition: background var(--motion-hover);
-}
-
-.mq-google-btn:hover { background: var(--panel-bg); }
-
 .mq-auth-links {
   margin: var(--space-2) 0 0;
   text-align: center;

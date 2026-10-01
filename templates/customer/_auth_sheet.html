@@ -11,7 +11,7 @@
         {% endwith %}
       </div>
       <h2 id="ig-auth-title" class="ig-auth__title">Log in</h2>
-      <p class="ig-auth__lead">Email, phone, or Google.</p>
+      <p class="ig-auth__lead">Email or phone.</p>
       <form class="ig-auth__form" id="ig-auth-login-form" novalidate>
         <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
         <input type="hidden" name="next" value="{{ request.path }}" data-auth-next>
@@ -29,10 +29,6 @@
       <p class="ig-auth__switch">
         <button type="button" class="ig-auth__link-btn" data-auth-goto="login-code">Sign in with verification code</button>
       </p>
-      <div class="ig-auth__divider">or</div>
-      <button class="mq-google-btn ig-auth__google" type="button" data-google-intent="login" data-auth-url="/auth/firebase/customer">
-        Continue with Google
-      </button>
       <p id="ig-auth-social-error" class="ig-auth__error" hidden role="alert"></p>
       <p class="ig-auth__switch">
         Don't have an account?
@@ -103,10 +99,6 @@
         {% endwith %}
         <button class="ig-auth__submit" type="submit">Send verification code</button>
       </form>
-      <div class="ig-auth__divider">or</div>
-      <button class="mq-google-btn ig-auth__google" type="button" data-google-intent="signup" data-auth-url="/auth/firebase/customer">
-        Sign up with Google
-      </button>
       <p class="ig-auth__switch">
         Have an account?
         <button type="button" class="ig-auth__link-btn" data-auth-goto="login">Log in</button>
@@ -176,26 +168,6 @@
         <p class="ig-auth__error" id="ig-signup-photo-error" hidden role="alert"></p>
         <button class="ig-auth__submit" type="submit">Finish</button>
         <button type="button" class="ig-auth__link-btn" id="ig-signup-skip-photo">Skip for now</button>
-      </form>
-    </div>
-
-    <div class="ig-auth__panel" data-auth-panel="google-setup" hidden>
-      <h2 class="ig-auth__title">Choose username</h2>
-      <p class="ig-auth__lead">Almost done — pick how others see you.</p>
-      <form class="ig-auth__form ig-auth__form--photo" id="ig-google-setup-form" enctype="multipart/form-data" novalidate>
-        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-        <input type="hidden" name="next" value="{{ request.path }}" data-auth-next>
-        <div class="ig-auth__field">
-          <input class="ig-auth__input" name="username" id="ig-google-username" autocomplete="username" required>
-          <p class="ig-auth__hint" id="ig-google-username-hint"></p>
-        </div>
-        <label class="ig-auth__avatar-picker">
-          <input type="file" name="avatar" accept="image/jpeg,image/png,image/webp,image/gif" hidden>
-          <span class="ig-auth__avatar-preview" id="ig-google-avatar-preview">+</span>
-          <span class="ig-auth__avatar-label">Profile photo (optional)</span>
-        </label>
-        <p class="ig-auth__error" id="ig-google-setup-error" hidden role="alert"></p>
-        <button class="ig-auth__submit" type="submit">Save &amp; continue</button>
       </form>
     </div>
   </div>
