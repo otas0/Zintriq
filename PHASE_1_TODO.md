@@ -122,3 +122,12 @@ UC-4 and UC-5 remain MEDIUM risk: if decryption fails, payment connection silent
 - **wip/ux-reset-continuation** (commit 4c1d8e7): UX Reset V0.1 continuation work including workspace context for help pages, template deletions, brand asset updates, and BOS shell refinements. Includes bugfix for business_help_platform.py current_user guard (changed `if current_user` to `if current_user()`). Not merged — pending UX Reset review.
 
 ---
+
+## Repo hygiene
+
+- [ ] Remove marketqr.db from git tracking
+- [ ] Add marketqr.db to .gitignore
+- [ ] Replace with seed script + test fixture
+  Reason: 3.7MB SQLite DB is tracked in git. Should not be.
+
+---
