@@ -50,7 +50,7 @@ _CONTENT_FILES = (
 )
 _REQUIRED = {"manifest.json", "checksums.json", "content/project.json"}
 _ASSET_NAME = re.compile(r"^assets/[a-f0-9]{16}\.(png|jpg|gif|webp|woff|woff2|ttf|otf)$")
-_KEY = re.compile(r"^[A-Za-z0-9_-]{1,80}$")
+_KEY = re.compile(r"^[A-Za-z0-9_-]{1,80}(?:\.[A-Za-z0-9_-]{1,40}){0,4}$")
 _TOKEN_KEY = re.compile(r"^[A-Za-z0-9_-]{1,40}(?:\.[A-Za-z0-9_-]{1,40}){0,4}$")
 _ENABLE_KEY = re.compile(r"^(action|interaction|workflow|entry):[A-Za-z0-9_-]{1,80}$")
 _ROUTE = re.compile(r"^/[A-Za-z0-9_\-./]{0,200}$")
