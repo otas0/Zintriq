@@ -228,6 +228,11 @@ def register_studio_platform(app) -> None:
             studio_base="/studio",
         )
 
+    @app.get("/account/workspaces")
+    @login_required
+    def account_workspaces():
+        return studio_home()
+
     @app.get("/studio/p/<int:project_id>")
     @login_required
     def studio_editor(project_id: int):
