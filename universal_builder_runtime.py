@@ -6,9 +6,14 @@ import html
 import json
 import logging
 import re
-from work_urls import rewrite_account_href
 
 _log = logging.getLogger("app.universal_builder")
+
+
+def rewrite_account_href(href: str, work=None) -> str:
+    from work_urls import rewrite_account_href as _rewrite
+
+    return _rewrite(href, work)
 
 
 STYLE_KEYS = {

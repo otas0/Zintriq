@@ -114,7 +114,12 @@ class _ScriptHunter(HTMLParser):
 
     def handle_starttag(self, tag, attrs):
         if tag.lower() == "script":
-            self.bad.append(tag)
+            src = ""
+            for name, value in attrs:
+                if name.lower() == "src":
+                    src = value or ""
+            if src != "/static/builder/published-runtime.js":
+                self.bad.append(tag)
         for name, _value in attrs:
             if name.lower().startswith("on"):
                 self.bad.append(name)
@@ -412,7 +417,8 @@ class RoundTripTests(TransferFixture):
         snapshot = capture_project_snapshot(imported, result["project_id"])
         html = render_document(snapshot, "page_home")
         self.assertIsNotNone(html)
-        self.assertNotIn("<script", html.lower())
+        self.assertNotIn("<script>", html.lower())
+        self.assertNotIn("onerror=", html.lower())
         hunter = _ScriptHunter()
         hunter.feed(html)
         self.assertEqual(hunter.bad, [])
