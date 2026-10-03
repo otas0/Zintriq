@@ -11,11 +11,12 @@
     "start": "electron .",
     "dev": "electron .",
     "smoke": "node scripts/smoke.js",
-    "pack": "electron-builder --dir",
-    "dist": "electron-builder",
-    "dist:mac": "electron-builder --mac",
-    "dist:win": "electron-builder --win",
-    "dist:linux": "electron-builder --linux"
+    "pack": "node packaging/run-builder.js --dir",
+    "dist": "node packaging/run-builder.js",
+    "dist:mac": "node packaging/run-builder.js --mac",
+    "dist:win": "node packaging/run-builder.js --win",
+    "dist:linux": "node packaging/run-builder.js --linux",
+    "sign:mac-adhoc": "sh packaging/sign_macos_adhoc.sh"
   },
   "build": {
     "appId": "com.example.zintriq.unreleased",

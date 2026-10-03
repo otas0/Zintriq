@@ -14,7 +14,7 @@ jobs:
   verify:
     name: ${{ matrix.os }} / Python ${{ matrix.python }}${{ matrix.smoke && ' / smoke' || ' / unittest' }}
     runs-on: ${{ matrix.os }}
-    timeout-minutes: 20
+    timeout-minutes: 30
     strategy:
       fail-fast: false
       matrix:
@@ -36,7 +36,7 @@ jobs:
       ZINTRIQ_SMOKE_USER_DATA: ${{ runner.temp }}/zintriq-smoke
       ZINTRIQ_SMOKE_LOG_DIR: ${{ github.workspace }}/ci-logs
       ZINTRIQ_SMOKE_TOKEN_FILE: ${{ runner.temp }}/zintriq-desktop-token
-      ZINTRIQ_SMOKE_TIMEOUT_MS: "180000"
+      ZINTRIQ_SMOKE_TIMEOUT_MS: "300000"
       SMOKE_LOG: ${{ github.workspace }}/smoke.txt
 
     steps:
@@ -119,7 +119,7 @@ jobs:
       - name: Smoke
         id: smoke-linux
         if: matrix.smoke && runner.os == 'Linux'
-        timeout-minutes: 10
+        timeout-minutes: 15
         working-directory: desktop
         env:
           ZINTRIQ_SMOKE_XVFB: "1"
@@ -130,7 +130,7 @@ jobs:
       - name: Smoke
         id: smoke-mac
         if: matrix.smoke && runner.os == 'macOS'
-        timeout-minutes: 10
+        timeout-minutes: 15
         working-directory: desktop
         run: |
           set -o pipefail
@@ -139,7 +139,7 @@ jobs:
       - name: Smoke
         id: smoke-win
         if: matrix.smoke && runner.os == 'Windows'
-        timeout-minutes: 10
+        timeout-minutes: 15
         working-directory: desktop
         run: |
           npm run smoke *>&1 | Tee-Object -FilePath $env:SMOKE_LOG

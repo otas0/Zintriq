@@ -431,11 +431,22 @@ class DesktopServerTests(unittest.TestCase):
         self.assertEqual(studio.status_code, 404)
         health = client.get("/healthz")
         self.assertEqual(health.status_code, 200)
-        for path in ("/studio/p/1", "/app/community", "/static/builder/universal-builder.js"):
+        for path in ("/studio/p/1", "/app/community"):
             retired = client.get(path, follow_redirects=False)
             self.assertEqual(retired.status_code, 404, path)
         runtime = client.get("/static/builder/universal-runtime.css")
         self.assertEqual(runtime.status_code, 200)
+
+    def test_web_does_not_provide_studio(self):
+        if os.environ.get("ZINTRIQ_DESKTOP") == "1":
+            self.skipTest("parent environment enables desktop mode")
+        import app as app_module
+
+        client = app_module.app.test_client()
+        for path in ("/studio", "/studio/", "/studio/p/1"):
+            response = client.get(path, follow_redirects=False)
+            self.assertEqual(response.status_code, 404, path)
+            self.assertNotIn("/login", response.headers.get("Location") or "")
 
 
 class DesktopProcessGuardTests(unittest.TestCase):

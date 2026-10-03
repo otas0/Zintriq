@@ -110,7 +110,9 @@ class DesktopPackagingGuardTests(unittest.TestCase):
         (good / "docs").mkdir()
         (good / "static" / "fonts" / "geist-sans" / "OFL.txt").write_text("OFL", encoding="utf-8")
         (good / "docs" / "THIRD_PARTY_NOTICES.md").write_text("notices", encoding="utf-8")
-        (good / "ok.txt").write_text("hello", encoding="utf-8")
+        (good / "ok.txt").write_text("hello /api/home/summary", encoding="utf-8")
+        (good / "pkg.dist-info").mkdir()
+        (good / "pkg.dist-info" / "RECORD").write_text("/Users/someone/.venv/lib/x.py,,\n", encoding="utf-8")
         proc = __import__("subprocess").run(
             [sys.executable, str(script), str(good)],
             capture_output=True,
@@ -128,6 +130,47 @@ class DesktopPackagingGuardTests(unittest.TestCase):
         )
         self.assertEqual(proc.returncode, 1)
         self.assertIn("absolute developer path", proc.stderr)
+
+        from importlib.util import spec_from_file_location, module_from_spec
+
+        bundle_spec = spec_from_file_location("zintriq_check_bundle", script)
+        bundle_mod = module_from_spec(bundle_spec)
+        bundle_spec.loader.exec_module(bundle_mod)
+        self.assertTrue(bundle_mod.contains_developer_home(b"/Users/someone/secret"))
+        self.assertTrue(bundle_mod.contains_developer_home(b"C:\\Users\\someone\\secret"))
+        self.assertTrue(bundle_mod.contains_developer_home(b"prefix /home/someone/app"))
+        self.assertFalse(bundle_mod.contains_developer_home(b"/api/home/summary"))
+        self.assertFalse(bundle_mod.contains_developer_home(b"https://example.com/home/page"))
+
+        missing = temp / "release"
+        missing.mkdir()
+        (missing / "static" / "fonts" / "geist-sans").mkdir(parents=True)
+        (missing / "docs").mkdir()
+        (missing / "static" / "fonts" / "geist-sans" / "OFL.txt").write_text("OFL", encoding="utf-8")
+        (missing / "docs" / "THIRD_PARTY_NOTICES.md").write_text("notices", encoding="utf-8")
+        proc = __import__("subprocess").run(
+            [sys.executable, str(script), str(missing)],
+            capture_output=True,
+            text=True,
+            timeout=30,
+        )
+        self.assertEqual(proc.returncode, 1)
+        self.assertIn("SHA256SUMS", proc.stderr)
+        self.assertIn("sbom.cdx.json", proc.stderr)
+
+    def test_license_exceptions_require_reason(self):
+        import importlib.util
+
+        path = ROOT / "desktop" / "packaging" / "check_licenses.py"
+        spec = importlib.util.spec_from_file_location("zintriq_check_licenses", path)
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        self.assertTrue((ROOT / "desktop" / "packaging" / "license-exceptions.json").is_file())
+        for item in __import__("json").loads(
+            (ROOT / "desktop" / "packaging" / "license-exceptions.json").read_text(encoding="utf-8")
+        ):
+            self.assertTrue(str(item.get("reason") or "").strip())
+            self.assertTrue(str(item.get("name") or "").strip())
 
     def test_license_classifier_fails_gpl(self):
         import importlib.util

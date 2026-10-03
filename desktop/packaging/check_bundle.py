@@ -16,9 +16,9 @@ SECRET_NAMES = {
 }
 
 ENV_NAME = re.compile(r"^\.env.*$", re.IGNORECASE)
-HOME_PATH = re.compile(
-    rb"(?:/Users/|/home/|[A-Za-z]:\\Users\\|/opt/homebrew/)",
-    re.IGNORECASE,
+# Home directories only: /Users/name, /home/name, C:\Users\name. Do not match /api/home/.
+DEV_HOME = re.compile(
+    rb"(?:(?<=^)|(?<=[\s\"'`=\(\[\{,]))(?:/Users/[A-Za-z0-9._-]+|/home/[A-Za-z0-9._-]+|[A-Za-z]:\\Users\\[A-Za-z0-9._-]+)",
 )
 KEY_BLOB = re.compile(
     rb"(-----BEGIN (?:RSA |OPENSSH |EC |DSA )?PRIVATE KEY-----)|"
@@ -75,18 +75,25 @@ BINARY_SUFFIX = {
 }
 
 
+def contains_developer_home(sample: bytes) -> bool:
+    return DEV_HOME.search(sample) is not None
+
+
+def _skip_file(path: Path) -> bool:
+    if path.name == "RECORD" and any(part.endswith(".dist-info") for part in path.parts):
+        return True
+    return False
+
+
 def _iter_files(root: Path):
     for path in root.rglob("*"):
         if not path.is_file():
             continue
         if any(part in SKIP_DIR_NAMES for part in path.parts):
             continue
+        if _skip_file(path):
+            continue
         yield path
-
-
-def _require(path: Path, label: str, errors: list) -> None:
-    if not path.is_file():
-        errors.append(f"missing {label}: {path}")
 
 
 def scan(root: Path) -> list:
@@ -119,10 +126,18 @@ def scan(root: Path) -> list:
         if suffix not in TEXT_SUFFIX and b"\0" in data[:1024]:
             continue
         sample = data[: 1024 * 1024]
-        if HOME_PATH.search(sample):
+        if contains_developer_home(sample):
             errors.append(f"absolute developer path in {path}")
         if KEY_BLOB.search(sample):
             errors.append(f"possible secret material in {path}")
+    return errors
+
+
+def require_dist_artifacts(root: Path) -> list:
+    errors = []
+    for name in ("SHA256SUMS", "sbom.cdx.json"):
+        if not (root / name).is_file():
+            errors.append(f"missing {name} in {root}")
     return errors
 
 
@@ -137,6 +152,8 @@ def main() -> int:
             errors.append(f"missing path {root}")
             continue
         errors.extend(scan(root))
+        if (root / "SHA256SUMS").exists() or root.name in {"release", "dist"}:
+            errors.extend(require_dist_artifacts(root))
     if errors:
         for item in errors:
             print(item, file=sys.stderr)

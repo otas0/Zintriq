@@ -16,12 +16,12 @@ Dev data is stored in the `Zintriq-dev` userData directory, separate from a pack
 
 ## Tests
 
-Same commands as CI, from the repo root. CI runs this on Python 3.11 for Windows, macOS, and Ubuntu, and runs the unit tests again on Ubuntu with Python 3.9.
+Same commands as CI, from the repo root. Supported Python is **3.9 through 3.12**. CI runs this on Python 3.11 for Windows, macOS, and Ubuntu, and runs the unit tests again on Ubuntu with Python 3.9.
 
 macOS and Linux:
 
 ```bash
-python3 -m venv .venv
+python3.11 -m venv .venv
 .venv/bin/python -m pip install -r requirements.txt
 .venv/bin/python -m unittest discover -s tests
 cd desktop
@@ -32,7 +32,7 @@ npm run smoke
 Windows (PowerShell):
 
 ```powershell
-python -m venv .venv
+py -3.11 -m venv .venv
 .\.venv\Scripts\python.exe -m pip install -r requirements.txt
 .\.venv\Scripts\python.exe -m unittest discover -s tests
 cd desktop

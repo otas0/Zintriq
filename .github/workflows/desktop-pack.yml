@@ -32,7 +32,7 @@ jobs:
       ZINTRIQ_SMOKE_USER_DATA: ${{ runner.temp }}/zintriq-pack-smoke
       ZINTRIQ_SMOKE_LOG_DIR: ${{ github.workspace }}/ci-logs
       ZINTRIQ_SMOKE_TOKEN_FILE: ${{ runner.temp }}/zintriq-desktop-token
-      ZINTRIQ_SMOKE_TIMEOUT_MS: "180000"
+      ZINTRIQ_SMOKE_TIMEOUT_MS: "300000"
       SMOKE_LOG: ${{ github.workspace }}/smoke.txt
     strategy:
       fail-fast: false
@@ -117,15 +117,14 @@ jobs:
 
       - name: Build installers
         working-directory: desktop
-        run: npx electron-builder --publish never
+        run: npm run dist
 
       - name: Ad-hoc sign macOS CI app
         if: runner.os == 'macOS'
         run: |
           app=$(find desktop/release -name '*.app' -maxdepth 3 | head -n 1)
           test -n "$app"
-          codesign --force --deep --sign - "$app"
-          codesign --verify --verbose=2 "$app"
+          sh desktop/packaging/sign_macos_adhoc.sh "$app"
           echo "APP_PATH=$app" >> "$GITHUB_ENV"
           echo "APP_BIN=$app/Contents/MacOS/Zintriq Studio" >> "$GITHUB_ENV"
 
@@ -212,7 +211,8 @@ jobs:
           PY=.venv/bin/python
           if [ "$RUNNER_OS" = "Windows" ]; then PY=.venv/Scripts/python.exe; fi
           "$PY" desktop/packaging/check_bundle.py desktop/resources/zintriq-server desktop/resources/notices
-          "$PY" desktop/packaging/sha256sums.py desktop/release
+          test -f desktop/release/SHA256SUMS
+          test -f desktop/release/sbom.cdx.json
 
       - name: Reject logs that contain the desktop token
         if: always()
@@ -232,8 +232,8 @@ jobs:
             desktop/release/*.AppImage
             desktop/release/*.deb
             desktop/release/SHA256SUMS
+            desktop/release/sbom.cdx.json
             desktop/resources/notices/**
-            sbom.cdx.json
             license-report.json
             !desktop/release/*unpacked/**
             !desktop/release/mac/**

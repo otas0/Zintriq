@@ -1,0 +1,6 @@
+node_modules/
+release/
+dist/
+.env.desktop.json
+*.log
+.DS_Store
