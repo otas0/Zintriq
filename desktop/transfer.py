@@ -332,18 +332,24 @@ def _snapshot(conn, project, upload_dir: Path):
             "configuration": _loads(row["configuration"], {}),
         })
     for row in conn.execute("SELECT * FROM builder_entry_points WHERE project_id=? ORDER BY id", (project_id,)):
+        entry_key = str(row["entry_key"] or "")
+        if not _KEY.match(entry_key):
+            continue
         body["entries"].append({
             "document_key": document_keys.get(row["document_id"]) or "",
             "surface_key": surface_keys.get(row["surface_id"]) or "",
             "entry_type": row["entry_type"],
-            "entry_key": row["entry_key"],
+            "entry_key": entry_key,
             "configuration": _loads(row["configuration"], {}),
         })
     for row in conn.execute("SELECT * FROM builder_bindings WHERE project_id=? ORDER BY id", (project_id,)):
+        binding_key = str(row["binding_key"] or "")
+        if not _KEY.match(binding_key):
+            continue
         body["bindings"].append({
             "document_key": document_keys.get(row["document_id"]) or "",
             "node_key": row["node_key"] or "",
-            "binding_key": row["binding_key"],
+            "binding_key": binding_key,
             "source_type": row["source_type"],
             "source_config": _loads(row["source_config"], {}),
             "transform": _loads(row["transform"], {}),

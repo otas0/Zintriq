@@ -245,6 +245,8 @@ function spawnFlask({ pythonPath, userData, token, port, appVersion }) {
   env.ZINTRIQ_APP_VERSION = appVersion || process.env.ZINTRIQ_APP_VERSION || "0.0.0";
   env.PORT = String(port);
   delete env.HOST;
+  delete env.PYTHONPATH;
+  delete env.PYTHONHOME;
   const packaged = /zintriq-server(\.exe)?$/i.test(pythonPath);
   const args = packaged ? [] : [path.join(repoRoot(), "app.py")];
   return spawn(pythonPath, args, {
