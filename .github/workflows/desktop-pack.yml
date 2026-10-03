@@ -1,0 +1,255 @@
+name: Desktop pack
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    tags: ["v*"]
+  pull_request:
+    paths:
+      - "desktop/**"
+      - "requirements.txt"
+      - "requirements-desktop.in"
+      - "requirements-desktop.lock.txt"
+      - ".github/workflows/desktop.yml"
+      - ".github/workflows/desktop-pack.yml"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: desktop-pack-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  pack:
+    name: pack / ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 90
+    env:
+      CSC_IDENTITY_AUTO_DISCOVERY: "false"
+      electron_config_cache: ${{ github.workspace }}/.electron-cache
+      ZINTRIQ_SMOKE_USER_DATA: ${{ runner.temp }}/zintriq-pack-smoke
+      ZINTRIQ_SMOKE_LOG_DIR: ${{ github.workspace }}/ci-logs
+      ZINTRIQ_SMOKE_TOKEN_FILE: ${{ runner.temp }}/zintriq-desktop-token
+      ZINTRIQ_SMOKE_TIMEOUT_MS: "180000"
+      SMOKE_LOG: ${{ github.workspace }}/smoke.txt
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: macos-latest
+            python: "3.11"
+          - os: macos-15-intel
+            python: "3.11"
+          - os: windows-latest
+            python: "3.11"
+          - os: ubuntu-24.04
+            python: "3.11"
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Set up Python
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: ${{ matrix.python }}
+          cache: pip
+          cache-dependency-path: requirements-desktop.lock.txt
+
+      - name: Set up Node
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: "20"
+          cache: npm
+          cache-dependency-path: desktop/package-lock.json
+
+      - name: Create virtualenv
+        run: python -m venv .venv
+
+      - name: Install hashed desktop Python deps (Windows)
+        if: runner.os == 'Windows'
+        run: .\.venv\Scripts\python.exe -m pip install --require-hashes -r requirements-desktop.lock.txt
+
+      - name: Install hashed desktop Python deps (Unix)
+        if: runner.os != 'Windows'
+        run: .venv/bin/python -m pip install --require-hashes -r requirements-desktop.lock.txt
+
+      - name: License gate and notices
+        shell: bash
+        run: |
+          PY=.venv/bin/python
+          if [ "$RUNNER_OS" = "Windows" ]; then PY=.venv/Scripts/python.exe; fi
+          "$PY" desktop/packaging/check_licenses.py license-report.json
+          "$PY" desktop/packaging/generate_notices.py desktop/resources/notices
+          "$PY" desktop/packaging/sbom.py sbom.cdx.json
+
+      - name: Freeze Flask server
+        shell: bash
+        run: |
+          PY=.venv/bin/python
+          if [ "$RUNNER_OS" = "Windows" ]; then PY=.venv/Scripts/python.exe; fi
+          "$PY" desktop/packaging/build_server.py
+
+      - name: Cache Electron binaries
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: .electron-cache
+          key: electron-${{ runner.os }}-${{ hashFiles('desktop/package-lock.json') }}
+          restore-keys: |
+            electron-${{ runner.os }}-
+
+      - name: Install Linux libraries
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          pkgs="xvfb libnss3 libgbm1 libxss1 libxtst6 libxshmfence1 fuse libfuse2"
+          if apt-cache show libgtk-3-0t64 >/dev/null 2>&1; then
+            pkgs="$pkgs libgtk-3-0t64 libasound2t64"
+          else
+            pkgs="$pkgs libgtk-3-0 libasound2"
+          fi
+          sudo apt-get install -y $pkgs
+
+      - name: Install desktop npm dependencies
+        working-directory: desktop
+        run: npm ci
+
+      - name: Build installers
+        working-directory: desktop
+        run: npx electron-builder --publish never
+
+      - name: Ad-hoc sign macOS CI app
+        if: runner.os == 'macOS'
+        run: |
+          app=$(find desktop/release -name '*.app' -maxdepth 3 | head -n 1)
+          test -n "$app"
+          codesign --force --deep --sign - "$app"
+          codesign --verify --verbose=2 "$app"
+          echo "APP_PATH=$app" >> "$GITHUB_ENV"
+          echo "APP_BIN=$app/Contents/MacOS/Zintriq Studio" >> "$GITHUB_ENV"
+
+      - name: Locate Windows unpacked app
+        if: runner.os == 'Windows'
+        shell: bash
+        run: |
+          exe=$(find desktop/release/win-unpacked -name 'Zintriq Studio.exe' | head -n 1)
+          test -n "$exe"
+          echo "APP_BIN=$exe" >> "$GITHUB_ENV"
+          echo "APP_PATH=$(dirname "$exe")" >> "$GITHUB_ENV"
+
+      - name: Locate Linux unpacked app
+        if: runner.os == 'Linux'
+        run: |
+          bin=$(find desktop/release -path '*unpacked/zintriq-studio' -o -path '*unpacked/Zintriq Studio' | head -n 1)
+          if [ -z "$bin" ]; then
+            bin=$(find desktop/release -type f -perm -111 ! -name '*.so' | awk '/unpacked/ {print; exit}')
+          fi
+          test -n "$bin"
+          echo "APP_BIN=$bin" >> "$GITHUB_ENV"
+          echo "APP_PATH=$(dirname "$bin")" >> "$GITHUB_ENV"
+
+      - name: Read-only install smoke
+        if: runner.os != 'Windows'
+        shell: bash
+        working-directory: desktop
+        env:
+          ZINTRIQ_SMOKE_XVFB: "1"
+        run: |
+          set -euo pipefail
+          smoke_root="${RUNNER_TEMP}/zintriq-ro-install"
+          rm -rf "$smoke_root"
+          mkdir -p "$smoke_root"
+          if [ "$RUNNER_OS" = "macOS" ]; then
+            cp -R "$APP_PATH" "$smoke_root/Zintriq Studio.app"
+            chmod -R a-w "$smoke_root/Zintriq Studio.app" || true
+            export ZINTRIQ_SMOKE_APP="$smoke_root/Zintriq Studio.app/Contents/MacOS/Zintriq Studio"
+            export ZINTRIQ_SMOKE_INSTALL_DIR="$smoke_root/Zintriq Studio.app"
+          else
+            cp -R "$APP_PATH" "$smoke_root/app"
+            chmod -R a-w "$smoke_root/app" || true
+            name=$(basename "$APP_BIN")
+            export ZINTRIQ_SMOKE_APP="$smoke_root/app/$name"
+            export ZINTRIQ_SMOKE_INSTALL_DIR="$smoke_root/app"
+            export APPIMAGE_EXTRACT_AND_RUN=1
+          fi
+          if [ "$RUNNER_OS" = "Linux" ]; then
+            xvfb-run -a npm run smoke 2>&1 | tee "$SMOKE_LOG"
+          else
+            npm run smoke 2>&1 | tee "$SMOKE_LOG"
+          fi
+
+      - name: Read-only install smoke (Windows)
+        if: runner.os == 'Windows'
+        working-directory: desktop
+        shell: pwsh
+        run: |
+          $root = Join-Path $env:RUNNER_TEMP "zintriq-ro-install"
+          if (Test-Path $root) { Remove-Item -Recurse -Force $root }
+          New-Item -ItemType Directory -Path $root | Out-Null
+          Copy-Item -Recurse $env:APP_PATH (Join-Path $root "app")
+          attrib +R /S /D (Join-Path $root "app\*")
+          $env:ZINTRIQ_SMOKE_APP = Join-Path $root "app\Zintriq Studio.exe"
+          $env:ZINTRIQ_SMOKE_INSTALL_DIR = Join-Path $root "app"
+          npm run smoke *>&1 | Tee-Object -FilePath $env:SMOKE_LOG
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+      - name: Linux AppImage and deb extract
+        if: runner.os == 'Linux'
+        run: |
+          set -euo pipefail
+          img=$(ls desktop/release/*.AppImage | head -n 1)
+          deb=$(ls desktop/release/*.deb | head -n 1)
+          test -n "$img" && test -n "$deb"
+          chmod +x "$img"
+          APPIMAGE_EXTRACT_AND_RUN=1 "$img" --version || true
+          dpkg-deb -I "$deb"
+          echo "AppArmor userns: see docs/desktop-packaging.md. Official builds never pass --no-sandbox."
+
+      - name: Check bundle contents
+        shell: bash
+        run: |
+          PY=.venv/bin/python
+          if [ "$RUNNER_OS" = "Windows" ]; then PY=.venv/Scripts/python.exe; fi
+          "$PY" desktop/packaging/check_bundle.py desktop/resources/zintriq-server desktop/resources/notices
+          "$PY" desktop/packaging/sha256sums.py desktop/release
+
+      - name: Reject logs that contain the desktop token
+        if: always()
+        run: python desktop/scripts/check_log_artifact.py
+
+      - name: Upload installers
+        if: success()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: zintriq-installers-${{ matrix.os }}
+          retention-days: 7
+          if-no-files-found: error
+          path: |
+            desktop/release/*.dmg
+            desktop/release/*.zip
+            desktop/release/*.exe
+            desktop/release/*.AppImage
+            desktop/release/*.deb
+            desktop/release/SHA256SUMS
+            desktop/resources/notices/**
+            sbom.cdx.json
+            license-report.json
+            !desktop/release/*unpacked/**
+            !desktop/release/mac/**
+            !desktop/release/mac-arm64/**
+            !desktop/release/mac-universal/**
+            !desktop/release/win-unpacked/**
+            !desktop/release/linux-unpacked/**
+            !desktop/release/linux-arm64-unpacked/**
+
+      - name: Upload logs
+        if: failure()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: desktop-pack-logs-${{ matrix.os }}
+          retention-days: 7
+          if-no-files-found: ignore
+          path: |
+            smoke.txt
+            ci-logs/

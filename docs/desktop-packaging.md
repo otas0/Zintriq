@@ -1,0 +1,69 @@
+# 桌面安装包（阶段 1）
+
+阶段 1 **不发布**任何对外安装包，直到 `appId` 从占位值改成你们拥有的域名倒写。
+
+## appId（发布前必须确定）
+
+当前占位：`com.example.zintriq.unreleased`
+
+发布前必须改成你们**拥有的域名倒写**（例如拥有 `zintriq.com` 时用 `com.zintriq.studio`）。改动 `appId` 会影响：
+
+- Windows 安装身份（卸载/升级是否当成同一个应用）
+- macOS bundle identifier
+- 之后的登录回调 / 协议关联
+
+在确定之前不要把安装包放到下载页或对外分发。
+
+## 怎么在三个平台打出安装包
+
+先装 Python 依赖（带哈希的锁定文件），再冻结构建本地服务，再打 Electron 包。
+
+```bash
+python3 -m venv .venv
+.venv/bin/python -m pip install --require-hashes -r requirements-desktop.lock.txt
+.venv/bin/python desktop/packaging/generate_notices.py desktop/resources/notices
+.venv/bin/python desktop/packaging/check_licenses.py license-report.json
+.venv/bin/python desktop/packaging/build_server.py
+cd desktop
+npm ci
+```
+
+固定版本：PyInstaller `6.11.1`，Electron `33.2.0`，electron-builder `25.1.8`。PyInstaller **关闭 UPX**。
+
+| 平台 | 命令 | 产物 |
+| --- | --- | --- |
+| macOS | `cd desktop && npm run dist:mac` | `desktop/release/*.dmg`、`*.zip` |
+| Windows | `cd desktop && npm run dist:win` | NSIS 安装程序、portable |
+| Linux | `cd desktop && npm run dist:linux` | AppImage、deb |
+
+不要上传 `*-unpacked` 目录。每个产物目录生成 `SHA256SUMS` 和 `sbom.cdx.json`。
+
+CI 的 pack job：PR 仅在改动 `desktop/`、`requirements*.txt`、打包脚本、`.github/workflows` 时运行；合并到 `main`、打 `v*` 标签、手动 `workflow_dispatch` 时必跑。产物保留 **7 天**。打包 smoke 的日志仍走 `desktop/scripts/check_log_artifact.py`（令牌检查）。
+
+## macOS（arm64 与 Intel）
+
+打出来的 `.app` 应能直接启动。`codesign --verify` 必须通过。GitHub Actions **只对 CI 测试包做 ad-hoc 签名**（`codesign --sign -`），阶段 1 不做 Developer ID 公证。
+
+从网站或网盘下载的 **dmg 会被 Gatekeeper 拦截**（“来自身份不明的开发者”）。用户需要在系统设置里允许，或把应用拖出隔离。这是未公证包的预期行为，不是启动崩溃。
+
+Intel Mac 的 GitHub-hosted runner：**不要用 `macos-13`**。该镜像已于 2025 年 12 月退役（[GitHub Changelog，2025-09-19](https://github.blog/changelog/2025-09-19-github-actions-macos-13-runner-image-is-closing-down/)）。当前可用的 Intel 标签是 **`macos-15-intel`**，计划支持到 2027 年 8 月（[actions/runner-images#13045](https://github.com/actions/runner-images/issues/13045)）。Apple Silicon 用 `macos-latest` / `macos-15`。
+
+## Windows NSIS
+
+per-user 安装，不要求管理员（`perMachine: false`，`allowElevation: false`）。卸载默认保留 userData；只有用户在卸载对话框里明确选择删除时才删本地数据。
+
+## Linux（Ubuntu 24.04）
+
+在 Ubuntu 24.04 上应用 AppImage 和 deb。Electron 沙箱依赖用户命名空间。Ubuntu 24.04 默认 **AppArmor 限制非特权 user namespace**（`kernel.apparmor_restrict_unprivileged_userns=1`）时，沙箱可能无法启动。
+
+可以让用户改系统策略，例如允许 Electron 的 userns，或在自己的机器上临时放宽限制。**正式包绝不默认加 `--no-sandbox`。** CI Linux 的开发 smoke 可以关沙箱，安装包不行。
+
+AppImage 在无 FUSE 的环境用 `APPIMAGE_EXTRACT_AND_RUN=1`。
+
+## 运行时约束
+
+- 冻结后的 `zintriq-server` 不得再把 `app.py` 传给 `sys.executable`（会递归拉起自己）。入口调用 `multiprocessing.freeze_support()`。
+- 数据库 `PRAGMA user_version`：比应用新则拒绝打开并提示升级；比应用旧则迁移后盖章。
+- waitress：`max_request_body_size=40MiB`（大于 32MiB 作品包上限）、`expose_tracebacks=False`、空 `ident`（不暴露服务器标识）、`clear_untrusted_proxy_headers=True`。stdin EOF 时 `server.close()`，3 秒后 `os._exit` 兜底，从而释放锁文件。
+- 应用只写 userData。把安装目录设为只读后，打包 smoke 仍应成功。
+- 许可清单遇到未知或需要审核的许可（GPL、AGPL、LGPL 等）时构建失败。PyInstaller 本身带 GPL+exception，只作为构建工具，不打进许可失败条件。

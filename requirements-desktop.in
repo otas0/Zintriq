@@ -1,0 +1,7 @@
+# Desktop frozen server. No psycopg (LGPL) — desktop uses SQLite only.
+Flask>=3.0
+babel>=2.14
+cryptography>=42.0
+qrcode[pil]>=7.4
+waitress==3.0.2
+pyinstaller==6.11.1
