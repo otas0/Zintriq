@@ -27,7 +27,7 @@ from pathlib import Path
 from typing import Any
 from urllib.parse import parse_qsl, urlencode, urlparse, urlunparse
 
-from db_adapter import commit_with_retry
+from desktop.sqlite_io import commit_with_retry
 from universal_builder_core import _slug
 
 

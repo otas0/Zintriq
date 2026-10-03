@@ -5,7 +5,7 @@ Enabled only when ZINTRIQ_DESKTOP=1. Web mode does not call these gates.
 Runtime database and upload paths:
 - app.DATABASE / app.UPLOAD_DIR are replaced at import when this mode is on,
   before other modules bind UPLOAD_DIR (task_platform registers later).
-- app._open_db_connection passes that DATABASE into db_adapter.open_connection
+- app._open_db_connection uses sqlite3 against app.DATABASE
   and does not follow DATABASE_URL.
 - observability.health readyz opens app.DATABASE at request time.
 Scripts that open marketqr.db themselves are not the desktop server.

@@ -13,7 +13,7 @@ import zipfile
 from html.parser import HTMLParser
 from pathlib import Path
 
-from db_adapter import open_connection
+from desktop.sqlite_io import open_connection
 from desktop.transfer import (
     LIMITS,
     Limits,

@@ -21,7 +21,7 @@ def register_transfer_routes(app, context, owned_project) -> None:
             abort(404)
         _user_id, workspace_id = context("builder.read")
         from app import DATABASE, UPLOAD_DIR, db
-        from db_adapter import open_connection
+        from desktop.sqlite_io import open_connection
 
         with db() as conn:
             owned_project(conn, project_id, workspace_id)
@@ -65,7 +65,7 @@ def register_transfer_routes(app, context, owned_project) -> None:
             abort(404)
         user_id, workspace_id = context("builder.update")
         from app import DATABASE, UPLOAD_DIR, db
-        from db_adapter import open_connection
+        from desktop.sqlite_io import open_connection
 
         with db() as conn:
             conn.rollback()
