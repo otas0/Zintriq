@@ -41,7 +41,6 @@ AUTH_RULES = frozenset(
         "/login",
         "/login/2fa",
         "/logout",
-        "/auth/callback",
         "/forgot-password",
         "/reset-password/<token>",
         "/magic-link",

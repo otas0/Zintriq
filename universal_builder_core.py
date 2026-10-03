@@ -1146,6 +1146,41 @@ def restore_project_snapshot(conn, project_id: int, snapshot: dict) -> None:
     )
 
 
+def ensure_studio_workspace_for_user(user_id: int) -> bool:
+    """Guarantee a workspace membership so /studio can list projects.
+
+    Returns True when the user had no active membership before this call.
+    """
+    from app import db
+    from bos.services.organization import ensure_default_organization
+    from bos.services.workspace import ensure_default_workspace
+
+    owner_id = int(user_id)
+    with db() as conn:
+        before = conn.execute(
+            "SELECT COUNT(*) AS c FROM workspace_members WHERE user_id=? AND status='active'",
+            (owner_id,),
+        ).fetchone()["c"]
+        ensure_default_organization(conn, owner_id)
+        workspace = ensure_default_workspace(conn, owner_id)
+        workspace_id = int(workspace["id"])
+        exists = conn.execute(
+            "SELECT 1 FROM workspace_members WHERE workspace_id=? AND user_id=?",
+            (workspace_id, owner_id),
+        ).fetchone()
+        if not exists:
+            conn.execute(
+                """INSERT INTO workspace_members (workspace_id, user_id, role, status, joined_at)
+                   VALUES (?, ?, 'owner', 'active', CURRENT_TIMESTAMP)""",
+                (workspace_id, owner_id),
+            )
+        from flask import has_request_context, session
+
+        if has_request_context() and not session.get("active_workspace_id"):
+            session["active_workspace_id"] = workspace_id
+        return int(before) == 0
+
+
 def register_universal_builder_core(app) -> None:
     from flask import Response, abort, jsonify, redirect, render_template, request, session
     from app import csrf_token, current_user, db, login_required
