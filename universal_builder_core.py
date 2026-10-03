@@ -293,6 +293,21 @@ CREATE TABLE IF NOT EXISTS builder_runtime_events (
 );
 CREATE INDEX IF NOT EXISTS idx_builder_runtime_events_project ON builder_runtime_events(project_id,created_at DESC);
 
+CREATE TABLE IF NOT EXISTS builder_kernel_events (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    project_id INTEGER NOT NULL,
+    event_id TEXT NOT NULL,
+    action_id TEXT NOT NULL DEFAULT '',
+    node_key TEXT DEFAULT '',
+    action_key TEXT DEFAULT '',
+    record_key TEXT DEFAULT '',
+    status TEXT NOT NULL,
+    payload TEXT NOT NULL DEFAULT '{}',
+    created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY(project_id) REFERENCES builder_projects(id) ON DELETE CASCADE
+);
+CREATE INDEX IF NOT EXISTS idx_builder_kernel_events_project ON builder_kernel_events(project_id, id DESC);
+
 CREATE TABLE IF NOT EXISTS builder_component_definitions (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     project_id INTEGER NOT NULL,
@@ -511,6 +526,9 @@ def seed_official_system_template(conn) -> None:
 
 def init_universal_builder_tables(conn) -> None:
     conn.executescript(CORE_SCHEMA_SQL)
+    from builder_kernel.events import migrate_kernel_events
+
+    migrate_kernel_events(conn)
     migrations = {
         "builder_projects": {
             "description": "TEXT DEFAULT ''", "schema_version": "INTEGER NOT NULL DEFAULT 1",
@@ -623,7 +641,7 @@ def ensure_official_native_documents(conn, project_id: int, surface_ids: dict[st
         _insert_official_node(conn, customer["id"], root, "section", styles={"padding": "0", "background": "#f7f7f4"}, order=0,
                               metadata={"display_label": "Customer Home"})
         _insert_official_node(conn, customer["id"], "official_customer_nav", "navigation", parent_key=root, order=0,
-                              props={"brand": "Zintriq", "links": "Home|/home\nPlaces|/venues\nAccount|/account"},
+                              props={"brand": "Zintriq", "links": "Home|/home\nPlaces|/venues\nAccount|account"},
                               styles={"padding": "18px 24px", "background": "#ffffff"})
         _insert_official_node(conn, customer["id"], "official_customer_hero", "hero", parent_key=root, order=1,
                               props={"eyebrow": "WELCOME", "title": "Discover stores and experiences near you",
@@ -1056,7 +1074,21 @@ def restore_project_snapshot(conn, project_id: int, snapshot: dict) -> None:
 
     Revision and deployment rows are deliberately untouched. IDs used by the
     runtime are remapped while stable document/node keys are preserved.
+    Callers pass an already-loaded snapshot dict; this function does not read
+    a package or zip.
     """
+    from builder_kernel.validate import validate_schema
+
+    for item in snapshot.get("data_models") or []:
+        schema = item.get("schema")
+        if isinstance(schema, str):
+            try:
+                schema = json.loads(schema)
+            except json.JSONDecodeError as error:
+                raise ValueError("invalid model schema") from error
+        result = validate_schema(schema)
+        if not result.ok:
+            raise ValueError("invalid model schema")
     snapshot_documents = snapshot.get("documents") or []
     snapshot_surfaces = snapshot.get("surfaces") or []
     surface_map: dict[int, int] = {}
@@ -1530,7 +1562,10 @@ def register_universal_builder_core(app) -> None:
             ).fetchone()
             if not revision: abort(404)
             safety = create_project_revision(conn, project_id, user_id, "Automatic backup before restore")
-            restore_project_snapshot(conn, project_id, _json(revision["snapshot"], {}))
+            try:
+                restore_project_snapshot(conn, project_id, _json(revision["snapshot"], {}))
+            except ValueError as error:
+                return jsonify({"ok": False, "error": {"code": "validation_error", "message": str(error), "fields": []}}), 400
             restored = create_project_revision(conn, project_id, user_id, f"Restored version {revision['revision_number']}")
             return jsonify({"ok": True, "restored_revision_id": restored["id"], "backup_revision_id": safety["id"],
                             "source_revision_id": revision_id, "status": "draft"}), 201
@@ -1846,8 +1881,25 @@ def register_universal_builder_core(app) -> None:
     @login_required
     def api_builder_core_action_upsert(project_id: int):
         _, workspace_id = context("builder.update")
+        from builder_components import normalize_builder_action
+
         data = request.get_json(silent=True) or {}
-        action_key = str(data.get("key") or new_node_key("act"))
+        try:
+            normalized = normalize_builder_action({
+                "key": data.get("key"),
+                "action_type": data.get("action_type"),
+                "type": data.get("action_type"),
+                "configuration": data.get("configuration") or {},
+                "order": data.get("order") or 0,
+            })
+        except ValueError:
+            return jsonify({"ok": False, "error": {"code": "unknown_action", "message": "Unknown action.", "fields": [{"path": "action_type", "code": "unknown"}]}}), 400
+        action_key = str(data.get("key") or normalized["key"])
+        event_type = str(data.get("event_type") or "on_click")
+        if event_type == "submit":
+            event_type = "on_submit"
+        if event_type == "click":
+            event_type = "on_click"
         with db() as conn:
             owned_project(conn, project_id, workspace_id)
             conn.execute(
@@ -1856,10 +1908,10 @@ def register_universal_builder_core(app) -> None:
                    VALUES (?,?,?,?,?,?,?,?,?) ON CONFLICT(project_id,action_key) DO UPDATE SET
                    document_id=excluded.document_id,node_key=excluded.node_key,event_type=excluded.event_type,
                    action_type=excluded.action_type,configuration=excluded.configuration,sort_order=excluded.sort_order,updated_at=excluded.updated_at""",
-                (project_id, data.get("document_id"), data.get("node_key"), action_key, str(data.get("event_type") or "click"),
-                 str(data.get("action_type") or "open_page"), json.dumps(data.get("configuration") or {}), int(data.get("order") or 0), _now()),
+                (project_id, data.get("document_id"), data.get("node_key"), action_key, event_type,
+                 normalized["type"], json.dumps(data.get("configuration") or {}), int(data.get("order") or 0), _now()),
             )
-            return jsonify({"ok": True, "key": action_key}), 201
+            return jsonify({"ok": True, "key": action_key, "action_type": normalized["type"]}), 201
 
     @app.delete("/api/builder-core/projects/<int:project_id>/actions/<int:action_id>")
     @login_required
@@ -2272,10 +2324,37 @@ def register_universal_builder_core(app) -> None:
             output = render_document(
                 snapshot, document_key, csrf=csrf_token(), locale=request.args.get("lang", "en"),
                 domain_data=runtime_domain_data(conn, snapshot, workspace_id, public=False),
+                invoke_url=f"/api/builder-core/projects/{project_id}/runtime/invoke",
             )
             if output is None:
                 abort(404)
-            return Response(output, mimetype="text/html")
+            from builder_kernel.csp import BUILD_CSP
+
+            response = Response(output, mimetype="text/html")
+            response.headers["Content-Security-Policy"] = BUILD_CSP
+            return response
+
+    @app.post("/api/builder-core/projects/<int:project_id>/runtime/invoke")
+    @login_required
+    def api_builder_core_runtime_invoke(project_id: int):
+        user_id, workspace_id = context("builder.update")
+        from builder_kernel.invoke import invoke_snapshot_action
+
+        body = request.get_json(silent=True) or {}
+        document_key = str(body.get("document_key") or "")
+        with db() as conn:
+            project = owned_project(conn, project_id, workspace_id)
+            snapshot = capture_project_snapshot(conn, project_id)
+            status, payload = invoke_snapshot_action(
+                conn,
+                snapshot=snapshot,
+                project=dict(project),
+                document_key=document_key,
+                body=body,
+                user_id=user_id,
+                public=False,
+            )
+            return jsonify(payload), status
 
     @app.post("/api/builder-core/projects/<int:project_id>/publish")
     @login_required
@@ -2343,13 +2422,54 @@ def register_universal_builder_core(app) -> None:
             project, snapshot = published_snapshot(conn, project_slug)
             if not snapshot:
                 abort(404)
+            from work_urls import work_dict, work_from_store
+
+            store = conn.execute(
+                "SELECT id, slug FROM stores WHERE workspace_id=? ORDER BY id LIMIT 1",
+                (project["workspace_id"],),
+            ).fetchone()
+            work = work_from_store(store) if store else work_dict(kind="build", slug=project_slug)
             output = render_document(
                 snapshot, document_key, csrf=csrf_token(), locale=request.args.get("lang", "en"),
                 domain_data=runtime_domain_data(conn, snapshot, int(project["workspace_id"]), public=True),
+                work=work,
+                invoke_url=f"/build/{project_slug}/{document_key}/runtime/invoke",
             )
             if output is None:
                 abort(404)
-            return Response(output, mimetype="text/html")
+            from builder_kernel.csp import BUILD_CSP
+
+            response = Response(output, mimetype="text/html")
+            response.headers["Content-Security-Policy"] = BUILD_CSP
+            return response
+
+    @app.post("/build/<project_slug>/<document_key>/runtime/invoke")
+    def universal_builder_public_invoke(project_slug: str, document_key: str):
+        from builder_kernel.invoke import check_public_invoke_size, invoke_snapshot_action
+
+        raw = request.get_data(cache=True)
+        body = request.get_json(silent=True) or {}
+        oversized = check_public_invoke_size(request.content_length, raw, body)
+        if oversized:
+            return jsonify(oversized), 413
+        with db() as conn:
+            project, snapshot = published_snapshot(conn, project_slug)
+            if not snapshot:
+                from builder_kernel.invoke import error_body
+
+                return jsonify(error_body("not_found")), 404
+            user = current_user()
+            user_id = int(user["id"]) if user else None
+            status, payload = invoke_snapshot_action(
+                conn,
+                snapshot=snapshot,
+                project=dict(project),
+                document_key=document_key,
+                body=body,
+                user_id=user_id,
+                public=True,
+            )
+            return jsonify(payload), status
 
     @app.post("/build/<project_slug>/<document_key>/booking")
     @app.post("/builder-runtime/<project_slug>/<document_key>/booking")
@@ -2366,43 +2486,6 @@ def register_universal_builder_core(app) -> None:
             document = next((item for item in snapshot.get("documents", []) if (item.get("key") or item.get("document_key")) == document_key), {})
             target = document.get("route") or f"/build/{project_slug}/{document_key}"
             return redirect(f"{target}?booking={booking_id}")
-
-    @app.post("/build/<project_slug>/<document_key>/form-submit")
-    @app.post("/builder-runtime/<project_slug>/<document_key>/form-submit")
-    def universal_builder_public_form_submit(project_slug: str, document_key: str):
-        with db() as conn:
-            project, snapshot = published_snapshot(conn, project_slug)
-            if not snapshot or not render_document(snapshot, document_key):
-                abort(404)
-            target_model = request.form.get("target_model") or ""
-            if not target_model:
-                model_row = conn.execute(
-                    "SELECT model_key FROM builder_data_models WHERE project_id=? LIMIT 1", (project["id"],)
-                ).fetchone()
-                if model_row:
-                    target_model = model_row["model_key"]
-            if not target_model:
-                document = next((item for item in snapshot.get("documents", []) if (item.get("key") or item.get("document_key")) == document_key), {})
-                target = document.get("route") or f"/build/{project_slug}/{document_key}"
-                return redirect(f"{target}?form_error=1")
-            form_data = {}
-            skip_keys = {"csrf_token", "target_model"}
-            for key in request.form:
-                if key not in skip_keys:
-                    value = request.form.get(key)
-                    try:
-                        form_data[key] = float(value) if value and "." in value and value.replace(".", "").replace("-", "").isdigit() else int(value) if value and value.lstrip("-").isdigit() else value
-                    except (ValueError, TypeError):
-                        form_data[key] = value
-            record_key = new_node_key("rec")
-            conn.execute(
-                """INSERT INTO builder_data_records(project_id,model_key,record_key,data,status,updated_at)
-                   VALUES (?,?,?,?,?,?)""",
-                (project["id"], target_model, record_key, json.dumps(form_data), "active", _now()),
-            )
-            document = next((item for item in snapshot.get("documents", []) if (item.get("key") or item.get("document_key")) == document_key), {})
-            target = document.get("route") or f"/build/{project_slug}/{document_key}"
-            return redirect(f"{target}?form_success=1")
 
     # Phase 5 uses the same authorization and project-ownership boundary as the
     # Builder Core; only the Marketplace routes live in a separate module.

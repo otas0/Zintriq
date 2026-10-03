@@ -67,7 +67,7 @@ COMPONENT_REGISTRY: dict[str, dict] = {
         "defaults": {"title": "Submit", "submit_label": "Submit", "success_message": "Submitted successfully", "failure_message": "Something went wrong. Please try again.", "target_model": ""},
         "fields": {"title": "text", "submit_label": "text", "success_message": "text", "failure_message": "text", "target_model": "resource"},
         "slots": {"fields": {"accepts": ["form_field"]}},
-        "events": ["submit"],
+        "events": ["on_submit"],
         "data_inputs": ["target_model"],
     },
     "form_field": {
@@ -75,6 +75,7 @@ COMPONENT_REGISTRY: dict[str, dict] = {
         "description": "A single input within a form.",
         "defaults": {"label": "Field", "field_name": "field", "field_type": "text", "placeholder": "", "required": False, "help_text": ""},
         "fields": {"label": "text", "field_name": "text", "field_type": "select", "placeholder": "text", "required": "boolean", "help_text": "text"},
+        "allowed_parents": ["form"],
         "property_schema": {"type": "object", "properties": {
             "label": {"type": "string"}, "field_name": {"type": "string"},
             "field_type": {"type": "string", "enum": ["text", "email", "number", "date", "textarea", "checkbox", "select"]},
@@ -146,7 +147,7 @@ COMPONENT_REGISTRY: dict[str, dict] = {
     "navigation": {
         "label": "Navigation", "category": "composite",
         "kind": "composite",
-        "defaults": {"brand": "Zintriq", "links": "Home|/\nPlaces|/venues\nAccount|/account"},
+        "defaults": {"brand": "Zintriq", "links": "Home|/\nPlaces|/venues\nAccount|account"},
         "fields": {"brand": "text", "links": "textarea"},
         "slots": {"actions": {"accepts": ["button"]}},
         "allowed_parents": ["root", "section", "app_shell"],
@@ -307,15 +308,20 @@ def normalize_component(component: dict, order: int = 0) -> dict:
     }
 
 
-def normalize_action(action: dict, order: int = 0) -> dict:
-    action_type = action.get("type") or "show_information"
-    if action_type not in ACTION_REGISTRY:
-        action_type = "show_information"
+def normalize_builder_action(action: dict, order: int = 0) -> dict:
+    """Strict Builder save path. Unknown types raise ValueError instead of coercing."""
+    from builder_kernel.registry import kernel
+
+    raw = action.get("type") or action.get("action_type") or ""
+    resolved = kernel.resolve_action_id(raw)
+    if not resolved:
+        raise ValueError("unknown action")
     configuration = action.get("configuration")
+    spec = ACTION_REGISTRY.get(resolved.split("/", 1)[-1]) or {"label": resolved}
     return {
         "key": str(action.get("key") or action.get("action_key") or new_node_key("act")),
-        "type": action_type,
-        "label": str(action.get("label") or ACTION_REGISTRY[action_type]["label"]),
+        "type": resolved,
+        "label": str(action.get("label") or spec.get("label") or resolved),
         "configuration": configuration if isinstance(configuration, dict) else {},
         "order": int(action.get("order", order)),
     }

@@ -5,7 +5,8 @@ from __future__ import annotations
 import unittest
 from pathlib import Path
 
-from builder_components import ACTION_REGISTRY, registry_payload
+from builder_components import ACTION_REGISTRY, normalize_builder_action, registry_payload
+from qr_experience_actions import normalize_action as normalize_qr_action
 from builder_kernel.ids import IdentifierError, check_document_key, new_record_key
 from builder_kernel.limits import COMPOSE_MAX_DEPTH, COMPOSE_MAX_STEPS
 from builder_kernel.registry import KernelRegistry, kernel
@@ -60,6 +61,17 @@ class KernelRegistryTests(unittest.TestCase):
         for key in keys:
             self.assertTrue(key.startswith("rec_"))
             self.assertRegex(key, r"^rec_[0-9a-f]{32}$")
+
+    def test_builder_unknown_action_is_rejected_qr_still_coerces(self):
+        with self.assertRaises(ValueError):
+            normalize_builder_action({"type": "not_registered"})
+        loose = normalize_qr_action({"type": "not_registered"})
+        self.assertEqual(loose["type"], "show_information")
+
+    def test_start_workflow_is_registered(self):
+        kernel.ensure_core()
+        self.assertTrue(kernel.known_action_id("start_workflow"))
+        self.assertEqual(kernel.resolve_action_id("start_workflow"), "core/start_workflow")
 
     def test_compose_limits_reject_deep_and_long_pipelines(self):
         registry = KernelRegistry()

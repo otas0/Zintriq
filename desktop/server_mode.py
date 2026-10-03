@@ -28,13 +28,32 @@ MIN_TOKEN_LENGTH = 32
 LOCAL_EMAIL = "local@desktop.zintriq"
 DB_FILENAME = "zintriq.db"
 SECRET_FILENAME = "secret_key"
-DESKTOP_SCHEMA_VERSION = 1
+DESKTOP_SCHEMA_VERSION = 2
 # 40 MiB: larger than the 32 MiB project package cap.
 WAITRESS_MAX_REQUEST_BODY = 40 * 1024 * 1024
 WAITRESS_IDENT = ""
 
 # Flask rule strings. The test walks url_map and requires every auth-shaped
 # rule to be in this set, then requests each one on the desktop server.
+_WORK_ACCOUNT_AUTH = tuple(
+    f"{prefix}{suffix}"
+    for prefix in ("/store/<work_slug>/account", "/build/<work_slug>/account")
+    for suffix in (
+        "/register",
+        "/login",
+        "/logout",
+        "/forgot-password",
+        "/reset-password/<token>",
+        "/magic-link",
+        "/magic-signin/<token>",
+        "/verify/send",
+        "/verify/check",
+        "/link-email/send",
+        "/link-email/check",
+        "/onboarding/complete",
+    )
+)
+
 AUTH_RULES = frozenset(
     {
         "/register",
@@ -48,25 +67,11 @@ AUTH_RULES = frozenset(
         "/auth/phone/send",
         "/auth/phone/check",
         "/auth/phone/complete",
-        "/account/register",
-        "/account/login",
-        "/account/logout",
-        "/account/forgot-password",
-        "/account/reset-password/<token>",
-        "/account/magic-link",
-        "/account/magic-signin/<token>",
         "/account/2fa",
         "/account/2fa/disable",
         "/account/change-password",
         "/account/delete",
         "/account/delete/cancel",
-        "/account/switch/business",
-        "/account/switch/personal",
-        "/account/verify/send",
-        "/account/verify/check",
-        "/account/link-email/send",
-        "/account/link-email/check",
-        "/account/onboarding/complete",
         "/guest/remember/<token>",
         "/places/remember",
         "/studio/desktop",
@@ -78,6 +83,7 @@ AUTH_RULES = frozenset(
         "/api/integrations/reputation/<provider>/oauth/start",
         "/api/integrations/reputation/<provider>/oauth/callback",
     }
+    | set(_WORK_ACCOUNT_AUTH)
 )
 
 _AUTH_HINT = (
@@ -553,6 +559,9 @@ def stamp_desktop_schema(database: Path) -> None:
         if version > DESKTOP_SCHEMA_VERSION:
             _fail("这个数据目录是用更新的 Zintriq 创建的，请升级应用后再打开。")
         if version < DESKTOP_SCHEMA_VERSION:
+            from builder_kernel.events import migrate_kernel_events
+
+            migrate_kernel_events(conn)
             conn.execute(f"PRAGMA user_version={DESKTOP_SCHEMA_VERSION}")
             conn.commit()
     finally:

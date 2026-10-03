@@ -40,8 +40,40 @@ class DesktopSchemaTests(unittest.TestCase):
         stamp_desktop_schema(db)
         conn = sqlite3.connect(db)
         version = int(conn.execute("PRAGMA user_version").fetchone()[0])
+        tables = {row[0] for row in conn.execute("SELECT name FROM sqlite_master WHERE type='table'")}
         conn.close()
         self.assertEqual(version, DESKTOP_SCHEMA_VERSION)
+        self.assertIn("builder_kernel_events", tables)
+
+    def test_version_1_database_gains_kernel_events_table(self):
+        from desktop.server_mode import DESKTOP_SCHEMA_VERSION, stamp_desktop_schema
+        from builder_kernel.limits import KERNEL_EVENTS_MAX_PER_PROJECT
+
+        temp = Path(tempfile.mkdtemp(prefix="zintriq-schema-v1-"))
+        db = temp / "zintriq.db"
+        conn = sqlite3.connect(db)
+        conn.execute("CREATE TABLE dummy (id INTEGER)")
+        conn.execute("PRAGMA user_version=1")
+        conn.commit()
+        conn.close()
+        stamp_desktop_schema(db)
+        conn = sqlite3.connect(db)
+        conn.row_factory = sqlite3.Row
+        self.assertEqual(int(conn.execute("PRAGMA user_version").fetchone()[0]), DESKTOP_SCHEMA_VERSION)
+        self.assertEqual(DESKTOP_SCHEMA_VERSION, 2)
+        conn.execute(
+            "INSERT INTO builder_kernel_events(project_id,event_id,status) VALUES (1,'core/record.created','ok')"
+        )
+        from builder_kernel.events import prune_kernel_events
+
+        for index in range(KERNEL_EVENTS_MAX_PER_PROJECT + 5):
+            conn.execute(
+                "INSERT INTO builder_kernel_events(project_id,event_id,status) VALUES (1,'core/record.created','ok')"
+            )
+        prune_kernel_events(conn, 1)
+        count = int(conn.execute("SELECT COUNT(*) FROM builder_kernel_events WHERE project_id=1").fetchone()[0])
+        conn.close()
+        self.assertEqual(count, KERNEL_EVENTS_MAX_PER_PROJECT)
 
     def test_missing_database_is_allowed(self):
         from desktop.server_mode import ensure_desktop_schema

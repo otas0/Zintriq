@@ -6,7 +6,7 @@ import html
 import json
 import logging
 import re
-from urllib.parse import urlparse
+from work_urls import rewrite_account_href
 
 _log = logging.getLogger("app.universal_builder")
 
@@ -75,6 +75,8 @@ def _css_name(value):
 def _safe_style(styles):
     declarations = []
     for key, value in (_json(styles, {}) or {}).items():
+        if str(key).lower().startswith("on"):
+            continue
         if key in STYLE_KEYS and isinstance(value, (str, int, float)) and ";" not in str(value):
             rendered = str(value)
             if rendered.startswith("token:"):
@@ -110,7 +112,7 @@ def _bound_value(binding, context):
 
 
 def render_document(snapshot: dict, document_key: str, *, state=None, notice: str = "", csrf: str = "", locale: str = "en",
-                    domain_data=None, route_path: str = "") -> str | None:
+                    domain_data=None, route_path: str = "", work=None, invoke_url: str = "") -> str | None:
     documents = snapshot.get("documents") or []
     document = next((item for item in documents if item.get("key", item.get("document_key")) == document_key), None)
     if not document:
@@ -124,12 +126,26 @@ def render_document(snapshot: dict, document_key: str, *, state=None, notice: st
     context = {"project": snapshot.get("project") or {}, "state": state or {}, "variable": variables, "collections": collections, "domain": domain_data or {}}
     conditions = {item.get("id"): _json(item.get("expression"), {}) for item in snapshot.get("conditions", [])}
     bindings = _bindings(snapshot, document_id)
-    actions = {item.get("node_key"): item for item in snapshot.get("actions", []) if item.get("document_id") in (None, document_id)}
+    actions_by_node: dict[str, list] = {}
+    for item in snapshot.get("actions", []):
+        if item.get("document_id") not in (None, document_id):
+            continue
+        if _json(item.get("configuration"), {}).get("enabled") is False:
+            continue
+        actions_by_node.setdefault(item.get("node_key"), []).append(item)
+    from builder_kernel.registry import kernel
+    kernel.ensure_core()
+    project_slug = (snapshot.get("project") or {}).get("slug") or "project"
+    runtime_invoke = invoke_url or f"/build/{project_slug}/{document_key}/runtime/invoke"
     definitions = {int(item.get("id")): item for item in snapshot.get("component_definitions", [])}
     instances = {item.get("node_key"): item for item in snapshot.get("component_instances", []) if item.get("document_id") == document_id}
     interactions = {}
     for item in snapshot.get("interactions", []):
-        if item.get("document_id") in (None, document_id): interactions.setdefault(item.get("node_key"), []).append(item)
+        if item.get("document_id") not in (None, document_id):
+            continue
+        if _json(item.get("configuration"), {}).get("enabled") is False:
+            continue
+        interactions.setdefault(item.get("node_key"), []).append(item)
     raw_nodes = [item for item in snapshot.get("nodes", []) if item.get("document_id") == document_id]
     children = {}
     for item in raw_nodes:
@@ -210,7 +226,7 @@ def render_document(snapshot: dict, document_key: str, *, state=None, notice: st
             for line in str(props.get("links") or "").splitlines():
                 label, separator, target = line.partition("|")
                 if label.strip() and separator:
-                    links.append(f"<a href='{html.escape(_safe_href(target.strip()), quote=True)}'>{html.escape(label.strip())}</a>")
+                    links.append(f"<a href='{html.escape(_safe_href(rewrite_account_href(target.strip(), work)), quote=True)}'>{html.escape(label.strip())}</a>")
             return f"<nav class='ub-navigation'{attrs}><a class='ub-navigation__brand' href='/app/builder'>{html.escape(str(props.get('brand') or 'Zintriq'))}</a><div>{''.join(links)}</div>{rendered_children}</nav>"
         if component == "hero":
             image = f"<img src='{html.escape(_safe_href(props.get('image')), quote=True)}' alt=''>" if props.get("image") else ""
@@ -227,10 +243,29 @@ def render_document(snapshot: dict, document_key: str, *, state=None, notice: st
         if component == "image":
             return f"<img{attrs} src='{html.escape(str(props.get('src','')), quote=True)}' alt='{html.escape(str(props.get('alt','')), quote=True)}'>"
         if component == "button":
-            action = actions.get(node.get("node_key")) or next(iter(node.get("actions") or []), {})
-            config = _json(action.get("configuration"), {})
-            href = config.get("url") or config.get("path") or config.get("target") or "#"
-            return f"<a class='ub-button' href='{html.escape(_safe_href(href), quote=True)}'{attrs}>{html.escape(str(props.get('label','Continue')))}</a>"
+            node_actions = actions_by_node.get(node.get("node_key")) or list(node.get("actions") or [])
+            invokeable = []
+            navigable = []
+            for item in node_actions:
+                action_id = kernel.resolve_action_id(item.get("action_type") or item.get("type"))
+                if action_id in {"core/open_page", "core/external_link", "core/navigate_to_page"}:
+                    navigable.append(item)
+                elif action_id:
+                    invokeable.append(item)
+            label = html.escape(str(props.get("label", "Continue")))
+            if invokeable:
+                chosen = invokeable[0]
+                action_key = html.escape(str(chosen.get("action_key") or chosen.get("key") or ""), quote=True)
+                return (
+                    f"<button type='button' class='ub-button'{attrs} data-action-key='{action_key}' "
+                    f"data-invoke='{html.escape(runtime_invoke, quote=True)}'>{label}</button>"
+                )
+            if navigable:
+                action = navigable[0]
+                config = _json(action.get("configuration"), {})
+                href = config.get("url") or config.get("path") or config.get("target") or "#"
+                return f"<a class='ub-button' href='{html.escape(_safe_href(href), quote=True)}'{attrs}>{label}</a>"
+            return f"<button type='button' class='ub-button'{attrs}>{label}</button>"
         if component == "repeater":
             items = props.get("items") or []
             if not isinstance(items, list):
@@ -316,7 +351,15 @@ def render_document(snapshot: dict, document_key: str, *, state=None, notice: st
                     else:
                         field_html.append(f"<div class='ub-form-field'><label>{flabel}{input_map.get(ftype, input_map['text'])}</label>{fhelp}</div>")
             fields_content = "".join(field_html) or "<p>No form fields configured.</p>"
-            return f"""<form class='ub-form' method='post' action='/builder-runtime/{html.escape(str(project_slug), quote=True)}/{html.escape(str(document_key), quote=True)}/form-submit'{attrs} data-target-model='{target_model}'>
+            submit_action = None
+            for item in actions_by_node.get(node.get("node_key")) or []:
+                event_type = str(item.get("event_type") or "")
+                if event_type in {"on_submit", "submit"}:
+                    submit_action = item
+                    break
+            action_key = html.escape(str((submit_action or {}).get("action_key") or ""), quote=True)
+            invoke_attr = html.escape(runtime_invoke, quote=True)
+            return f"""<form class='ub-form' method='post' action='{invoke_attr}'{attrs} data-target-model='{target_model}' data-action-key='{action_key}' data-invoke='{invoke_attr}'>
               <input type='hidden' name='csrf_token' value='{html.escape(csrf, quote=True)}'>
               <h2>{html.escape(str(props.get('title','Submit')))}</h2>
               {fields_content}
@@ -334,7 +377,7 @@ def render_document(snapshot: dict, document_key: str, *, state=None, notice: st
               <label>Notes<textarea name='notes'></textarea></label>
               <button class='ub-button' type='submit'>Request booking</button></form>"""
         if component == "survey":
-            return f"<section class='ub-capability-card'{attrs}><span>Feedback capability</span><h2>{html.escape(str(props.get('title') or 'Your feedback'))}</h2><p>{html.escape(str(props.get('body') or ''))}</p><a class='ub-button' href='/account'>Share feedback</a></section>"
+            return f"<section class='ub-capability-card'{attrs}><span>Feedback capability</span><h2>{html.escape(str(props.get('title') or 'Your feedback'))}</h2><p>{html.escape(str(props.get('body') or ''))}</p><a class='ub-button' href='{html.escape(rewrite_account_href('/account', work), quote=True)}'>Share feedback</a></section>"
         return f"<div{attrs}>{rendered_children}</div>"
 
     body = "".join(render_node(node) for node in children.get(None, []) + children.get("", []))
@@ -355,14 +398,22 @@ def render_document(snapshot: dict, document_key: str, *, state=None, notice: st
     pseudo={"hover":":hover","press":":active","focus":":focus-visible","selected":"[aria-selected='true']"}
     for interaction in snapshot.get("interactions", []):
         if interaction.get("document_id") not in (None, document_id) or interaction.get("trigger_type") not in pseudo: continue
-        config=_json(interaction.get("configuration"),{}); declarations=_safe_style(config.get("styles") or {})
+        config=_json(interaction.get("configuration"),{})
+        if config.get("enabled") is False:
+            continue
+        declarations=_safe_style(config.get("styles") or {})
         if declarations:
             selector=f"[data-node='{str(interaction.get('node_key')).replace(chr(39),'')}']{pseudo[interaction['trigger_type']]}"
             state_css.append(f"{selector}{{{declarations}}}")
     creator_css = f":root{{{';'.join(token_css)}}}{''.join(state_css)}[data-motion~='fade']{{animation:ub-fade var(--ub-token-duration-normal,260ms) ease both}}[data-motion~='slide-up']{{animation:ub-slide-up var(--ub-token-duration-normal,260ms) ease both}}[data-motion~='scale']:hover{{transform:scale(1.025)}}[data-motion~='press']:active{{transform:scale(.98)}}@keyframes ub-fade{{from{{opacity:0}}}}@keyframes ub-slide-up{{from{{opacity:0;transform:translateY(20px)}}}}@media(prefers-reduced-motion:reduce){{[data-motion]{{animation:none!important;transition:none!important;transform:none!important}}}}"
     return f"""<!doctype html><html lang='{html.escape(locale, quote=True)}' dir='{direction}'><head><meta charset='utf-8'><meta name='viewport' content='width=device-width,initial-scale=1'>
-    <title>{title}</title><meta name='description' content='{description}'><link rel='stylesheet' href='/static/builder/universal-runtime.css'><style>{creator_css}</style></head>
-    <body lang='{html.escape(locale, quote=True)}'><main class='ub-page'>{notice_html}{body}</main></body></html>"""
+    <title>{title}</title><meta name='description' content='{description}'>
+    <meta name='csrf-token' content='{html.escape(csrf, quote=True)}'>
+    <meta name='ub-invoke' content='{html.escape(runtime_invoke, quote=True)}'>
+    <meta name='ub-document-key' content='{html.escape(str(document_key), quote=True)}'>
+    <link rel='stylesheet' href='/static/builder/universal-runtime.css'><style>{creator_css}</style></head>
+    <body lang='{html.escape(locale, quote=True)}'><main class='ub-page'>{notice_html}{body}</main>
+    <script src='/static/builder/published-runtime.js'></script></body></html>"""
 
 
 def published_snapshot(conn, project_slug: str):
