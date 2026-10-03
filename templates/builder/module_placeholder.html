@@ -1,0 +1,26 @@
+<!doctype html>
+<html lang="{{ html_lang|default('en') }}">
+<head>
+  {% include 'partials/theme_init.html' %}
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>{{ page_title }}</title>
+  {% if desktop_mode %}
+  <link rel="stylesheet" href="{{ url_for('static', filename='fonts/geist-sans/geist-sans.css') }}">
+  {% else %}
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/geist@1.3.1/dist/fonts/geist-sans/style.min.css">
+  {% endif %}
+  <link rel="stylesheet" href="{{ url_for('static', filename='tokens.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='builder/universal-runtime.css') }}">
+</head>
+<body>
+  <main class="ub-page">
+    <section class="ub-section">
+      <p class="ub-eyebrow">{{ _('studio.module.eyebrow') }}</p>
+      <h1>{{ module.name }}</h1>
+      <p>{{ _('studio.module.body') }}</p>
+      <a class="ub-button" href="{{ manager_url }}" target="_top">{{ _('studio.module.open') }}</a>
+    </section>
+  </main>
+</body>
+</html>

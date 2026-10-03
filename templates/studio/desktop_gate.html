@@ -1,0 +1,42 @@
+<!doctype html>
+<html lang="{{ html_lang|default('en') }}" dir="{{ ui_lang_dir|default('ltr') }}">
+<head>
+  {% include 'partials/theme_init.html' %}
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Zintriq Studio</title>
+  {% include 'partials/favicon_links.html' %}
+  {% if desktop_mode %}
+  <link rel="stylesheet" href="{{ url_for('static', filename='fonts/geist-sans/geist-sans.css') }}">
+  {% else %}
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/geist@1.3.1/dist/fonts/geist-sans/style.min.css">
+  {% endif %}
+  <link rel="stylesheet" href="{{ url_for('static', filename='tokens.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='materials.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='system.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='studio-desktop.css') }}">
+</head>
+<body class="material-canvas sd-gate">
+  <header class="sd-gate__header">
+    <a class="sd-gate__brand" href="{{ url_for('studio_desktop_gate') }}" aria-label="zintriq">
+      {% with variant='theme', class='sd-gate__logo zintriq-logo', width=180, height=48 %}
+      {% include 'partials/brand_logo.html' %}
+      {% endwith %}
+    </a>
+  </header>
+
+  <main class="sd-gate__main">
+    <div class="sd-gate__panel">
+      <p class="sd-gate__eyebrow">{{ _('nav.studio') }}</p>
+      <h1 class="sd-gate__title">{{ _('studio.gate.title') }}</h1>
+      <p class="sd-gate__body">{{ _('studio.gate.body') }}</p>
+      <button type="button" class="sd-gate__cta" id="sd-sign-in">{{ _('nav.signin') }}</button>
+      <p class="sd-gate__hint" id="sd-hint" hidden></p>
+      <p class="sd-gate__alt"><a href="/login?local=1&amp;next=/studio">{{ _('studio.gate.local') }}</a> (dev)</p>
+      <p class="sd-gate__meta">{{ _('studio.gate.meta') }}</p>
+    </div>
+  </main>
+
+  <script src="{{ url_for('static', filename='studio-desktop.js') }}" defer></script>
+</body>
+</html>

@@ -1,0 +1,88 @@
+{
+  "id": "zintriq-customer",
+  "name": "Customer App",
+  "description": "Customer-facing Interface: home, places, venues, storefront, account, QR entry and scan runtime. Compose Data + Interface + Connection + Publish — not the Business App.",
+  "publisher": "Zintriq",
+  "version": 1,
+  "schema_version": 4,
+  "package_type": "template",
+  "template_kind": "application",
+  "source": "core",
+  "visibility": "official",
+  "marketplace_ready": true,
+  "community_category": "Customer applications",
+  "dependencies": [],
+  "required_capabilities": ["core", "navigation", "forms", "data", "auth", "commerce", "booking", "survey", "feedback", "check_in", "events", "qr", "payments"],
+  "permissions": ["builder.read", "builder.create", "builder.update", "builder.publish"],
+  "compatibility": {"builder_schema": ">=2 <5", "legacy_routes": true, "strangler_migration": true, "creator_system": true},
+  "assets": [],
+  "components": ["core/navigation", "core/hero", "core/store_grid", "core/booking", "core/survey", "core/shop", "core/check_in", "core/contact"],
+  "component_definitions": ["official.product-card"],
+  "design_system": {
+    "tokens": ["color.brand.primary", "color.background", "color.surface", "color.text", "color.text.muted", "space.sm", "space.md", "space.lg", "radius.card", "shadow.standard", "duration.fast", "duration.normal", "easing.standard"],
+    "theme_modes": ["light", "dark"]
+  },
+  "project_variables": ["brand.name", "content.maxWidth", "layout.pagePadding"],
+  "data_sources": ["commerce.stores", "commerce.products", "workspace.current"],
+  "app_modules": [],
+  "workflows": ["qr_experience_workflow"],
+  "runtime_adapters": ["hybrid_strangler", "universal_native", "flask_legacy_bridge"],
+  "migrations": [
+    {"id": "native-customer-home", "mode": "hybrid_document", "route": "/", "reversible": true}
+  ],
+  "runtime": {
+    "adapter": "hybrid_strangler",
+    "preserve_existing_routes": true,
+    "preserve_existing_data": true,
+    "public_url": "/"
+  },
+  "surfaces": [
+    {
+      "id": "customer-site",
+      "name": "Customer Site",
+      "audience": "customer",
+      "routes": ["/", "/home", "/places", "/venues", "/store/*", "/account", "/help/*", "/e/*", "/qr/*"]
+    }
+  ],
+  "documents": [
+    {"key": "customer-site", "name": "Customer Home", "type": "site", "route": "/", "adapter": "universal_native", "migration_status": "hybrid", "legacy_adapter": "customer_platform", "slug_owner": "template", "aliases": ["/home"]},
+    {"key": "storefront", "name": "Storefront", "type": "commerce", "route": "/store/{slug}", "adapter": "storefront_platform"},
+    {"key": "qr-runtime", "name": "QR and Scan Runtime", "type": "runtime", "route": "/qr/{code}", "adapter": "qr_experience_runtime"},
+    {"key": "customer-data", "name": "Customer Data", "type": "data_model", "route": "", "adapter": "customer_platform"}
+  ],
+  "legacy_adapters": [
+    "customer_platform",
+    "customer_account_platform",
+    "help_platform",
+    "qr_experience_runtime",
+    "qr_experience_platform",
+    "checkout_platform",
+    "event_platform",
+    "legal_platform",
+    "mobile_platform",
+    "i18n_platform"
+  ],
+  "capabilities": [
+    "authentication",
+    "customer_accounts",
+    "stores",
+    "catalog",
+    "storefront",
+    "cart",
+    "checkout",
+    "orders",
+    "qr_scanning",
+    "multilingual_content",
+    "feedback",
+    "surveys",
+    "booking",
+    "check_in",
+    "events",
+    "responsive_customer_site",
+    "payments",
+    "mobile_app_support",
+    "legal_and_consent",
+    "help_center",
+    "internationalization"
+  ]
+}

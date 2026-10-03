@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import os
+import sys
 import time
 from datetime import datetime, timezone
 
@@ -25,14 +27,17 @@ def increment_error(error_type: str) -> None:
 
 
 def get_metrics() -> dict:
-    import subprocess
-    try:
-        version = subprocess.check_output(
-            ["git", "rev-parse", "--short", "HEAD"],
-            stderr=subprocess.DEVNULL,
-        ).decode().strip()
-    except Exception:
-        version = "unknown"
+    version = os.environ.get("ZINTRIQ_APP_VERSION") or "unknown"
+    if not getattr(sys, "frozen", False):
+        import subprocess
+
+        try:
+            version = subprocess.check_output(
+                ["git", "rev-parse", "--short", "HEAD"],
+                stderr=subprocess.DEVNULL,
+            ).decode().strip()
+        except Exception:
+            pass
 
     return {
         "uptime_s": int(time.time() - _started_at),

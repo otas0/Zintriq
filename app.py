@@ -20,17 +20,21 @@ import qrcode
 from flask import Flask, abort, flash, g, has_app_context, jsonify, redirect, render_template, request, send_from_directory, session, url_for
 from werkzeug.security import check_password_hash, generate_password_hash
 
+from desktop.resources import application_root, is_frozen
+
 _log = logging.getLogger("app.core")
 
 
-BASE_DIR = Path(__file__).resolve().parent
+BASE_DIR = application_root()
 DATABASE = BASE_DIR / "marketqr.db"
 UPLOAD_DIR = BASE_DIR / "static" / "uploads"
 
 
 def _load_local_env() -> None:
     """Load KEY=VALUE lines from .env.local without overwriting existing env."""
-    path = BASE_DIR / ".env.local"
+    if is_frozen():
+        return
+    path = Path(__file__).resolve().parent / ".env.local"
     if not path.is_file():
         return
     for line in path.read_text(encoding="utf-8").splitlines():
@@ -44,11 +48,22 @@ def _load_local_env() -> None:
 
 _load_local_env()
 
+from desktop.server_mode import desktop_enabled, install_desktop_guards, prepare_desktop_paths
+
+_desktop_runtime = prepare_desktop_paths() if desktop_enabled() else None
+if _desktop_runtime is not None:
+    DATABASE = _desktop_runtime.database
+    UPLOAD_DIR = _desktop_runtime.upload_dir
+
 _DEV_SECRET_FILE = BASE_DIR / ".dev_secret_key"
 
 
 def _dev_secret_key() -> str:
     """Stable dev secret so sessions survive server restarts without .env.local."""
+    if _desktop_runtime is not None:
+        return _desktop_runtime.secret_key
+    if is_frozen():
+        return secrets.token_hex(32)
     env = os.environ.get("SECRET_KEY")
     if env:
         return env
@@ -61,16 +76,21 @@ def _dev_secret_key() -> str:
     return key
 
 
-app = Flask(__name__)
+app = Flask(
+    __name__,
+    template_folder=str(BASE_DIR / "templates"),
+    static_folder=str(BASE_DIR / "static"),
+)
 app.config.update(
     SECRET_KEY=_dev_secret_key(),
     SESSION_COOKIE_HTTPONLY=True,
     SESSION_COOKIE_SAMESITE="Lax",
     SESSION_COOKIE_SECURE=os.environ.get("SESSION_COOKIE_SECURE", "false").lower() == "true",
     SESSION_REFRESH_EACH_REQUEST=True,
-    MAX_CONTENT_LENGTH=5 * 1024 * 1024,
+    MAX_CONTENT_LENGTH=(33 * 1024 * 1024) if desktop_enabled() else 5 * 1024 * 1024,
     PERMANENT_SESSION_LIFETIME=timedelta(days=400),
 )
+install_desktop_guards(app)
 
 from observability import init_logging
 init_logging(app=app)
@@ -563,6 +583,11 @@ def owner_stores_for_nav(owner_id: int) -> list:
 
 
 @app.context_processor
+def inject_desktop_mode():
+    return {"desktop_mode": desktop_enabled()}
+
+
+@app.context_processor
 def inject_globals():
     path = request.path
     if path.startswith("/app"):
@@ -881,10 +906,28 @@ def login_required(view):
 
 
 @app.before_request
+def load_studio_bearer_auth():
+    from studio_platform import load_studio_bearer_user
+
+    load_studio_bearer_user()
+
+
+@app.before_request
 def protect_forms():
     if request.method != "POST":
         return
     if request.path.startswith("/api/integrations/webhooks/"):
+        return
+    if request.path == "/api/studio/auth/pkce/exchange":
+        return
+    if desktop_enabled() and request.path.startswith("/api/builder-core/transfer/"):
+        return
+    from studio_platform import request_has_studio_bearer
+
+    if request_has_studio_bearer():
+        return
+    auth = (request.headers.get("Authorization") or "").lower()
+    if auth.startswith("bearer zst_"):
         return
     submitted = (
         request.form.get("csrf_token", "")
@@ -4871,6 +4914,9 @@ register_qr_experience_workflow(app)
 from universal_builder_core import register_universal_builder_core
 register_universal_builder_core(app)
 
+from studio_platform import register_studio_platform
+register_studio_platform(app)
+
 from qr_customer_data import register_qr_customer_data
 register_qr_customer_data(app)
 
@@ -4946,6 +4992,9 @@ register_i18n_platform(app)
 from merchant_phone_auth import register_merchant_phone_auth
 register_merchant_phone_auth(app, db=db, sign_in_user=sign_in_user)
 
+from site_retired import register_retired_routes
+register_retired_routes(app)
+
 
 @app.errorhandler(404)
 def not_found_page(e):
@@ -4955,19 +5004,42 @@ def not_found_page(e):
 
 
 if __name__ == "__main__":
-    init_db()
-    # Prefer 5001 — macOS AirPlay often occupies *:5000 and returns 403.
-    port = int(os.environ.get("PORT", "5001"))
-    host = os.environ.get("HOST", "0.0.0.0")
-    ip = lan_ip()
-    app.logger.debug("dev_server_local url=http://127.0.0.1:%d", port)
-    if ip:
-        app.logger.debug("dev_server_network url=http://%s:%d", ip, port)
-        if not os.environ.get("PUBLIC_BASE_URL"):
-            app.logger.debug("dev_server_qr_hint PUBLIC_BASE_URL=http://%s:%d python3 app.py", ip, port)
-    app.run(
-        debug=True,
-        host=host,
-        port=port,
-        use_reloader=os.environ.get("FLASK_USE_RELOADER", "").lower() in ("1", "true", "yes"),
-    )
+    import multiprocessing
+
+    multiprocessing.freeze_support()
+    if desktop_enabled():
+        from pathlib import Path as _Path
+
+        from desktop.server_mode import (
+            acquire_instance_lock,
+            ensure_desktop_schema,
+            listen_port,
+            serve_desktop,
+            stamp_desktop_schema,
+            start_parent_watch,
+        )
+
+        data_dir = _Path(os.environ["ZINTRIQ_DATA_DIR"])
+        acquire_instance_lock(data_dir, listen_port())
+        start_parent_watch()
+        ensure_desktop_schema(data_dir / "zintriq.db")
+        init_db()
+        stamp_desktop_schema(data_dir / "zintriq.db")
+        serve_desktop(app)
+    else:
+        init_db()
+        # Prefer 5001 — macOS AirPlay often occupies *:5000 and returns 403.
+        port = int(os.environ.get("PORT", "5001"))
+        host = os.environ.get("HOST", "0.0.0.0")
+        ip = lan_ip()
+        app.logger.debug("dev_server_local url=http://127.0.0.1:%d", port)
+        if ip:
+            app.logger.debug("dev_server_network url=http://%s:%d", ip, port)
+            if not os.environ.get("PUBLIC_BASE_URL"):
+                app.logger.debug("dev_server_qr_hint PUBLIC_BASE_URL=http://%s:%d python3 app.py", ip, port)
+        app.run(
+            debug=True,
+            host=host,
+            port=port,
+            use_reloader=os.environ.get("FLASK_USE_RELOADER", "").lower() in ("1", "true", "yes"),
+        )

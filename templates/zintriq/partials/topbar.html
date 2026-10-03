@@ -1,0 +1,44 @@
+<header class="zw-topbar{% if studio_mode|default(false) %} zw-topbar--studio{% endif %}">
+  <div class="zw-topbar__brand">
+    <button type="button" class="zw-topbar__btn zw-topbar__menu" id="zw-sidebar-toggle" aria-label="{{ _('studio.topbar.open_nav') }}" aria-expanded="false" aria-controls="zw-sidebar">
+      <svg width="20" height="20" viewBox="0 0 20 20" fill="none" aria-hidden="true">
+        <path d="M3 5H17M3 10H17M3 15H17" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+      </svg>
+    </button>
+    <a href="{{ studio_base|default('/studio') }}" class="zw-topbar__brand-link" aria-label="Zintriq Studio">
+      <img class="zw-logo zw-logo--on-light" src="{{ url_for('static', filename='brand/zintriq-on-light.svg') }}?v=20261002s" alt="Zintriq" width="104" height="36">
+      <img class="zw-logo zw-logo--on-dark" src="{{ url_for('static', filename='brand/zintriq-on-dark.svg') }}?v=20261002s" alt="" width="104" height="36" aria-hidden="true">
+      {% if studio_mode|default(false) %}
+      <span class="zw-topbar__product">Studio</span>
+      {% endif %}
+    </a>
+  </div>
+  <div class="zw-topbar__actions">
+    <a class="zw-topbar__link" href="{{ url_for('account_workspaces') }}">{{ _('bos.team') }}</a>
+    <button type="button" class="zw-topbar__btn" id="zw-theme-toggle" aria-label="{{ _('studio.topbar.theme') }}" title="{{ _('studio.topbar.theme') }}">
+      <svg width="20" height="20" viewBox="0 0 20 20" fill="none" aria-hidden="true">
+        <circle cx="10" cy="10" r="4" stroke="currentColor" stroke-width="1.5"/>
+        <path d="M10 2V4M10 16V18M2 10H4M16 10H18M4.93 4.93L6.34 6.34M13.66 13.66L15.07 15.07M4.93 15.07L6.34 13.66M13.66 6.34L15.07 4.93" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+      </svg>
+    </button>
+    <div class="zw-user-wrap">
+      <button type="button" class="zw-topbar__btn" id="zw-user-menu" aria-label="{{ _('studio.topbar.account_menu') }}" aria-expanded="false" aria-haspopup="true" title="{{ _('studio.sidebar.account') }}">
+        <div class="zw-avatar">{% if current_user and current_user.email %}{{ current_user.email[0]|upper }}{% else %}U{% endif %}</div>
+      </button>
+      <div class="zw-user-dropdown hidden" id="zw-user-dropdown" role="menu">
+        {% if current_user and current_user.email %}
+        <div class="zw-user-dropdown__meta">
+          <strong>{{ current_user.email.split('@')[0] }}</strong>
+          <span>{{ current_user.email }}</span>
+        </div>
+        {% endif %}
+        <a class="zw-user-dropdown__item" role="menuitem" href="{{ url_for('account') }}">{{ _('studio.sidebar.account') }}</a>
+        <form method="post" action="{{ url_for('logout') }}" class="zw-user-dropdown__form">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+          <button type="submit" class="zw-user-dropdown__item zw-user-dropdown__item--danger" role="menuitem">{{ _('nav.sign_out') }}</button>
+        </form>
+      </div>
+    </div>
+  </div>
+</header>
+<button type="button" class="zw-sidebar-backdrop" id="zw-sidebar-backdrop" hidden aria-hidden="true" tabindex="-1"></button>

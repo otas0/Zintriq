@@ -1,0 +1,46 @@
+<div class="zw-modal hidden" id="zw-modal">
+  <div class="zw-modal__backdrop" id="zw-modal-backdrop"></div>
+  <div class="zw-modal__content" role="dialog" aria-modal="true" aria-labelledby="zw-modal-title">
+    <div class="zw-modal__header">
+      <div>
+        <span class="zw-modal__eyebrow">{{ _('nav.studio') }}</span>
+        <h2 class="zw-modal__title" id="zw-modal-title">{{ _('studio.modal.new') }}</h2>
+      </div>
+      <button class="zw-modal__close" id="zw-modal-close" aria-label="{{ _('studio.modal.close') }}">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
+          <path d="M6 6L18 18M18 6L6 18" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+        </svg>
+      </button>
+    </div>
+    <form class="zw-modal__form" id="zw-create-form">
+      <p class="zw-form-hint zw-form-hint--lead">{{ _('studio.modal.lead') }}</p>
+      <div class="zw-form-group">
+        <label class="zw-label" for="zw-create-name">{{ _('studio.modal.name') }}</label>
+        <input id="zw-create-name" type="text" name="name" required maxlength="80" placeholder="{{ _('studio.modal.name_ph') }}" class="zw-input" autofocus>
+      </div>
+      <div class="zw-form-group">
+        <label class="zw-label">{{ _('studio.modal.start') }}</label>
+        <div class="zw-type-grid zw-type-grid--compose">
+          <label class="zw-type-card">
+            <input type="radio" name="type" value="composition" checked>
+            <div class="zw-type-card__content">
+              <span>{{ _('studio.modal.blank') }}</span>
+              <small>{{ _('studio.modal.blank_sub') }}</small>
+            </div>
+          </label>
+          <label class="zw-type-card">
+            <input type="radio" name="type" value="from-community">
+            <div class="zw-type-card__content">
+              <span>{{ _('studio.modal.from_community') }}</span>
+              <small>{{ _('studio.modal.from_community_sub') }}</small>
+            </div>
+          </label>
+        </div>
+      </div>
+      <div class="zw-modal__actions">
+        <button type="button" class="zw-btn zw-btn--secondary" id="zw-modal-cancel">{{ _('studio.modal.cancel') }}</button>
+        <button type="submit" class="zw-btn zw-btn--primary">{{ _('studio.modal.open') }}</button>
+      </div>
+    </form>
+  </div>
+</div>

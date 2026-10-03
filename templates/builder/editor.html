@@ -1,0 +1,119 @@
+{% extends 'builder/base.html' %}
+{% block content %}
+{% set studio_base = studio_base or '/studio' %}
+{% set community_url = community_url or '/' %}
+{% if studio_mode|default(false) %}
+<link rel="stylesheet" href="{{ url_for('static', filename='studio-desktop.css') }}">
+<script src="{{ url_for('static', filename='studio-desktop.js') }}" defer></script>
+{% endif %}
+<div class="ub-editor ub-editor--studio" id="ub-editor"
+     data-project-id="{{ project_id }}"
+     data-surface="studio"
+     data-studio-base="{{ studio_base }}"
+     data-community-url="{{ community_url }}">
+  <header class="ub-topbar">
+    <div class="ub-topbar__left">
+      <a href="{{ studio_base }}" class="ub-topbar__brand" aria-label="{{ _('studio.editor.back') }}" title="{{ _('studio.dash.title') }}">Z</a>
+      <div class="ub-topbar__title-stack">
+        <span class="ub-topbar__eyebrow">{{ _('studio.editor.composition') }}</span>
+        <input id="ub-project-name" aria-label="{{ _('studio.editor.name') }}" value="{{ _('studio.editor.loading') }}">
+      </div>
+    </div>
+    <nav class="ub-primitive-rail" id="ub-primitive-rail" aria-label="{{ _('aria.compose_primitives') }}">
+      <button type="button" data-primitive="data" aria-pressed="false">
+        <span class="ub-primitive-rail__key">Data</span>
+        <small>{{ _('studio.strip.data') }}</small>
+      </button>
+      <button type="button" class="is-active" data-primitive="interface" aria-pressed="true">
+        <span class="ub-primitive-rail__key">Interface</span>
+        <small>{{ _('studio.strip.interface') }}</small>
+      </button>
+      <button type="button" data-primitive="logic" aria-pressed="false">
+        <span class="ub-primitive-rail__key">Logic</span>
+        <small>{{ _('studio.strip.logic') }}</small>
+      </button>
+      <button type="button" data-primitive="connection" aria-pressed="false">
+        <span class="ub-primitive-rail__key">Connection</span>
+        <small>{{ _('studio.strip.connection') }}</small>
+      </button>
+      <button type="button" data-primitive="publish" aria-pressed="false">
+        <span class="ub-primitive-rail__key">Publish</span>
+        <small>{{ _('studio.strip.publish') }}</small>
+      </button>
+    </nav>
+    <div class="ub-topbar__right">
+      <a class="ub-btn ub-btn--ghost" id="ub-open-community" href="{{ community_url }}">{{ _('nav.community') }}</a>
+      <button class="ub-icon-btn" id="ub-undo" title="{{ _('studio.editor.undo') }}" disabled>↶</button>
+      <button class="ub-icon-btn" id="ub-redo" title="{{ _('studio.editor.redo') }}" disabled>↷</button>
+      <span class="ub-save-state" id="ub-save-state">{{ _('studio.editor.saved') }}</span>
+      <button class="ub-btn ub-btn--ghost" id="ub-preview">{{ _('studio.editor.preview') }}</button>
+      <button class="ub-btn ub-btn--primary" id="ub-publish">{{ _('studio.editor.publish') }}</button>
+      <div class="ub-account" id="ub-account">
+        <button type="button" class="ub-icon-btn" id="ub-account-btn" title="{{ _('studio.sidebar.account') }}" aria-haspopup="true" aria-expanded="false">◉</button>
+        <div class="ub-account__menu hidden" id="ub-account-menu" role="menu">
+          <p class="ub-account__meta" id="ub-account-meta">{{ _('nav.studio') }}</p>
+          <button type="button" class="ub-account__item" data-open-design-menu role="menuitem">{{ _('studio.editor.design_system') }}</button>
+          <a class="ub-account__item" href="{{ studio_base }}" role="menuitem">{{ _('studio.dash.title') }}</a>
+          <button type="button" class="ub-account__item ub-account__item--danger hidden" id="ub-desktop-logout" data-desktop-logout role="menuitem">{{ _('nav.signout') }}</button>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <div class="ub-builder-grid ub-compose-grid" id="ub-compose-grid">
+    <!-- Interface left rail — contextual when Interface is active -->
+    <aside class="ub-left" id="ub-interface-rail">
+      <div class="ub-panel-tabs">
+        <button class="is-active" data-panel="pages"><span class="ub-tab-icon">▤</span><span>{{ _('studio.editor.pages') }}</span></button>
+        <button data-panel="layers"><span class="ub-tab-icon">▦</span><span>{{ _('studio.editor.layers') }}</span></button>
+        <button data-panel="add"><span class="ub-tab-icon">+</span><span>{{ _('studio.editor.insert') }}</span></button>
+        <button data-panel="assets"><span class="ub-tab-icon">◻</span><span>{{ _('studio.editor.assets') }}</span></button>
+        <button data-panel="components"><span class="ub-tab-icon">◈</span><span>{{ _('studio.editor.components') }}</span></button>
+        <button data-panel="theme"><span class="ub-tab-icon">◐</span><span>{{ _('studio.editor.design') }}</span></button>
+      </div>
+      <div class="ub-panel" id="ub-left-panel"></div>
+    </aside>
+
+    <!-- Center canvas / graph stage -->
+    <main class="ub-stage" id="ub-stage">
+      <div class="ub-canvas-label">
+        <span class="ub-canvas-label__icon">▶</span>
+        <span id="ub-canvas-label-text">{{ _('studio.editor.canvas_desktop') }}</span>
+      </div>
+      <div class="ub-canvas-wrap">
+        <div class="ub-canvas ub-canvas--desktop" id="ub-canvas" tabindex="0" aria-label="{{ _('studio.editor.canvas') }}"></div>
+      </div>
+    </main>
+
+    <!-- Right inspector -->
+    <aside class="ub-inspector" id="ub-inspector" aria-label="{{ _('studio.editor.inspector') }}">
+      <div class="ub-empty-panel">
+        <strong>{{ _('studio.editor.select_layer') }}</strong>
+        <p>{{ _('studio.editor.select_layer_body') }}</p>
+      </div>
+    </aside>
+  </div>
+
+  <!-- Floating bottom toolbar — Interface viewport controls -->
+  <div class="ub-bottombar-floating" id="ub-interface-bottombar">
+    <div class="ub-breakpoints" role="group" aria-label="{{ _('studio.editor.preview_size') }}">
+      <button class="is-active" data-breakpoint="desktop" title="{{ _('studio.editor.desktop') }}">{{ _('studio.editor.desktop') }}</button>
+      <button data-breakpoint="tablet" title="{{ _('studio.editor.tablet') }}">{{ _('studio.editor.tablet') }}</button>
+      <button data-breakpoint="mobile" title="{{ _('studio.editor.mobile') }}">{{ _('studio.editor.mobile') }}</button>
+    </div>
+    <div class="ub-mode-switcher">
+      <button class="is-active" data-mode="structured" title="{{ _('studio.editor.structured') }}">{{ _('studio.editor.structured') }}</button>
+      <button data-mode="freeform" title="{{ _('studio.editor.freeform') }}">{{ _('studio.editor.freeform') }}</button>
+    </div>
+    <span id="ub-canvas-size" class="ub-canvas-size">1200px</span>
+  </div>
+
+  <!-- Hidden elements for JS -->
+  <span id="ub-selection-state" class="hidden"></span>
+
+  <section class="ub-overlay-mode hidden" id="ub-full-mode"></section>
+</div>
+
+<dialog class="ub-dialog ub-dialog--wide" id="ub-modal"><div id="ub-modal-content"></div></dialog>
+{% endblock %}
+{% block scripts %}<script type="module" src="{{ url_for('static', filename='builder/universal-builder.js') }}"></script>{% endblock %}

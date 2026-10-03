@@ -21,3 +21,9 @@ scripts/.cache/
 
 logs/
 *.log
+.electron-cache/
+ci-logs/
+
+desktop/release/
+desktop/packaging/build/
+desktop/resources/zintriq-server/
