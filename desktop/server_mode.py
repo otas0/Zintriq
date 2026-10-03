@@ -352,6 +352,8 @@ def install_desktop_guards(app) -> None:
             return _unauthorized()
         if request.path == "/sw.js":
             return app.response_class("", status=404, mimetype="text/plain")
+        if request.path in {"/app/settings", "/app/team", "/app/workspaces"}:
+            return redirect("/account/workspaces")
         rule = matched_rule(app, request.path, request.method)
         if rule_is_auth(rule or ""):
             return redirect("/studio")

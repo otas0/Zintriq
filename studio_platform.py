@@ -276,11 +276,6 @@ def register_studio_platform(app) -> None:
             "</body></html>"
         )
 
-    @app.get("/app/settings")
-    @login_required
-    def studio_legacy_settings():
-        return redirect("/account/workspaces")
-
     @app.get("/api/studio/surfaces")
     def api_studio_surfaces():
         return jsonify(
