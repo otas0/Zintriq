@@ -8,13 +8,24 @@ from __future__ import annotations
 import sqlite3
 import time
 from pathlib import Path
+from urllib.parse import quote
+
+
+def sqlite_file_uri(path: Path) -> str:
+    text = Path(path).resolve().as_posix()
+    quoted = quote(text, safe="/")
+    if quoted.startswith("/"):
+        return "file://" + quoted
+    return "file:///" + quoted
 
 
 def open_connection(sqlite_file: Path) -> sqlite3.Connection:
     connection = sqlite3.connect(sqlite_file, timeout=60, check_same_thread=False)
     connection.row_factory = sqlite3.Row
     connection.execute("PRAGMA foreign_keys=ON")
+    connection.execute("PRAGMA journal_mode=WAL")
     connection.execute("PRAGMA busy_timeout=60000")
+    connection.execute("PRAGMA synchronous=NORMAL")
     return connection
 
 

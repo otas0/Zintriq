@@ -878,7 +878,7 @@ _PATH_PROBE = r"""
 import sqlite3
 import threading
 
-from db_adapter import open_connection, sqlite_file_uri
+from desktop.sqlite_io import open_connection, sqlite_file_uri
 from desktop.server_mode import prepare_desktop_paths
 
 paths = prepare_desktop_paths()

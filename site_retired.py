@@ -142,17 +142,20 @@ def register_retired_routes(app: Flask) -> None:
 
     @app.context_processor
     def _site_flags():
-        from site_config import (
-            BILLING_ENABLED,
-            COMMUNITY_SHARE_PAGES,
-            HARDWARE_SALES_ENABLED,
-            PRICE_PERSONAL_MONTHLY_USD,
-            PRICE_TEAM_SEAT_MONTHLY_USD,
-            SITE_STAGE,
-            STORAGE_QUOTA_PER_SEAT,
-            STORAGE_QUOTA_PERSONAL,
-            TRIAL_DAYS,
-        )
+        try:
+            from site_config import (
+                BILLING_ENABLED,
+                COMMUNITY_SHARE_PAGES,
+                HARDWARE_SALES_ENABLED,
+                PRICE_PERSONAL_MONTHLY_USD,
+                PRICE_TEAM_SEAT_MONTHLY_USD,
+                SITE_STAGE,
+                STORAGE_QUOTA_PER_SEAT,
+                STORAGE_QUOTA_PERSONAL,
+                TRIAL_DAYS,
+            )
+        except ImportError:
+            return {}
 
         return {
             "site_stage": SITE_STAGE,
