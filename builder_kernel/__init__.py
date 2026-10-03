@@ -17,6 +17,7 @@ from builder_kernel.limits import (
     PUBLIC_LIST_MAX_LIMIT,
 )
 from builder_kernel.registry import kernel
+from builder_kernel.validate import ValidationResult, prepare_record_write, validate_record, validate_schema
 
 __all__ = [
     "COMPOSE_MAX_DEPTH",
@@ -31,5 +32,9 @@ __all__ = [
     "is_reserved_document_key",
     "kernel",
     "new_record_key",
+    "prepare_record_write",
     "valid_identifier",
+    "validate_record",
+    "validate_schema",
+    "ValidationResult",
 ]

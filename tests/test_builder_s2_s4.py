@@ -1,14 +1,31 @@
-"""S2 tracker and S4 personal-tool paths. Cases turn green in K2–K6."""
+"""S2 tracker and S4 personal-tool paths. Remaining cases turn green in K3–K6."""
 
 from __future__ import annotations
 
 import unittest
 
+from builder_kernel.validate import validate_record, validate_schema
+
 
 class TrackerScenarioTests(unittest.TestCase):
-    @unittest.expectedFailure
     def test_s2_blank_project_form_writes_validated_record(self):
-        self.fail("needs K2 schema validation and K3 public invoke")
+        schema = {
+            "type": "object",
+            "properties": {"title": {"type": "string"}},
+            "required": ["title"],
+            "additionalProperties": False,
+            "x-access": {"public_create": True, "public_read": True},
+        }
+        self.assertTrue(validate_schema(schema).ok)
+        missing = validate_record(schema, {})
+        self.assertFalse(missing.ok)
+        self.assertEqual(missing.to_dict()["error"]["code"], "validation_error")
+        self.assertTrue(any(item["code"] == "required" for item in missing.to_dict()["error"]["fields"]))
+        self.assertTrue(validate_record(schema, {"title": "first entry"}).ok)
+
+    @unittest.expectedFailure
+    def test_s2_published_form_invokes_create_record(self):
+        self.fail("needs K3 public invoke")
 
     @unittest.expectedFailure
     def test_s2_public_detail_and_live_list(self):

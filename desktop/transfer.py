@@ -29,6 +29,7 @@ from urllib.parse import parse_qsl, urlencode, urlparse, urlunparse
 
 from builder_kernel.ids import IDENTIFIER_RE, TOKEN_KEY_RE, is_reserved_document_key
 from builder_kernel.registry import kernel
+from builder_kernel.validate import validate_record, validate_schema
 from desktop.sqlite_io import commit_with_retry
 from universal_builder_core import _slug
 
@@ -153,7 +154,9 @@ def export_project(
 
 def preview_package(data: bytes, *, expected_sha256: str | None = None, limits: Limits | None = None) -> dict:
     parsed = _parse(data, expected_sha256=expected_sha256, limits=limits or LIMITS)
-    return _preview_dict(parsed)
+    preview = _preview_dict(parsed)
+    preview["validation_errors"] = _data_validation_errors(parsed)
+    return preview
 
 
 def import_project(
@@ -180,6 +183,9 @@ def import_project(
         if not _ENABLE_KEY.match(key):
             raise TransferError("bad_enable", "要启用的项目不在作品包里")
     _integrity(parsed)
+    data_errors = _data_validation_errors(parsed)
+    if data_errors:
+        raise TransferError("validation_error", "Some fields are invalid.")
 
     upload_root = Path(upload_dir)
     upload_root.mkdir(parents=True, exist_ok=True)
@@ -614,6 +620,39 @@ def _require_keys(content: dict) -> None:
         route = doc.get("route") or ""
         if route and (not _ROUTE.match(route) or ".." in route):
             raise TransferError("bad_route", "作品包里有无效的路径")
+
+
+def _data_validation_errors(content: dict) -> list:
+    errors = []
+    for item in content.get("models") or []:
+        if not isinstance(item, dict):
+            errors.append({"path": "models", "code": "type"})
+            continue
+        model_key = str(item.get("model_key") or "model")
+        prefix = f"models.{model_key}"
+        schema = item.get("schema") if isinstance(item.get("schema"), dict) else {}
+        schema_result = validate_schema(schema)
+        for issue in schema_result.fields:
+            path = f"{prefix}.{issue.path}" if issue.path else prefix
+            errors.append({"path": path, "code": issue.code})
+        if not schema_result.ok:
+            continue
+        records = item.get("records")
+        if records is None:
+            continue
+        if not isinstance(records, list):
+            errors.append({"path": f"{prefix}.records", "code": "type"})
+            continue
+        for record in records:
+            if not isinstance(record, dict):
+                errors.append({"path": f"{prefix}.records", "code": "type"})
+                continue
+            rec_key = str(record.get("record_key") or "record")
+            rec_result = validate_record(schema, record.get("data") if isinstance(record.get("data"), dict) else {})
+            for issue in rec_result.fields:
+                path = f"{prefix}.records.{rec_key}.{issue.path}" if issue.path else f"{prefix}.records.{rec_key}"
+                errors.append({"path": path, "code": issue.code})
+    return errors
 
 
 def _integrity(content: dict) -> None:
@@ -1135,6 +1174,7 @@ def _preview_dict(content: dict) -> dict:
         "automations": content.get("automations") or _automation_catalog(content),
         "external_urls": content.get("external_urls") or [],
         "warning": PREVIEW_WARNING,
+        "validation_errors": [],
     }
 
 

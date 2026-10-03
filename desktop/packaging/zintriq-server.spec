@@ -60,7 +60,7 @@ hiddenimports = [
     "builder_kernel.limits",
     "builder_kernel.registry",
     "builder_kernel.packs",
-    "builder_kernel.packs.core",
+    "builder_kernel.validate",
     "builder_components",
     "studio_platform",
     "qr_customer_data",

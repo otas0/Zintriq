@@ -28,6 +28,9 @@ def register_core(registry: "KernelRegistry") -> None:
     registry.register_event({"id": "core/record.deleted"})
 
     for action_type, spec in ACTION_REGISTRY.items():
+        handler = None
+        if action_type in {"create_record", "update_record"}:
+            handler = _record_write_handler
         registry.register_action(
             {
                 "id": spec.get("id") or f"core/{action_type}",
@@ -39,5 +42,16 @@ def register_core(registry: "KernelRegistry") -> None:
                 ),
                 "configuration_schema": spec.get("configuration_schema") or {},
             },
+            handler=handler,
             aliases=(action_type,),
         )
+
+
+def _record_write_handler(ctx: dict):
+    from builder_kernel.validate import prepare_record_write
+
+    return prepare_record_write(
+        (ctx or {}).get("adapter") or "native",
+        (ctx or {}).get("schema") or {},
+        (ctx or {}).get("payload") or {},
+    )

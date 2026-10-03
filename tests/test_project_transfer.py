@@ -442,7 +442,7 @@ class RoundTripTests(TransferFixture):
             "properties": {"title": {"type": "string"}},
             "required": ["title"],
             "additionalProperties": False,
-            "x-access": {"public_create": True, "public_read": True, "public_update": False},
+            "x-access": {"public_create": True, "public_read": True},
         }
         conn.execute(
             "UPDATE builder_data_models SET schema=? WHERE project_id=? AND model_key=?",
@@ -720,6 +720,44 @@ class HostilePackageTests(TransferFixture):
         with self.assertRaises(TransferError) as caught:
             preview_package(_pack(files))
         self.assertEqual(caught.exception.code, "bad_key")
+
+    def test_preview_lists_schema_errors_without_failing(self):
+        files = _minimal_files()
+        files["content/collections.json"] = _dumps([{
+            "model_key": "notes",
+            "name": "Notes",
+            "adapter": "native",
+            "schema": {"$ref": "#/other"},
+        }])
+        preview = preview_package(_pack(files))
+        self.assertEqual(preview["project_name"], "Demo")
+        self.assertTrue(preview["validation_errors"])
+        self.assertTrue(any(item["code"] == "unsupported" for item in preview["validation_errors"]))
+
+    def test_import_rejects_invalid_records(self):
+        files = _minimal_files()
+        files["content/collections.json"] = _dumps([{
+            "model_key": "notes",
+            "name": "Notes",
+            "adapter": "native",
+            "schema": {
+                "type": "object",
+                "properties": {"title": {"type": "string"}},
+                "required": ["title"],
+                "additionalProperties": False,
+            },
+            "records": [{"record_key": "row_bad", "data": {"extra": True}}],
+        }])
+        blob = _pack(files)
+        preview = preview_package(blob)
+        self.assertTrue(preview["validation_errors"])
+        _path, conn = self.new_db()
+        uploads = self.uploads()
+        with self.assertRaises(TransferError) as caught:
+            import_project(conn, blob, upload_dir=uploads, workspace_id=1, user_id=1)
+        self.assertEqual(caught.exception.code, "validation_error")
+        self.assertEqual(conn.execute("SELECT COUNT(*) AS c FROM builder_projects").fetchone()["c"], 0)
+        conn.close()
 
 
 class WebModeRouteTests(unittest.TestCase):

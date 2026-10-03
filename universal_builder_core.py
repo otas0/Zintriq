@@ -1877,13 +1877,19 @@ def register_universal_builder_core(app) -> None:
         data = request.get_json(silent=True) or {}
         model_key = _slug(str(data.get("key") or data.get("name") or "model")).replace("-", "_")
         schema = data.get("schema") or {"type": "object", "properties": {}}
+        from builder_kernel.validate import validate_schema
+
+        schema_result = validate_schema(schema)
+        if not schema_result.ok:
+            return jsonify(schema_result.to_dict()), schema_result.http_status()
+        adapter = str(data.get("adapter") or "native")
         with db() as conn:
             owned_project(conn, project_id, workspace_id)
             conn.execute(
                 """INSERT INTO builder_data_models(project_id,model_key,name,schema,adapter,updated_at)
                    VALUES (?,?,?,?,?,?) ON CONFLICT(project_id,model_key) DO UPDATE SET
                    name=excluded.name,schema=excluded.schema,adapter=excluded.adapter,updated_at=excluded.updated_at""",
-                (project_id, model_key, str(data.get("name") or model_key), json.dumps(schema), str(data.get("adapter") or "native"), _now()),
+                (project_id, model_key, str(data.get("name") or model_key), json.dumps(schema), adapter, _now()),
             )
             return jsonify({"ok": True, "key": model_key, "schema": schema}), 201
 
@@ -1896,8 +1902,14 @@ def register_universal_builder_core(app) -> None:
             owned_project(conn, project_id, workspace_id)
             row = conn.execute("SELECT * FROM builder_data_models WHERE project_id=? AND model_key=?", (project_id, model_key)).fetchone()
             if not row: abort(404)
+            schema = data.get("schema", _json(row["schema"], {}))
+            from builder_kernel.validate import validate_schema
+
+            schema_result = validate_schema(schema)
+            if not schema_result.ok:
+                return jsonify(schema_result.to_dict()), schema_result.http_status()
             conn.execute("UPDATE builder_data_models SET name=?,schema=?,updated_at=? WHERE id=?", (
-                str(data.get("name", row["name"])), json.dumps(data.get("schema", _json(row["schema"], {}))), _now(), row["id"]
+                str(data.get("name", row["name"])), json.dumps(schema), _now(), row["id"]
             ))
             return jsonify({"ok": True})
 
@@ -1930,11 +1942,18 @@ def register_universal_builder_core(app) -> None:
     def api_builder_core_data_record(project_id: int, model_key: str):
         _, workspace_id = context("builder.update")
         data = request.get_json(silent=True) or {}
-        record_key = str(data.get("key") or new_node_key("rec"))
+        from builder_kernel.ids import new_record_key
+        from builder_kernel.validate import prepare_record_write
+
+        record_key = str(data.get("key") or new_record_key())
         with db() as conn:
             owned_project(conn, project_id, workspace_id)
-            if not conn.execute("SELECT 1 FROM builder_data_models WHERE project_id=? AND model_key=?", (project_id, model_key)).fetchone():
+            model = conn.execute("SELECT * FROM builder_data_models WHERE project_id=? AND model_key=?", (project_id, model_key)).fetchone()
+            if not model:
                 abort(404)
+            write = prepare_record_write(model["adapter"], _json(model["schema"], {}), data.get("data") or {})
+            if not write.ok:
+                return jsonify(write.to_dict()), write.http_status()
             conn.execute(
                 """INSERT INTO builder_data_records(project_id,model_key,record_key,data,status,updated_at)
                    VALUES (?,?,?,?,?,?) ON CONFLICT(project_id,model_key,record_key) DO UPDATE SET
@@ -1954,8 +1973,17 @@ def register_universal_builder_core(app) -> None:
                 "SELECT * FROM builder_data_records WHERE project_id=? AND model_key=? AND record_key=?", (project_id, model_key, record_key)
             ).fetchone()
             if not row: abort(404)
+            model = conn.execute("SELECT * FROM builder_data_models WHERE project_id=? AND model_key=?", (project_id, model_key)).fetchone()
+            if not model:
+                abort(404)
+            from builder_kernel.validate import prepare_record_write
+
+            new_data = data.get("data", _json(row["data"], {}))
+            write = prepare_record_write(model["adapter"], _json(model["schema"], {}), new_data)
+            if not write.ok:
+                return jsonify(write.to_dict()), write.http_status()
             conn.execute("UPDATE builder_data_records SET data=?,status=?,updated_at=? WHERE id=?", (
-                json.dumps(data.get("data", _json(row["data"], {}))), str(data.get("status", row["status"])), _now(), row["id"]
+                json.dumps(new_data), str(data.get("status", row["status"])), _now(), row["id"]
             ))
             return jsonify({"ok": True})
 
