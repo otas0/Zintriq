@@ -262,6 +262,20 @@ def register_studio_platform(app) -> None:
             community_url=community_path(),
         )
 
+    @app.get("/app/community")
+    @login_required
+    def studio_community_placeholder():
+        from app import csrf_token as issue_csrf
+
+        token = issue_csrf()
+        return (
+            "<!doctype html><html lang=\"en\"><head>"
+            f"<meta charset=\"utf-8\"><meta name=\"csrf-token\" content=\"{token}\">"
+            "<title>Community</title></head><body>"
+            "<main><p>Templates and projects</p></main>"
+            "</body></html>"
+        )
+
     @app.get("/api/studio/surfaces")
     def api_studio_surfaces():
         return jsonify(
