@@ -1,0 +1,99 @@
+{
+  "name": "zintriq-studio",
+  "productName": "Zintriq Studio",
+  "version": "0.1.0",
+  "description": "Zintriq Studio — desktop composition app (Data, Interface, Logic, Connection, Publish)",
+  "main": "main.js",
+  "author": "Zintriq",
+  "license": "UNLICENSED",
+  "private": true,
+  "scripts": {
+    "start": "electron .",
+    "dev": "electron .",
+    "smoke": "node scripts/smoke.js",
+    "pack": "electron-builder --dir",
+    "dist": "electron-builder",
+    "dist:mac": "electron-builder --mac",
+    "dist:win": "electron-builder --win",
+    "dist:linux": "electron-builder --linux"
+  },
+  "build": {
+    "appId": "com.example.zintriq.unreleased",
+    "productName": "Zintriq Studio",
+    "copyright": "Copyright © Zintriq",
+    "asar": true,
+    "protocols": [
+      {
+        "name": "Zintriq Studio",
+        "schemes": [
+          "zintriq"
+        ]
+      }
+    ],
+    "directories": {
+      "output": "release",
+      "buildResources": "packaging"
+    },
+    "files": [
+      "main.js",
+      "preload.js",
+      "auth.js",
+      "flask_host.js",
+      "transfer_host.js",
+      "error.html",
+      "package.json"
+    ],
+    "extraResources": [
+      {
+        "from": "resources/zintriq-server",
+        "to": "zintriq-server"
+      },
+      {
+        "from": "resources/notices",
+        "to": "notices"
+      }
+    ],
+    "mac": {
+      "category": "public.app-category.developer-tools",
+      "identity": null,
+      "hardenedRuntime": false,
+      "gatekeeperAssess": false,
+      "target": [
+        "dmg",
+        "zip"
+      ]
+    },
+    "win": {
+      "target": [
+        "nsis",
+        "portable"
+      ],
+      "signAndEditExecutable": false
+    },
+    "nsis": {
+      "oneClick": false,
+      "perMachine": false,
+      "allowElevation": false,
+      "allowToChangeInstallationDirectory": true,
+      "deleteAppDataOnUninstall": false,
+      "include": "packaging/installer.nsh",
+      "installerLanguages": [
+        "English"
+      ]
+    },
+    "linux": {
+      "target": [
+        "AppImage",
+        "deb"
+      ],
+      "category": "Development",
+      "synopsis": "Zintriq Studio",
+      "executableArgs": []
+    },
+    "publish": null
+  },
+  "devDependencies": {
+    "electron": "33.2.0",
+    "electron-builder": "25.1.8"
+  }
+}
