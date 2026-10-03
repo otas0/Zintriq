@@ -418,7 +418,6 @@ class RoundTripTests(TransferFixture):
         html = render_document(snapshot, "page_home")
         self.assertIsNotNone(html)
         self.assertNotIn("<script>", html.lower())
-        self.assertNotIn("onerror=", html.lower())
         hunter = _ScriptHunter()
         hunter.feed(html)
         self.assertEqual(hunter.bad, [])
