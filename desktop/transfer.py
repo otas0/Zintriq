@@ -171,7 +171,11 @@ def import_project(
     fail_after: str | None = None,
     limits: Limits | None = None,
 ) -> dict:
-    """Validate again, write one transaction, then move asset files into place."""
+    """Validate again, write one transaction, then move asset files into place.
+
+    ``parsed`` is the only in-memory package used after this point. Children
+    are inserted from that dict; the original zip bytes are not read again.
+    """
     limits = limits or LIMITS
     parsed = _parse(data, expected_sha256=expected_sha256, limits=limits)
     selected = set(enable_keys or ())
