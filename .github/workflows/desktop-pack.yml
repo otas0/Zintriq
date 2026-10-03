@@ -23,15 +23,15 @@ concurrency:
 
 jobs:
   pack:
-    name: pack / ${{ matrix.os }}
+    name: "pack / ${{ matrix.os }}"
     runs-on: ${{ matrix.os }}
     timeout-minutes: 90
     env:
       CSC_IDENTITY_AUTO_DISCOVERY: "false"
       electron_config_cache: ${{ github.workspace }}/.electron-cache
-      ZINTRIQ_SMOKE_USER_DATA: ${{ runner.temp }}/zintriq-pack-smoke
+      ZINTRIQ_SMOKE_USER_DATA: ${{ github.workspace }}/.ci-pack-smoke-user
       ZINTRIQ_SMOKE_LOG_DIR: ${{ github.workspace }}/ci-logs
-      ZINTRIQ_SMOKE_TOKEN_FILE: ${{ runner.temp }}/zintriq-desktop-token
+      ZINTRIQ_SMOKE_TOKEN_FILE: ${{ github.workspace }}/.ci-desktop-token
       ZINTRIQ_SMOKE_TIMEOUT_MS: "300000"
       SMOKE_LOG: ${{ github.workspace }}/smoke.txt
     strategy:

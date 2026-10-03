@@ -1,7 +1,10 @@
 name: Desktop
 
 on:
+  workflow_dispatch:
   pull_request:
+  push:
+    branches: [main, desktop/phase1]
 
 permissions:
   contents: read
@@ -12,7 +15,7 @@ concurrency:
 
 jobs:
   verify:
-    name: ${{ matrix.os }} / Python ${{ matrix.python }}${{ matrix.smoke && ' / smoke' || ' / unittest' }}
+    name: "${{ matrix.os }} / Python ${{ matrix.python }}${{ matrix.smoke && ' / smoke' || ' / unittest' }}"
     runs-on: ${{ matrix.os }}
     timeout-minutes: 30
     strategy:
@@ -33,9 +36,9 @@ jobs:
             smoke: true
     env:
       electron_config_cache: ${{ github.workspace }}/.electron-cache
-      ZINTRIQ_SMOKE_USER_DATA: ${{ runner.temp }}/zintriq-smoke
+      ZINTRIQ_SMOKE_USER_DATA: ${{ github.workspace }}/.ci-smoke-user
       ZINTRIQ_SMOKE_LOG_DIR: ${{ github.workspace }}/ci-logs
-      ZINTRIQ_SMOKE_TOKEN_FILE: ${{ runner.temp }}/zintriq-desktop-token
+      ZINTRIQ_SMOKE_TOKEN_FILE: ${{ github.workspace }}/.ci-desktop-token
       ZINTRIQ_SMOKE_TIMEOUT_MS: "300000"
       SMOKE_LOG: ${{ github.workspace }}/smoke.txt
 
