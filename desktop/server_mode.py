@@ -35,25 +35,6 @@ WAITRESS_IDENT = ""
 
 # Flask rule strings. The test walks url_map and requires every auth-shaped
 # rule to be in this set, then requests each one on the desktop server.
-_WORK_ACCOUNT_AUTH = tuple(
-    f"{prefix}{suffix}"
-    for prefix in ("/store/<work_slug>/account", "/build/<work_slug>/account")
-    for suffix in (
-        "/register",
-        "/login",
-        "/logout",
-        "/forgot-password",
-        "/reset-password/<token>",
-        "/magic-link",
-        "/magic-signin/<token>",
-        "/verify/send",
-        "/verify/check",
-        "/link-email/send",
-        "/link-email/check",
-        "/onboarding/complete",
-    )
-)
-
 AUTH_RULES = frozenset(
     {
         "/register",
@@ -97,7 +78,6 @@ AUTH_RULES = frozenset(
         "/api/integrations/reputation/<provider>/oauth/start",
         "/api/integrations/reputation/<provider>/oauth/callback",
     }
-    | set(_WORK_ACCOUNT_AUTH)
 )
 
 _AUTH_HINT = (
