@@ -146,7 +146,7 @@ COMPONENT_REGISTRY: dict[str, dict] = {
     "navigation": {
         "label": "Navigation", "category": "composite",
         "kind": "composite",
-        "defaults": {"brand": "Zintriq", "links": "Home|/home\nPlaces|/venues\nAccount|/account"},
+        "defaults": {"brand": "Zintriq", "links": "Home|/\nPlaces|/venues\nAccount|/account"},
         "fields": {"brand": "text", "links": "textarea"},
         "slots": {"actions": {"accepts": ["button"]}},
         "allowed_parents": ["root", "section", "app_shell"],
@@ -322,8 +322,6 @@ def normalize_action(action: dict, order: int = 0) -> dict:
 
 
 def registry_payload() -> dict:
-    return {
-        "schema_version": 2,
-        "components": deepcopy(COMPONENT_REGISTRY),
-        "actions": deepcopy(ACTION_REGISTRY),
-    }
+    from builder_kernel.registry import kernel
+
+    return kernel.editor_payload()

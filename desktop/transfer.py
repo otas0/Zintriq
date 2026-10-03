@@ -27,6 +27,8 @@ from pathlib import Path
 from typing import Any
 from urllib.parse import parse_qsl, urlencode, urlparse, urlunparse
 
+from builder_kernel.ids import IDENTIFIER_RE, TOKEN_KEY_RE, is_reserved_document_key
+from builder_kernel.registry import kernel
 from desktop.sqlite_io import commit_with_retry
 from universal_builder_core import _slug
 
@@ -50,8 +52,8 @@ _CONTENT_FILES = (
 )
 _REQUIRED = {"manifest.json", "checksums.json", "content/project.json"}
 _ASSET_NAME = re.compile(r"^assets/[a-f0-9]{16}\.(png|jpg|gif|webp|woff|woff2|ttf|otf)$")
-_KEY = re.compile(r"^[A-Za-z0-9_-]{1,80}(?:\.[A-Za-z0-9_-]{1,40}){0,4}$")
-_TOKEN_KEY = re.compile(r"^[A-Za-z0-9_-]{1,40}(?:\.[A-Za-z0-9_-]{1,40}){0,4}$")
+_KEY = IDENTIFIER_RE
+_TOKEN_KEY = TOKEN_KEY_RE
 _ENABLE_KEY = re.compile(r"^(action|interaction|workflow|entry):[A-Za-z0-9_-]{1,80}$")
 _ROUTE = re.compile(r"^/[A-Za-z0-9_\-./]{0,200}$")
 _UPLOAD_URL = re.compile(r"(?:/static/uploads/|/uploads/)([A-Za-z0-9][A-Za-z0-9._-]{0,80})")
@@ -580,6 +582,10 @@ def _require_keys(content: dict) -> None:
             key = item.get(field) or ""
             if not _KEY.match(str(key)):
                 raise TransferError("bad_key", "作品包里有无效的标识")
+            if collection == "documents" and is_reserved_document_key(str(key)):
+                raise TransferError("bad_key", "作品包里有无效的标识")
+            if collection == "actions" and not kernel.known_action_id(item.get("action_type")):
+                raise TransferError("bad_key", "作品包里有无效的标识")
             if key in seen:
                 raise TransferError("bad_key", "作品包里有重复的标识")
             seen.add(key)
@@ -678,6 +684,8 @@ def _integrity(content: dict) -> None:
         if config.get("document_key") and config["document_key"] not in documents:
             _dangling()
     for action in content["actions"]:
+        if not kernel.known_action_id(action.get("action_type")):
+            raise TransferError("bad_key", "作品包里有无效的标识")
         _check_ref(action, documents, nodes_by_doc, models, components, actions)
     for interaction in content["interactions"]:
         _check_ref(interaction, documents, nodes_by_doc, models, components, actions)
@@ -993,7 +1001,7 @@ def _insert_children(conn, content: dict, project_id: int, staged_files: list[tu
             (
                 project_id, document_ids.get(item.get("document_key") or ""), item.get("node_key") or None,
                 item["action_key"], _clean_text(item.get("event_type") or "click", 40),
-                _clean_text(item.get("action_type") or "open", 40), _dump(configuration),
+                _clean_text(item.get("action_type") or "", 80), _dump(configuration),
                 int(item.get("sort_order") or 0), now,
             ),
         )

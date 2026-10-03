@@ -1575,6 +1575,12 @@ def register_universal_builder_core(app) -> None:
         _, workspace_id = context("builder.update")
         data = request.get_json(silent=True) or {}
         key = _slug(str(data.get("key") or data.get("name") or "page"))
+        from builder_kernel.ids import IdentifierError, check_document_key
+
+        try:
+            check_document_key(key)
+        except IdentifierError:
+            return jsonify({"error": "That page key is reserved or invalid."}), 400
         with db() as conn:
             owned_project(conn, project_id, workspace_id)
             surface_id = data.get("surface_id")

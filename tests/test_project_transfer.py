@@ -217,7 +217,7 @@ class RoundTripTests(TransferFixture):
         conn.execute(
             """INSERT INTO builder_actions
                (project_id, document_id, node_key, action_key, event_type, action_type, configuration, sort_order, updated_at)
-               VALUES (?, ?, 'node_main', 'action_hook', 'click', 'open', ?, 0, ?)""",
+               VALUES (?, ?, 'node_main', 'action_hook', 'click', 'open_page', ?, 0, ?)""",
             (
                 project_id,
                 document_id,
@@ -433,6 +433,34 @@ class RoundTripTests(TransferFixture):
         self.assertEqual(result["name"], "我的作品")
         _conn.close()
 
+    def test_x_access_schema_survives_round_trip(self):
+        _path, conn = self.new_db()
+        uploads = self.uploads()
+        project_id = self._seed(conn, uploads)
+        schema = {
+            "type": "object",
+            "properties": {"title": {"type": "string"}},
+            "required": ["title"],
+            "additionalProperties": False,
+            "x-access": {"public_create": True, "public_read": True, "public_update": False},
+        }
+        conn.execute(
+            "UPDATE builder_data_models SET schema=? WHERE project_id=? AND model_key=?",
+            (json.dumps(schema), project_id, "model_notes"),
+        )
+        conn.commit()
+        blob = export_project(conn, project_id, 1, uploads, app_version="0.1.0")
+        conn.close()
+        imported, _uploads, result = self.import_bytes(blob)
+        row = imported.execute(
+            "SELECT schema FROM builder_data_models WHERE project_id=? AND model_key=?",
+            (result["project_id"], "model_notes"),
+        ).fetchone()
+        stored = json.loads(row["schema"])
+        self.assertEqual(stored["x-access"]["public_create"], True)
+        self.assertEqual(stored["additionalProperties"], False)
+        imported.close()
+
     def test_failure_leaves_no_rows_or_files(self):
         blob = _pack(_minimal_files())
         _path, conn = self.new_db()
@@ -454,7 +482,7 @@ class RoundTripTests(TransferFixture):
                 "document_key": "missing_doc",
                 "node_key": "",
                 "event_type": "click",
-                "action_type": "open",
+                "action_type": "open_page",
                 "configuration": {},
                 "sort_order": 0,
             }],
@@ -635,6 +663,63 @@ class HostilePackageTests(TransferFixture):
         source = (ROOT / "desktop" / "transfer.py").read_text(encoding="utf-8")
         self.assertIn("BEGIN IMMEDIATE", source)
         self.assertIn("PRAGMA query_only=ON", source)
+
+    def test_preview_accepts_official_dotted_keys_and_skips_empty_bindings(self):
+        from universal_builder_core import create_blank_project
+
+        _path, conn = self.new_db()
+        uploads = self.uploads()
+        project_id = create_blank_project(conn, 1, "Blank Work", 1)
+        conn.execute(
+            """INSERT INTO builder_bindings
+               (project_id, document_id, node_key, binding_key, source_type, source_config, transform, updated_at)
+               VALUES (?, NULL, 'missing', '', 'literal', '{}', '{}', '2026-01-01 00:00:00')""",
+            (project_id,),
+        )
+        conn.commit()
+        blob = export_project(conn, project_id, 1, uploads, app_version="0.1.0")
+        preview = preview_package(blob)
+        self.assertEqual(preview["project_name"], "Blank Work")
+        conn.close()
+
+    def test_reserved_document_key_records_is_rejected(self):
+        files = _minimal_files()
+        files["content/pages.json"] = _dumps({
+            "surfaces": [],
+            "documents": [{
+                "document_key": "records",
+                "name": "Records",
+                "type": "page",
+                "route": "/records",
+                "nodes": [],
+            }],
+            "routes": [],
+            "entries": [],
+            "bindings": [],
+        })
+        with self.assertRaises(TransferError) as caught:
+            preview_package(_pack(files))
+        self.assertEqual(caught.exception.code, "bad_key")
+
+    def test_unknown_action_type_is_rejected(self):
+        files = _minimal_files()
+        files["content/workflows.json"] = _dumps({
+            "documents": [],
+            "actions": [{
+                "action_key": "action_hook",
+                "document_key": "",
+                "node_key": "",
+                "event_type": "click",
+                "action_type": "not_a_real_action",
+                "configuration": {},
+                "sort_order": 0,
+            }],
+            "interactions": [],
+            "conditions": [],
+        })
+        with self.assertRaises(TransferError) as caught:
+            preview_package(_pack(files))
+        self.assertEqual(caught.exception.code, "bad_key")
 
 
 class WebModeRouteTests(unittest.TestCase):
