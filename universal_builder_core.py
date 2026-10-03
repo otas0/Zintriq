@@ -2339,3 +2339,5 @@ def register_universal_builder_core(app) -> None:
     # Builder Core; only the Marketplace routes live in a separate module.
     from universal_builder_marketplace import register_marketplace_routes
     register_marketplace_routes(app, context, owned_project)
+    from desktop.transfer_routes import register_transfer_routes
+    register_transfer_routes(app, context, owned_project)
