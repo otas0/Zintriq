@@ -1,8 +1,9 @@
-"""Kernel invoke event log. Created via init_db / desktop schema stamp."""
+"""Kernel invoke event log. Created via init_db / desktop schema stamp.
+
+Stores only identifiers and result codes — never request/record payload bodies.
+"""
 
 from __future__ import annotations
-
-import json
 
 from builder_kernel.limits import KERNEL_EVENTS_MAX_PER_PROJECT
 
@@ -41,6 +42,8 @@ def log_kernel_event(
     status: str = "ok",
     payload: dict | None = None,
 ) -> None:
+    # payload arg is accepted for call-site compatibility but never persisted.
+    _ = payload
     conn.execute(
         """INSERT INTO builder_kernel_events
            (project_id, event_id, action_id, node_key, action_key, record_key, status, payload)
@@ -53,11 +56,10 @@ def log_kernel_event(
             str(action_key or ""),
             str(record_key or ""),
             str(status),
-            json.dumps(payload or {}),
+            "{}",
         ),
     )
     prune_kernel_events(conn, int(project_id))
-
 
 def prune_kernel_events(conn, project_id: int) -> None:
     row = conn.execute(

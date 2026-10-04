@@ -215,6 +215,55 @@ class TrackerScenarioTests(unittest.TestCase):
             }),
         )
         self.assertEqual(denied.status_code, 403)
+        denied_missing = client.post(
+            invoke,
+            headers=auth_headers(public_csrf),
+            data=json.dumps({
+                "csrf_token": public_csrf,
+                "node_key": button.get_json()["key"],
+                "action_key": delete_action.get_json()["key"],
+                "record_key": "rec_" + ("0" * 32),
+            }),
+        )
+        self.assertEqual(denied_missing.status_code, denied.status_code)
+        self.assertEqual(denied_missing.get_json(), denied.get_json())
+
+        hijack = client.post(
+            invoke,
+            headers=auth_headers(public_csrf),
+            data=json.dumps({
+                "csrf_token": public_csrf,
+                "node_key": form_key,
+                "action_key": action_key,
+                "model_key": "other_collection",
+                "target_model": "other_collection",
+                "record_key": "rec_client_chosen_key_000000000000",
+                "configuration": {"model_key": "other_collection"},
+                "data": {"title": "server model wins"},
+            }),
+        )
+        self.assertEqual(hijack.status_code, 200, hijack.get_data(as_text=True)[:400])
+        hijack_key = hijack.get_json()["record_key"]
+        self.assertTrue(str(hijack_key).startswith("rec_"))
+        self.assertNotEqual(hijack_key, "rec_client_chosen_key_000000000000")
+        with self.app_module.db() as conn:
+            # Record lands on action-configured model, not client model_key.
+            stored = conn.execute(
+                "SELECT model_key, data FROM builder_data_records WHERE project_id=? AND record_key=?",
+                (project_id, hijack_key),
+            ).fetchone()
+            self.assertEqual(stored["model_key"], model_key)
+            self.assertEqual(json.loads(stored["data"]), {"title": "server model wins"})
+            event = conn.execute(
+                "SELECT event_id, status, payload FROM builder_kernel_events "
+                "WHERE project_id=? AND record_key=? ORDER BY id DESC LIMIT 1",
+                (project_id, hijack_key),
+            ).fetchone()
+            self.assertEqual(event["event_id"], "core/record.created")
+            self.assertEqual(event["status"], "ok")
+            self.assertEqual(event["payload"], "{}")
+            self.assertNotIn("server model wins", event["payload"])
+            self.assertNotIn("title", event["payload"])
         no_csrf = client.post(
             invoke,
             headers={"Content-Type": "application/json"},
@@ -269,7 +318,7 @@ class TrackerScenarioTests(unittest.TestCase):
                 "SELECT COUNT(*) AS c FROM builder_data_records WHERE project_id=? AND status!='archived'",
                 (project_id,),
             ).fetchone()["c"]
-        self.assertEqual(count, 1)
+        self.assertEqual(count, 2)
 
     def test_s2_blank_project_seed_currently_injects_official_product_card(self):
         os.environ.pop("ZINTRIQ_DESKTOP", None)

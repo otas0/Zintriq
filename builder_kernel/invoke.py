@@ -22,6 +22,22 @@ DELETE_IDS = frozenset({"core/delete_record"})
 NAV_IDS = frozenset({"core/open_page", "core/external_link", "core/navigate_to_page"})
 SUBMIT_EVENTS = frozenset({"on_submit", "submit"})
 
+# Client may echo these; model/target/action config come only from the snapshot action.
+CLIENT_CONTROL_KEYS = frozenset({
+    "csrf_token",
+    "node_key",
+    "action_key",
+    "record_key",
+    "model_key",
+    "target_model",
+    "data",
+    "document_key",
+    "configuration",
+    "action_type",
+    "action_id",
+    "compose",
+})
+
 INVOKE_MESSAGES = {
     "not_found": "Not found.",
     "forbidden": "Not allowed.",
@@ -214,7 +230,7 @@ def _run_record_action(action_id: str, ctx: dict) -> dict:
         write = prepare_record_write(model.get("adapter") or "native", schema, payload)
         if not write.ok:
             return write.to_dict()
-        record_key = ctx.get("record_key") or new_record_key()
+        record_key = new_record_key()
         conn.execute(
             """INSERT INTO builder_data_records(project_id,model_key,record_key,data,status,updated_at)
                VALUES (?,?,?,?,?,datetime('now'))""",
@@ -229,12 +245,11 @@ def _run_record_action(action_id: str, ctx: dict) -> dict:
             action_key=ctx.get("action_key") or "",
             record_key=record_key,
             status="ok",
-            payload={"model_key": model["model_key"]},
         )
         return {"ok": True, "record_key": record_key}
     if not member:
         return error_body("forbidden")
-    record_key = str(ctx.get("record_key") or payload.get("record_key") or "")
+    record_key = str(ctx.get("record_key") or "")
     if action_id in UPDATE_IDS:
         if not record_key:
             return error_body("validation_error", fields=[{"path": "record_key", "code": "required"}])
@@ -323,7 +338,12 @@ def invoke_snapshot_action(
         return http_status_for("workflow_unavailable"), error_body("workflow_unavailable")
 
     configuration = _json_obj(action.get("configuration"), {})
-    model_key = str(configuration.get("model_key") or body.get("model_key") or "")
+    # Model/target only from server-side action configuration (never client body).
+    model_key = str(
+        configuration.get("model_key")
+        or configuration.get("target_model")
+        or ""
+    )
     model = _model_from_snapshot(snapshot, model_key) if model_key else None
     schema = _json_obj((model or {}).get("schema"), {}) if model else {}
     member = is_project_member(conn, project, user_id)
@@ -332,8 +352,16 @@ def invoke_snapshot_action(
         record_payload = {
             key: value
             for key, value in body.items()
-            if key not in {"csrf_token", "node_key", "action_key", "record_key", "model_key", "data"}
+            if key not in CLIENT_CONTROL_KEYS
         }
+    else:
+        record_payload = {
+            key: value
+            for key, value in (record_payload or {}).items()
+            if key not in CLIENT_CONTROL_KEYS
+        }
+    # Create always mints a server key; update/delete may take record_key from body.
+    client_record_key = "" if action_id in CREATE_IDS else str(body.get("record_key") or "")
     ctx = {
         "conn": conn,
         "project_id": int(project["id"]),
@@ -342,7 +370,7 @@ def invoke_snapshot_action(
         "member": member,
         "public": public,
         "record_payload": record_payload,
-        "record_key": str(body.get("record_key") or ""),
+        "record_key": client_record_key,
         "node_key": node_key,
         "action_key": action_key,
         "configuration": configuration,

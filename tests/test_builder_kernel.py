@@ -84,6 +84,36 @@ class KernelRegistryTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             registry.register_action({"id": "pack/too-deep", "compose": [nested]})
 
+    def test_kernel_events_never_persist_payload_body(self):
+        import sqlite3
+
+        from builder_kernel.events import log_kernel_event, migrate_kernel_events
+
+        conn = sqlite3.connect(":memory:")
+        conn.row_factory = sqlite3.Row
+        conn.execute(
+            "CREATE TABLE builder_projects (id INTEGER PRIMARY KEY)"
+        )
+        conn.execute("INSERT INTO builder_projects(id) VALUES (1)")
+        migrate_kernel_events(conn)
+        log_kernel_event(
+            conn,
+            project_id=1,
+            event_id="core/record.created",
+            action_id="core/create_record",
+            record_key="rec_abc",
+            status="ok",
+            payload={"title": "secret body", "model_key": "notes"},
+        )
+        row = conn.execute(
+            "SELECT id, event_id, status, payload FROM builder_kernel_events WHERE project_id=1"
+        ).fetchone()
+        self.assertIsInstance(row["id"], int)
+        self.assertEqual(row["event_id"], "core/record.created")
+        self.assertEqual(row["status"], "ok")
+        self.assertEqual(row["payload"], "{}")
+        self.assertNotIn("secret", row["payload"])
+
 
 if __name__ == "__main__":
     unittest.main()
