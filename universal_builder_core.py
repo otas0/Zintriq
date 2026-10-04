@@ -722,6 +722,10 @@ def ensure_official_native_documents(conn, project_id: int, surface_ids: dict[st
 
 def sync_system_project(conn, workspace_id: int, created_by: int | None = None) -> int:
     """Attach the complete existing product to one Universal Builder project."""
+    from bos.services.workspace import workspace_is_personal
+
+    if workspace_is_personal(conn, workspace_id):
+        raise ValueError("Personal workspaces do not attach the commerce system project")
     workspace = _workspace(conn, workspace_id)
     if not workspace:
         raise ValueError("Workspace not found")
@@ -1429,7 +1433,10 @@ def register_universal_builder_core(app) -> None:
     def api_builder_core_projects():
         user_id, workspace_id = context()
         with db() as conn:
-            sync_system_project(conn, workspace_id, user_id)
+            from bos.services.workspace import workspace_is_personal
+
+            if not workspace_is_personal(conn, workspace_id):
+                sync_system_project(conn, workspace_id, user_id)
             rows = conn.execute(
                 "SELECT * FROM builder_projects WHERE workspace_id=? ORDER BY updated_at DESC, id DESC",
                 (workspace_id,),
@@ -1460,7 +1467,10 @@ def register_universal_builder_core(app) -> None:
     def api_builder_core_sync_system():
         user_id, workspace_id = context("builder.update")
         with db() as conn:
-            project_id = sync_system_project(conn, workspace_id, user_id)
+            try:
+                project_id = sync_system_project(conn, workspace_id, user_id)
+            except ValueError as error:
+                return jsonify({"error": str(error)}), 400
             row = conn.execute("SELECT * FROM builder_projects WHERE id=?", (project_id,)).fetchone()
             return jsonify(project_to_api(conn, row, detail=True)), 201
 
@@ -2417,7 +2427,12 @@ def register_universal_builder_core(app) -> None:
                 return jsonify({"error": errors[0]["message"], "issues": migration_issues}), 400
             revision = create_project_revision(conn, project_id, user_id, str(data.get("note") or "Published"))
             conn.execute("UPDATE builder_project_revisions SET kind='published' WHERE id=?", (revision["id"],))
-            is_hybrid = project["legacy_source_type"] == "workspace_system"
+            from bos.services.workspace import workspace_is_personal
+
+            is_hybrid = (
+                project["legacy_source_type"] == "workspace_system"
+                and not workspace_is_personal(conn, workspace_id)
+            )
             public_url = "/" if is_hybrid else f"/build/{project['slug']}"
             adapter = "hybrid_strangler" if is_hybrid else "universal_native"
             conn.execute(

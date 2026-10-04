@@ -114,6 +114,67 @@ class KernelRegistryTests(unittest.TestCase):
         self.assertEqual(row["payload"], "{}")
         self.assertNotIn("secret", row["payload"])
 
+    def test_core_contributes_appear_in_editor_payload(self):
+        payload = registry_payload()
+        self.assertIn("contributes", payload)
+        self.assertEqual(set(payload["contributes"]), {"editor", "sidebar", "commands"})
+        self.assertIn(
+            {"id": "core.open_publish", "title": "Publish"},
+            payload["contributes"]["commands"],
+        )
+        package_ids = {item["package_id"] for item in payload["packages"]}
+        self.assertIn("core", package_ids)
+
+    def test_package_contributes_contract(self):
+        from universal_builder_packages import (
+            package_summary,
+            validate_contributes,
+            validate_package_manifest,
+        )
+
+        self.assertEqual(validate_contributes(None), [])
+        self.assertEqual(
+            validate_contributes({"editor": [], "sidebar": [], "commands": []}),
+            [],
+        )
+        self.assertTrue(
+            any("Unsupported contributes key" in item for item in validate_contributes({"workflows": []}))
+        )
+        self.assertTrue(
+            any(".title is required" in item for item in validate_contributes({
+                "commands": [{"id": "pack.demo"}],
+            }))
+        )
+        manifest = {
+            "id": "demo.notes",
+            "name": "Notes",
+            "publisher": "zintriq",
+            "version": "1.0.0",
+            "schema_version": 1,
+            "package_type": "capability",
+            "required_capabilities": ["core"],
+            "permissions": ["builder.read"],
+            "compatibility": {"builder_schema": 2},
+            "contributes": {
+                "editor": [{"id": "demo.notes.panel", "title": "Notes"}],
+                "sidebar": [{"id": "demo.notes.nav", "title": "Notes"}],
+                "commands": [{"id": "demo.notes.open", "title": "Open notes"}],
+            },
+        }
+        self.assertEqual(validate_package_manifest(manifest), [])
+        summary = package_summary(manifest)
+        self.assertEqual(summary["contributes"]["commands"][0]["id"], "demo.notes.open")
+
+        registry = KernelRegistry()
+        registry.register_contributes(manifest["id"], manifest["contributes"])
+        payload = registry.editor_payload()
+        self.assertIn(
+            {"id": "demo.notes.open", "title": "Open notes"},
+            payload["contributes"]["commands"],
+        )
+        with self.assertRaises(ValueError):
+            registry.register_contributes("bad.pack", {"workflows": []})
+
 
 if __name__ == "__main__":
     unittest.main()

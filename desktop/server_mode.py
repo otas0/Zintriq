@@ -313,6 +313,7 @@ def ensure_local_owner(conn) -> tuple:
         )
         user_id = int(cursor.lastrowid)
     ensure_default_organization(conn, user_id)
+    # Desktop default tenant is personal and must not grow a stores row.
     workspace = ensure_default_workspace(conn, user_id)
     workspace_id = int(workspace["id"])
     member = conn.execute(

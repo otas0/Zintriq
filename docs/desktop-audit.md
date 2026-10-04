@@ -263,7 +263,7 @@ qrcode[pil]>=7.4
 
 ## 待办
 
-- 桌面 Workspace 不应创建商家 `stores` 记录。当前 `ensure_default_workspace` 会调用 `ensure_workspace_store`，桌面模式复用了这条路径，所以本地所有者第一次进来时仍会插入一条 store。下一步应让桌面租户只建 workspace 成员，不写商家表。
+- 桌面 Workspace 默认 `type=personal`，不调用 `ensure_workspace_store`。已有店铺的旧桌面库不删商家行。
 - 打包阶段用 waitress 替换 Flask 开发服务器。现在 `ZINTRIQ_DESKTOP=1` 仍走开发服务器，只是绑在 `127.0.0.1` 并关掉 reloader。安装包里应改成 waitress，并继续只监听回环地址。
 - 打包产物不得包含 `.env.local`、开发库 `marketqr.db`，以及仓库里的开发上传目录。桌面数据只来自 `ZINTRIQ_DATA_DIR`。
 - 桌面 CSP 的 `script-src` 暂时保留 `'unsafe-inline'`。下一步改为 nonce，或把模板里的内联脚本（`window.STUDIO_BOOT`、`window.WORKSPACE_BOOT`、`window.__MQ_T__`）拆到静态文件。

@@ -2,11 +2,20 @@
 
 from __future__ import annotations
 
-import re
+import os
 import sqlite3
 
 from bos.models import row_to_dict
 from bos.services.organization import ensure_default_organization, slugify
+
+
+def desktop_tenant() -> bool:
+    return (os.environ.get("ZINTRIQ_DESKTOP") or "").strip() == "1"
+
+
+def workspace_is_personal(conn: sqlite3.Connection, workspace_id: int) -> bool:
+    row = conn.execute("SELECT type FROM workspaces WHERE id = ?", (int(workspace_id),)).fetchone()
+    return bool(row and (row["type"] or "") == "personal")
 
 
 def ensure_default_workspace(conn: sqlite3.Connection, owner_id: int) -> dict:
@@ -16,17 +25,26 @@ def ensure_default_workspace(conn: sqlite3.Connection, owner_id: int) -> dict:
         (org["id"],),
     ).fetchone()
     if row:
-        return row_to_dict(row)
-    name = "Main Workspace"
+        workspace = row_to_dict(row)
+        if desktop_tenant():
+            _adopt_personal_desktop_workspace(conn, workspace)
+            return row_to_dict(
+                conn.execute("SELECT * FROM workspaces WHERE id = ?", (workspace["id"],)).fetchone()
+            )
+        return workspace
+    name = "Studio tenant"
     slug = slugify(name)
+    ws_type = "personal" if desktop_tenant() else "general"
     cursor = conn.execute(
         """INSERT INTO workspaces (organization_id, name, slug, type, status)
-           VALUES (?, ?, ?, 'general', 'active')""",
-        (org["id"], name, slug),
+           VALUES (?, ?, ?, ?, 'active')""",
+        (org["id"], name, slug, ws_type),
     )
     workspace = row_to_dict(
         conn.execute("SELECT * FROM workspaces WHERE id = ?", (cursor.lastrowid,)).fetchone()
     )
+    if desktop_tenant():
+        return workspace
     conn.execute(
         "UPDATE stores SET workspace_id = ? WHERE owner_id = ? AND workspace_id IS NULL",
         (workspace["id"], owner_id),
@@ -34,6 +52,18 @@ def ensure_default_workspace(conn: sqlite3.Connection, owner_id: int) -> dict:
     from bos.workspace_store import ensure_workspace_store
     ensure_workspace_store(conn, int(workspace["id"]), owner_id)
     return workspace
+
+
+def _adopt_personal_desktop_workspace(conn: sqlite3.Connection, workspace: dict) -> None:
+    workspace_id = int(workspace["id"])
+    store = conn.execute(
+        "SELECT 1 FROM stores WHERE workspace_id = ? LIMIT 1",
+        (workspace_id,),
+    ).fetchone()
+    if store:
+        return
+    if workspace.get("type") != "personal":
+        conn.execute("UPDATE workspaces SET type = 'personal' WHERE id = ?", (workspace_id,))
 
 
 def list_workspaces(conn: sqlite3.Connection, owner_id: int) -> list[dict]:

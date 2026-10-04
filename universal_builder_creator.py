@@ -289,6 +289,15 @@ def seed_official_creator_system(conn, project_id):
         conn.execute("INSERT OR IGNORE INTO builder_project_variables(project_id,variable_key,name,value_json,value_type,group_name,updated_at) VALUES (?,?,?,?,?,'Official',?)",
                      (project_id, key, name, json.dumps(value), "string", now()))
 
+    workspace = conn.execute(
+        """SELECT w.type FROM workspaces w
+           JOIN builder_projects p ON p.workspace_id = w.id
+           WHERE p.id=?""",
+        (project_id,),
+    ).fetchone()
+    if workspace and (workspace["type"] or "") == "personal":
+        return
+
     if not conn.execute("SELECT 1 FROM builder_component_definitions WHERE project_id=? AND component_key='official.product-card'", (project_id,)).fetchone():
         structure = [
             {"key":"product_card","parent_key":None,"component_type":"stack","slot":"default","props":{"direction":"column","gap":"12px"},"styles":{"background":"token:color.surface","padding":"token:space.md","borderRadius":"token:radius.card","boxShadow":"token:shadow.standard"},"responsive":{},"translations":{},"order":0,"visibility":"visible"},
@@ -316,7 +325,7 @@ def seed_official_creator_system(conn, project_id):
         insert_instance(conn,project_id,customer["id"],product_definition["id"],"official_product_repeater",0,"default")
 
     if not conn.execute("SELECT 1 FROM builder_component_definitions WHERE project_id=? AND component_key='official.customer-navigation'", (project_id,)).fetchone():
-        nav_structure=[{"key":"customer_navigation","parent_key":None,"component_type":"navigation","slot":"default","props":{"brand":"Zintriq","links":"Home|/home\nPlaces|/venues\nAccount|/account"},"styles":{"background":"token:color.surface","color":"token:color.text","padding":"token:space.md"},"responsive":{"mobile":{"padding":"token:space.sm"}},"translations":{},"order":0,"visibility":"visible"}]
+        nav_structure=[{"key":"customer_navigation","parent_key":None,"component_type":"navigation","slot":"default","props":{"brand":"Zintriq","links":"Home|/home\nPlaces|/venues\nAccount|account"},"styles":{"background":"token:color.surface","color":"token:color.text","padding":"token:space.md"},"responsive":{"mobile":{"padding":"token:space.sm"}},"translations":{},"order":0,"visibility":"visible"}]
         nav_properties={"type":"object","properties":{"brand":{"label":"Brand","node_key":"customer_navigation","property":"brand","type":"string","localized":True},"links":{"label":"Navigation Links","node_key":"customer_navigation","property":"links","type":"string","localized":True}}}
         nav_slots={"logo":{"accepts":["image"]},"actions":{"accepts":["button"]}}
         nav_variants={"light":{"label":"Light","overrides":{}},"transparent":{"label":"Transparent","overrides":{"customer_navigation":{"styles":{"background":"transparent"}}}}}
@@ -326,7 +335,7 @@ def seed_official_creator_system(conn, project_id):
     home_nav=conn.execute("SELECT * FROM builder_nodes WHERE document_id=(SELECT id FROM builder_documents WHERE project_id=? AND document_key='customer-site') AND node_key='official_customer_nav'",(project_id,)).fetchone()
     if nav_definition and home_nav and home_nav["component_type"]=="component_instance":
         conn.execute("DELETE FROM builder_component_instances WHERE project_id=? AND document_id=? AND node_key=?",(project_id,home_nav["document_id"],home_nav["node_key"]))
-        conn.execute("UPDATE builder_nodes SET component_type='navigation',component_reference='core/navigation',props=?,styles=?,responsive='{}',translations='{}',metadata='{}',schema_version=2,updated_at=? WHERE id=?",(json.dumps({"brand":"Zintriq","links":"Home|/home\nPlaces|/venues\nAccount|/account"}),json.dumps({"padding":"18px 24px","background":"#ffffff"}),now(),home_nav["id"]))
+        conn.execute("UPDATE builder_nodes SET component_type='navigation',component_reference='core/navigation',props=?,styles=?,responsive='{}',translations='{}',metadata='{}',schema_version=2,updated_at=? WHERE id=?",(json.dumps({"brand":"Zintriq","links":"Home|/home\nPlaces|/venues\nAccount|account"}),json.dumps({"padding":"18px 24px","background":"#ffffff"}),now(),home_nav["id"]))
     storefront=conn.execute("SELECT id FROM builder_documents WHERE project_id=? AND document_key='storefront'",(project_id,)).fetchone()
     if nav_definition and storefront and not conn.execute("SELECT 1 FROM builder_component_instances WHERE project_id=? AND document_id=? AND component_definition_id=?",(project_id,storefront["id"],nav_definition["id"])).fetchone():
         insert_instance(conn,project_id,storefront["id"],nav_definition["id"],None,0,"light")

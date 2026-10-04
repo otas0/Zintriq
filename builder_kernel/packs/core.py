@@ -46,6 +46,16 @@ def register_core(registry: "KernelRegistry") -> None:
             aliases=(action_type,),
         )
 
+    # Minimal contributes prove dynamic editor exposure; no workflow merge.
+    registry.register_contributes(
+        "core",
+        {
+            "editor": [],
+            "sidebar": [],
+            "commands": [{"id": "core.open_publish", "title": "Publish"}],
+        },
+    )
+
 
 def _record_write_handler(ctx: dict):
     from builder_kernel.validate import prepare_record_write

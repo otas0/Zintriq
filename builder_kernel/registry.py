@@ -21,6 +21,7 @@ class KernelRegistry:
         self._components: dict[str, dict] = {}
         self._triggers: dict[str, dict] = {}
         self._events: dict[str, dict] = {}
+        self._contributes: dict[str, dict] = {}
         self._core_loaded = False
 
     def ensure_core(self) -> None:
@@ -75,6 +76,21 @@ class KernelRegistry:
         entry.setdefault("kind", "event")
         self._events[event_id] = entry
 
+    def register_contributes(self, package_id: str, contributes: dict | None) -> None:
+        """Register package contribution points for editor surfaces."""
+        from universal_builder_packages import normalize_contributes, validate_contributes
+
+        package = str(package_id or "").strip()
+        if not package:
+            raise ValueError("package_id is required")
+        errors = validate_contributes(contributes)
+        if errors:
+            raise ValueError(errors[0])
+        self._contributes[package] = {
+            "package_id": package,
+            "contributes": normalize_contributes(contributes),
+        }
+
     def resolve_action_id(self, value: str | None) -> str | None:
         self.ensure_core()
         raw = str(value or "").strip()
@@ -94,6 +110,15 @@ class KernelRegistry:
     def editor_payload(self) -> dict:
         self.ensure_core()
         from builder_components import ACTION_REGISTRY, COMPONENT_REGISTRY
+        from universal_builder_packages import CONTRIBUTES_KEYS
+
+        contributes = {key: [] for key in CONTRIBUTES_KEYS}
+        packages = []
+        for package_id in sorted(self._contributes):
+            entry = deepcopy(self._contributes[package_id])
+            packages.append(entry)
+            for key in CONTRIBUTES_KEYS:
+                contributes[key].extend(entry["contributes"].get(key) or [])
 
         return {
             "schema_version": 2,
@@ -102,6 +127,8 @@ class KernelRegistry:
             "actions": deepcopy(ACTION_REGISTRY),
             "triggers": {key: {k: v for k, v in spec.items() if k != "handler"} for key, spec in self._triggers.items()},
             "events": {key: {k: v for k, v in spec.items() if k != "handler"} for key, spec in self._events.items()},
+            "contributes": contributes,
+            "packages": packages,
         }
 
     def action_ids(self) -> frozenset:

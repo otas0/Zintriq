@@ -348,7 +348,7 @@ class TrackerScenarioTests(unittest.TestCase):
         self.assertIn(
             "official.product-card",
             keys,
-            "seed_official_creator_system currently injects commerce UI; lock until K5",
+            "web general workspaces still seed official.product-card; personal/desktop must not",
         )
         bindings = payload.get("bindings") or []
         commerce = [item for item in bindings if "commerce.products" in json.dumps(item)]
@@ -576,13 +576,91 @@ class TrackerScenarioTests(unittest.TestCase):
 
 
 class PersonalToolScenarioTests(unittest.TestCase):
-    @unittest.expectedFailure
-    def test_s4_personal_workspace_has_no_store(self):
-        self.fail("needs K5 workspaces.type=personal without ensure_workspace_store")
+    @classmethod
+    def setUpClass(cls):
+        import app as app_module
 
-    @unittest.expectedFailure
+        cls.app_module = app_module
+        cls.app = app_module.app
+        cls.app.config["TESTING"] = True
+        with cls.app.app_context():
+            app_module.init_db()
+
+    def tearDown(self):
+        os.environ.pop("ZINTRIQ_DESKTOP", None)
+
+    def _login_personal_editor(self, client):
+        os.environ["ZINTRIQ_DESKTOP"] = "1"
+        from builder_http_support import login_editor
+
+        try:
+            return login_editor(client, self.app_module)
+        finally:
+            os.environ.pop("ZINTRIQ_DESKTOP", None)
+
+    def test_s4_personal_workspace_has_no_store(self):
+        client = self.app.test_client()
+        user_id, workspace_id, _csrf = self._login_personal_editor(client)
+        with self.app_module.db() as conn:
+            workspace = conn.execute(
+                "SELECT type FROM workspaces WHERE id=?",
+                (workspace_id,),
+            ).fetchone()
+            stores = conn.execute(
+                "SELECT COUNT(*) AS c FROM stores WHERE workspace_id=?",
+                (workspace_id,),
+            ).fetchone()["c"]
+        self.assertEqual(workspace["type"], "personal")
+        self.assertEqual(stores, 0)
+        self.assertTrue(user_id)
+
     def test_s4_publish_is_build_url_not_hybrid_home(self):
-        self.fail("needs K5 publish assertions for blank personal projects")
+        from builder_http_support import auth_headers
+
+        client = self.app.test_client()
+        _user_id, workspace_id, csrf = self._login_personal_editor(client)
+        headers = auth_headers(csrf)
+        listed = client.get("/api/builder-core/projects")
+        self.assertEqual(listed.status_code, 200, listed.get_data(as_text=True)[:400])
+        kinds = {
+            item.get("legacy_source_type")
+            for item in (listed.get_json() or {}).get("projects") or []
+        }
+        self.assertNotIn("workspace_system", kinds)
+        created = client.post(
+            "/api/builder-core/projects",
+            headers=headers,
+            data=json.dumps({"name": f"S4 personal {uuid.uuid4().hex[:8]}", "csrf_token": csrf}),
+        )
+        self.assertIn(created.status_code, (200, 201), created.get_data(as_text=True)[:400])
+        project = created.get_json()
+        project_id = project["id"]
+        slug = project["slug"]
+        boot = client.get(f"/api/builder-core/projects/{project_id}/bootstrap")
+        self.assertEqual(boot.status_code, 200, boot.get_data(as_text=True)[:400])
+        definitions = boot.get_json().get("component_definitions") or boot.get_json().get("definitions") or []
+        keys = {item.get("component_key") or item.get("key") for item in definitions}
+        self.assertNotIn("official.product-card", keys)
+        published = client.post(
+            f"/api/builder-core/projects/{project_id}/publish",
+            headers=headers,
+            data=json.dumps({"csrf_token": csrf, "note": "s4"}),
+        )
+        self.assertEqual(published.status_code, 201, published.get_data(as_text=True)[:400])
+        public_url = published.get_json().get("public_url") or ""
+        self.assertEqual(public_url, f"/build/{slug}")
+        self.assertNotEqual(public_url, "/")
+        with client.session_transaction() as sess:
+            sess.pop("user_id", None)
+            sess.pop("active_workspace_id", None)
+        page = client.get(f"/build/{slug}/home")
+        self.assertEqual(page.status_code, 200, page.get_data(as_text=True)[:300])
+        with self.app_module.db() as conn:
+            workspace = conn.execute(
+                "SELECT type FROM workspaces WHERE id=?",
+                (workspace_id,),
+            ).fetchone()
+        self.assertEqual(workspace["type"], "personal")
 
 
 if __name__ == "__main__":
