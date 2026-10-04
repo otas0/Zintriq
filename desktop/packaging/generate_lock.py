@@ -74,6 +74,7 @@ def _keep(name: str, wanted: set) -> bool:
         "importlib-metadata",
         "zipp",
         "typing-extensions",
+        "colorama",
     }
     return lower in seeds or lower in wanted or any(lower.startswith(item) for item in wanted)
 

@@ -5,3 +5,5 @@ cryptography>=42.0
 qrcode[pil]>=7.4
 waitress==3.0.2
 pyinstaller==6.11.1
+# Windows-only Click dependency; must be pinned for --require-hashes installs.
+colorama==0.4.6
