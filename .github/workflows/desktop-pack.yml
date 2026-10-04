@@ -195,9 +195,11 @@ jobs:
           Copy-Item -Recurse $env:APP_PATH $app
           $user = $env:USERNAME
           if (-not $user) { throw "USERNAME is empty; cannot lock install ACL" }
-          # attrib +R does not block new files; drop inherited Write and keep RX.
+          # Owner can still create files after grant RX alone; deny Write wins over grant.
           & icacls $app /inheritance:r /T /C /grant:r "${user}:(OI)(CI)RX"
-          if ($LASTEXITCODE -ne 0) { throw "icacls failed with exit $LASTEXITCODE" }
+          if ($LASTEXITCODE -ne 0) { throw "icacls grant RX failed with exit $LASTEXITCODE" }
+          & icacls $app /T /C /deny "${user}:(OI)(CI)W"
+          if ($LASTEXITCODE -ne 0) { throw "icacls deny W failed with exit $LASTEXITCODE" }
           $probe = Join-Path $app "should-not-write.txt"
           $stillWritable = $false
           try {
@@ -206,7 +208,7 @@ jobs:
           } catch {
             Write-Host "install dir write denied as expected"
           }
-          if ($stillWritable) { throw "install dir still writable after icacls RX" }
+          if ($stillWritable) { throw "install dir still writable after icacls RX+deny W" }
           $env:ZINTRIQ_SMOKE_APP = Join-Path $app "Zintriq Studio.exe"
           $env:ZINTRIQ_SMOKE_INSTALL_DIR = $app
           npm run smoke *>&1 | Tee-Object -FilePath $env:SMOKE_LOG

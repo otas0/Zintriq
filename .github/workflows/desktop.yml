@@ -4,13 +4,15 @@ on:
   workflow_dispatch:
   pull_request:
   push:
-    branches: [main, desktop/phase1]
+    # Feature branches are covered by pull_request; avoid push+PR double runs.
+    branches: [main]
 
 permissions:
   contents: read
 
 concurrency:
-  group: desktop-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  # One group per branch so synchronize events replace in-flight PR runs.
+  group: desktop-${{ github.workflow }}-${{ github.head_ref || github.ref_name }}
   cancel-in-progress: true
 
 jobs:

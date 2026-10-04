@@ -10,6 +10,7 @@ from __future__ import annotations
 import json
 import logging
 import re
+import sqlite3
 from datetime import datetime
 from uuid import uuid4
 
@@ -289,12 +290,17 @@ def seed_official_creator_system(conn, project_id):
         conn.execute("INSERT OR IGNORE INTO builder_project_variables(project_id,variable_key,name,value_json,value_type,group_name,updated_at) VALUES (?,?,?,?,?,'Official',?)",
                      (project_id, key, name, json.dumps(value), "string", now()))
 
-    workspace = conn.execute(
-        """SELECT w.type FROM workspaces w
-           JOIN builder_projects p ON p.workspace_id = w.id
-           WHERE p.id=?""",
-        (project_id,),
-    ).fetchone()
+    # Transfer/hostile-package fixtures may omit the workspaces table; treat
+    # that as non-personal and keep seeding the official creator surface.
+    try:
+        workspace = conn.execute(
+            """SELECT w.type FROM workspaces w
+               JOIN builder_projects p ON p.workspace_id = w.id
+               WHERE p.id=?""",
+            (project_id,),
+        ).fetchone()
+    except sqlite3.OperationalError:
+        workspace = None
     if workspace and (workspace["type"] or "") == "personal":
         return
 

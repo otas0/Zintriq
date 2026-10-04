@@ -862,6 +862,23 @@ class DesktopProcessGuardTests(unittest.TestCase):
 def _pid_alive(pid: int) -> bool:
     if pid <= 0:
         return False
+    # On Windows signal 0 is CTRL_C_EVENT — os.kill(pid, 0) interrupts the
+    # whole console group (including this unittest). Use tasklist instead.
+    if os.name == "nt":
+        try:
+            result = subprocess.run(
+                ["tasklist", "/FI", f"PID eq {pid}", "/NH"],
+                capture_output=True,
+                text=True,
+                timeout=15,
+                check=False,
+            )
+        except (OSError, subprocess.TimeoutExpired):
+            return False
+        text = (result.stdout or "") + (result.stderr or "")
+        if "No tasks" in text or "没有运行" in text:
+            return False
+        return str(pid) in text
     try:
         os.kill(pid, 0)
     except OSError:

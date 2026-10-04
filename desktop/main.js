@@ -234,6 +234,19 @@ function publishSmoke(loaded) {
   fs.writeFileSync(userDataPath("smoke-session.json"), JSON.stringify(body), { mode: 0o600 });
 }
 
+function publishSmokeFailure(message, logPath) {
+  if (process.env.ZINTRIQ_SMOKE !== "1") return;
+  const body = {
+    port: (flaskInfo && flaskInfo.port) || 0,
+    token: (flaskInfo && flaskInfo.token) || "",
+    flaskPid: (flaskInfo && flaskInfo.pid) || 0,
+    logPath: logPath || (flaskInfo && flaskInfo.logPath) || "",
+    loaded: false,
+    error: String(message || "Flask 启动失败"),
+  };
+  fs.writeFileSync(userDataPath("smoke-session.json"), JSON.stringify(body), { mode: 0o600 });
+}
+
 function installPermissions() {
   session.defaultSession.setPermissionRequestHandler((_contents, _permission, callback) => {
     callback(false);
@@ -477,7 +490,9 @@ if (!gotLock) {
       if (bootUrl) handleAuthUrl(bootUrl).catch(() => {});
     } catch (err) {
       const message = err && err.message ? err.message : "Flask 启动失败";
-      await showError(message, err && err.logPath ? err.logPath : "");
+      const logPath = err && err.logPath ? err.logPath : "";
+      publishSmokeFailure(message, logPath);
+      await showError(message, logPath);
     }
   });
 

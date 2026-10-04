@@ -108,9 +108,12 @@ AppImage 在无 FUSE 的环境用 `APPIMAGE_EXTRACT_AND_RUN=1`。
 ## 运行时约束
 
 - 冻结后的 `zintriq-server` 不得再把 `app.py` 传给 `sys.executable`（会递归拉起自己）。入口调用 `multiprocessing.freeze_support()`。Flask 子进程必须丢掉 Electron 继承的 `LD_LIBRARY_PATH`（Linux 上会指向 chrome/ffmpeg，冻结解释器对不上）。
+- Linux 冻结包须显式带上 `backports` / `backports.tarfile`（并 pin `setuptools`）：PyInstaller 的 `pyi_rth_pkgres` 会加载 `pkg_resources`→`jaraco.context`，在 Python <3.12 上缺 `backports` 时进程会在 `ZINTRIQ_READY` 前退出。Flask 启动失败时 smoke 会立刻写出 `loaded: false` 的 session，不再干等 90s。
+- Desktop CI：功能分支只靠 `pull_request` 触发（`push` 仅 `main`），避免同 SHA 跑两遍；Windows 上探测 pid 存活不得用 `os.kill(pid, 0)`（那是 `CTRL_C_EVENT`，会打断整个 unittest 控制台组）。
 - 数据库 `PRAGMA user_version`：比应用新则拒绝打开并提示升级；比应用旧则迁移后盖章。当前桌面 schema 为 3（`builder_data_records.surface`：preview / published；发布快照不嵌入预览记录）。
 - 匿名公开写入限流：桌面用进程内 `builder_kernel.rate_limit.InProcessRateLimiter`（每 IP+项目 10/分钟、100/小时）。**云端多进程部署必须替换** `get_rate_limiter()` 为共享后端，否则各 worker 各自计数。
 - waitress：`max_request_body_size=40MiB`（大于 32MiB 作品包上限）、`expose_tracebacks=False`、空 `ident`（不暴露服务器标识）、`clear_untrusted_proxy_headers=True`。stdin EOF 时 `server.close()`，3 秒后 `os._exit` 兜底，从而释放锁文件。
+- 应用只写 userData。把安装目录设为只读后，打包 smoke 仍应成功。Windows CI 用 `icacls` 去掉继承、授 `(OI)(CI)RX` 再 `/deny (OI)(CI)W`（仅 RX 时所有者仍常能新建文件；`attrib +R` 无效）。macOS / Linux 仍用 `chmod -R a-w`。
 - 桌面默认工作区 `type=personal`，不调用 `ensure_workspace_store`，空白项目发布为 `/build/<slug>` 而不是 hybrid 店铺首页。
 - 能力包可选 `contributes`，仅允许 `editor` / `sidebar` / `commands`（每项需 `id`+`title`）；kernel `editor_payload` 汇总露出。不做 bos.workflows 合并，不做沙箱审核。
 - 许可清单只看 desktop lock 中的包。未知或需要审核的许可（GPL、AGPL、LGPL 等）时构建失败，除非该包已在 `desktop/packaging/license-exceptions.json` 写明原因。PyInstaller 本身带 GPL+exception，只作为构建工具列入该白名单。

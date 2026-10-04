@@ -113,6 +113,9 @@ async function waitForSession(child, readLog) {
     }
     if (fs.existsSync(sessionFile)) {
       const data = JSON.parse(fs.readFileSync(sessionFile, "utf8"));
+      if (data.error || data.loaded === false) {
+        throw new Error(`Flask 启动失败: ${data.error || "loaded=false"}\n${data.logPath || ""}\n${readLog()}`);
+      }
       if (data.port && data.token && data.flaskPid && data.loaded) return data;
     }
     await sleep(200);

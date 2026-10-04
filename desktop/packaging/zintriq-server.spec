@@ -16,6 +16,8 @@ datas = [
 ]
 
 hiddenimports = [
+    "backports",
+    "backports.tarfile",
     "waitress",
     "waitress.server",
     "waitress.task",
