@@ -2,9 +2,13 @@
   "name": "zintriq-studio",
   "productName": "Zintriq Studio",
   "version": "0.1.0",
-  "description": "Zintriq Studio — desktop composition app (Data, Interface, Logic, Connection, Publish)",
+  "description": "Zintriq Studio \u2014 desktop composition app (Data, Interface, Logic, Connection, Publish)",
   "main": "main.js",
-  "author": "Zintriq",
+  "author": {
+    "name": "Zintriq",
+    "email": "support@zintriq.com"
+  },
+  "homepage": "https://zintriq.com",
   "license": "UNLICENSED",
   "private": true,
   "scripts": {
@@ -21,7 +25,7 @@
   "build": {
     "appId": "com.example.zintriq.unreleased",
     "productName": "Zintriq Studio",
-    "copyright": "Copyright © Zintriq",
+    "copyright": "Copyright \u00a9 Zintriq",
     "asar": true,
     "protocols": [
       {
@@ -89,7 +93,8 @@
       ],
       "category": "Development",
       "synopsis": "Zintriq Studio",
-      "executableArgs": []
+      "executableArgs": [],
+      "maintainer": "Zintriq <support@zintriq.com>"
     },
     "publish": null
   },
