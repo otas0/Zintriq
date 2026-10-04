@@ -78,10 +78,12 @@ jobs:
         id: tests-win
         if: runner.os == 'Windows'
         timeout-minutes: 10
+        shell: cmd
         run: |
-          .\.venv\Scripts\python.exe -m unittest discover -s tests *> unittest.txt
-          if ($LASTEXITCODE -ne 0) { Get-Content unittest.txt; exit $LASTEXITCODE }
-          Get-Content unittest.txt
+          .venv\Scripts\python.exe -m unittest discover -s tests -v > unittest.txt 2>&1
+          set EXITCODE=%ERRORLEVEL%
+          type unittest.txt
+          exit /b %EXITCODE%
 
       - name: Unit tests
         id: tests-unix
