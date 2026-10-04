@@ -192,6 +192,7 @@ CREATE TABLE IF NOT EXISTS builder_data_records (
     record_key TEXT NOT NULL,
     data TEXT NOT NULL DEFAULT '{}',
     status TEXT NOT NULL DEFAULT 'active',
+    surface TEXT NOT NULL DEFAULT 'preview',
     created_at TEXT DEFAULT CURRENT_TIMESTAMP,
     updated_at TEXT,
     UNIQUE(project_id, model_key, record_key),
@@ -527,8 +528,10 @@ def seed_official_system_template(conn) -> None:
 def init_universal_builder_tables(conn) -> None:
     conn.executescript(CORE_SCHEMA_SQL)
     from builder_kernel.events import migrate_kernel_events
+    from builder_kernel.records import migrate_record_surface
 
     migrate_kernel_events(conn)
+    migrate_record_surface(conn)
     migrations = {
         "builder_projects": {
             "description": "TEXT DEFAULT ''", "schema_version": "INTEGER NOT NULL DEFAULT 1",
@@ -1045,7 +1048,8 @@ def capture_project_snapshot(conn, project_id: int) -> dict:
         "bindings": [dict(row) for row in conn.execute("SELECT * FROM builder_bindings WHERE project_id=?", (project_id,)).fetchall()],
         "actions": [dict(row) for row in conn.execute("SELECT * FROM builder_actions WHERE project_id=?", (project_id,)).fetchall()],
         "data_models": [dict(row) for row in conn.execute("SELECT * FROM builder_data_models WHERE project_id=?", (project_id,)).fetchall()],
-        "data_records": [dict(row) for row in conn.execute("SELECT * FROM builder_data_records WHERE project_id=?", (project_id,)).fetchall()],
+        # Publish must not embed preview records; live lists read the DB by surface.
+        "data_records": [],
         "state": [dict(row) for row in conn.execute("SELECT * FROM builder_state_definitions WHERE project_id=?", (project_id,)).fetchall()],
         "conditions": [dict(row) for row in conn.execute("SELECT * FROM builder_conditions WHERE project_id=?", (project_id,)).fetchall()],
         "entry_points": [dict(row) for row in conn.execute("SELECT * FROM builder_entry_points WHERE project_id=?", (project_id,)).fetchall()],
@@ -1163,8 +1167,19 @@ def restore_project_snapshot(conn, project_id: int, snapshot: dict) -> None:
         conn.execute("INSERT INTO builder_data_models(project_id,model_key,name,schema,adapter,updated_at) VALUES (?,?,?,?,?,?)",
                      (project_id, item["model_key"], item["name"], item["schema"], item.get("adapter", "native"), _now()))
     for item in snapshot.get("data_records") or []:
-        conn.execute("INSERT INTO builder_data_records(project_id,model_key,record_key,data,status,updated_at) VALUES (?,?,?,?,?,?)",
-                     (project_id, item["model_key"], item["record_key"], item["data"], item.get("status", "active"), _now()))
+        conn.execute(
+            """INSERT INTO builder_data_records(project_id,model_key,record_key,data,status,surface,updated_at)
+               VALUES (?,?,?,?,?,?,?)""",
+            (
+                project_id,
+                item["model_key"],
+                item["record_key"],
+                item["data"],
+                item.get("status", "active"),
+                item.get("surface") or "preview",
+                _now(),
+            ),
+        )
     for item in snapshot.get("state") or []:
         conn.execute("INSERT INTO builder_state_definitions(project_id,state_key,scope,initial_value,value_schema) VALUES (?,?,?,?,?)",
                      (project_id, item["state_key"], item.get("scope", "project"), item.get("initial_value", "null"), item.get("value_schema", "{}")))
@@ -1981,11 +1996,15 @@ def register_universal_builder_core(app) -> None:
     @login_required
     def api_builder_core_data_records(project_id: int, model_key: str):
         _, workspace_id = context()
+        from builder_kernel.records import SURFACE_PREVIEW
+
         with db() as conn:
             owned_project(conn, project_id, workspace_id)
             rows = conn.execute(
-                "SELECT * FROM builder_data_records WHERE project_id=? AND model_key=? AND status!='archived' ORDER BY id DESC LIMIT 200",
-                (project_id, model_key),
+                """SELECT * FROM builder_data_records
+                   WHERE project_id=? AND model_key=? AND surface=? AND status!='archived'
+                   ORDER BY id DESC LIMIT 200""",
+                (project_id, model_key, SURFACE_PREVIEW),
             ).fetchall()
             return jsonify({"records": [{**dict(row), "data": _json(row["data"], {})} for row in rows]})
 
@@ -1995,6 +2014,7 @@ def register_universal_builder_core(app) -> None:
         _, workspace_id = context("builder.update")
         data = request.get_json(silent=True) or {}
         from builder_kernel.ids import new_record_key
+        from builder_kernel.records import SURFACE_PREVIEW
         from builder_kernel.validate import prepare_record_write
 
         record_key = str(data.get("key") or new_record_key())
@@ -2007,10 +2027,18 @@ def register_universal_builder_core(app) -> None:
             if not write.ok:
                 return jsonify(write.to_dict()), write.http_status()
             conn.execute(
-                """INSERT INTO builder_data_records(project_id,model_key,record_key,data,status,updated_at)
-                   VALUES (?,?,?,?,?,?) ON CONFLICT(project_id,model_key,record_key) DO UPDATE SET
-                   data=excluded.data,status=excluded.status,updated_at=excluded.updated_at""",
-                (project_id, model_key, record_key, json.dumps(data.get("data") or {}), str(data.get("status") or "active"), _now()),
+                """INSERT INTO builder_data_records(project_id,model_key,record_key,data,status,surface,updated_at)
+                   VALUES (?,?,?,?,?,?,?) ON CONFLICT(project_id,model_key,record_key) DO UPDATE SET
+                   data=excluded.data,status=excluded.status,surface=excluded.surface,updated_at=excluded.updated_at""",
+                (
+                    project_id,
+                    model_key,
+                    record_key,
+                    json.dumps(data.get("data") or {}),
+                    str(data.get("status") or "active"),
+                    SURFACE_PREVIEW,
+                    _now(),
+                ),
             )
             return jsonify({"ok": True, "key": record_key}), 201
 
@@ -2019,10 +2047,14 @@ def register_universal_builder_core(app) -> None:
     def api_builder_core_data_record_update(project_id: int, model_key: str, record_key: str):
         _, workspace_id = context("builder.update")
         data = request.get_json(silent=True) or {}
+        from builder_kernel.records import SURFACE_PREVIEW
+
         with db() as conn:
             owned_project(conn, project_id, workspace_id)
             row = conn.execute(
-                "SELECT * FROM builder_data_records WHERE project_id=? AND model_key=? AND record_key=?", (project_id, model_key, record_key)
+                """SELECT * FROM builder_data_records
+                   WHERE project_id=? AND model_key=? AND record_key=? AND surface=?""",
+                (project_id, model_key, record_key, SURFACE_PREVIEW),
             ).fetchone()
             if not row: abort(404)
             model = conn.execute("SELECT * FROM builder_data_models WHERE project_id=? AND model_key=?", (project_id, model_key)).fetchone()
@@ -2043,10 +2075,15 @@ def register_universal_builder_core(app) -> None:
     @login_required
     def api_builder_core_data_record_delete(project_id: int, model_key: str, record_key: str):
         _, workspace_id = context("builder.update")
+        from builder_kernel.records import SURFACE_PREVIEW
+
         with db() as conn:
             owned_project(conn, project_id, workspace_id)
-            conn.execute("UPDATE builder_data_records SET status='archived',updated_at=? WHERE project_id=? AND model_key=? AND record_key=?",
-                         (_now(), project_id, model_key, record_key))
+            conn.execute(
+                """UPDATE builder_data_records SET status='archived',updated_at=?
+                   WHERE project_id=? AND model_key=? AND record_key=? AND surface=?""",
+                (_now(), project_id, model_key, record_key, SURFACE_PREVIEW),
+            )
             return jsonify({"ok": True})
 
     @app.post("/api/builder-core/projects/<int:project_id>/state")
@@ -2318,13 +2355,22 @@ def register_universal_builder_core(app) -> None:
     @login_required
     def api_builder_core_preview(project_id: int, document_key: str):
         _, workspace_id = context()
+        from builder_kernel.records import SURFACE_PREVIEW, load_live_collections
+
         with db() as conn:
             owned_project(conn, project_id, workspace_id)
             snapshot = capture_project_snapshot(conn, project_id)
+            live = load_live_collections(
+                conn,
+                project_id=project_id,
+                snapshot=snapshot,
+                surface=SURFACE_PREVIEW,
+            )
             output = render_document(
                 snapshot, document_key, csrf=csrf_token(), locale=request.args.get("lang", "en"),
                 domain_data=runtime_domain_data(conn, snapshot, workspace_id, public=False),
                 invoke_url=f"/api/builder-core/projects/{project_id}/runtime/invoke",
+                collections=live,
             )
             if output is None:
                 abort(404)
@@ -2418,6 +2464,19 @@ def register_universal_builder_core(app) -> None:
 
     @app.get("/build/<project_slug>/<document_key>")
     def universal_builder_public(project_slug: str, document_key: str):
+        from builder_kernel.limits import PUBLIC_LIST_DEFAULT_LIMIT, PUBLIC_LIST_MAX_LIMIT
+        from builder_kernel.records import SURFACE_PUBLISHED, load_live_collections
+
+        # ?all=1 must never expand enumeration past the hard max.
+        try:
+            limit = int(request.args.get("limit") or PUBLIC_LIST_DEFAULT_LIMIT)
+        except (TypeError, ValueError):
+            limit = PUBLIC_LIST_DEFAULT_LIMIT
+        limit = max(1, min(PUBLIC_LIST_MAX_LIMIT, limit))
+        try:
+            offset = max(0, int(request.args.get("offset") or 0))
+        except (TypeError, ValueError):
+            offset = 0
         with db() as conn:
             project, snapshot = published_snapshot(conn, project_slug)
             if not snapshot:
@@ -2429,11 +2488,32 @@ def register_universal_builder_core(app) -> None:
                 (project["workspace_id"],),
             ).fetchone()
             work = work_from_store(store) if store else work_dict(kind="build", slug=project_slug)
+            live = load_live_collections(
+                conn,
+                project_id=int(project["id"]),
+                snapshot=snapshot,
+                surface=SURFACE_PUBLISHED,
+                limit=limit,
+                offset=offset,
+            )
+            # Anonymous live list only includes public_read models.
+            from builder_kernel.records import model_allows_public_read
+
+            filtered = {}
+            for model in snapshot.get("data_models") or []:
+                key = str(model.get("model_key") or "")
+                if not key:
+                    continue
+                if model_allows_public_read(model.get("schema")):
+                    filtered[key] = live.get(key, [])
+                else:
+                    filtered[key] = []
             output = render_document(
                 snapshot, document_key, csrf=csrf_token(), locale=request.args.get("lang", "en"),
                 domain_data=runtime_domain_data(conn, snapshot, int(project["workspace_id"]), public=True),
                 work=work,
                 invoke_url=f"/build/{project_slug}/{document_key}/runtime/invoke",
+                collections=filtered,
             )
             if output is None:
                 abort(404)
@@ -2443,23 +2523,78 @@ def register_universal_builder_core(app) -> None:
             response.headers["Content-Security-Policy"] = BUILD_CSP
             return response
 
+    @app.get("/build/<project_slug>/records/<model_key>/<record_key>")
+    def universal_builder_public_record(project_slug: str, model_key: str, record_key: str):
+        from builder_kernel.records import (
+            SURFACE_PUBLISHED,
+            get_live_record,
+            model_allows_public_read,
+        )
+        from universal_builder_runtime import render_record_detail
+
+        not_found = Response("Not found.", status=404, mimetype="text/plain")
+        with db() as conn:
+            project, snapshot = published_snapshot(conn, project_slug)
+            if not snapshot:
+                return not_found
+            model = next(
+                (item for item in (snapshot.get("data_models") or []) if item.get("model_key") == model_key),
+                None,
+            )
+            # Anonymous: missing model, no public_read, or missing record → same 404.
+            if not model or not model_allows_public_read(model.get("schema")):
+                return not_found
+            record = get_live_record(
+                conn,
+                project_id=int(project["id"]),
+                model_key=model_key,
+                record_key=record_key,
+                surface=SURFACE_PUBLISHED,
+            )
+            if not record:
+                return not_found
+            return Response(
+                render_record_detail(
+                    project_slug=project_slug,
+                    model_key=model_key,
+                    record=record,
+                    model_name=str(model.get("name") or model_key),
+                ),
+                mimetype="text/html",
+            )
+
     @app.post("/build/<project_slug>/<document_key>/runtime/invoke")
     def universal_builder_public_invoke(project_slug: str, document_key: str):
-        from builder_kernel.invoke import check_public_invoke_size, invoke_snapshot_action
+        from builder_kernel.invoke import (
+            check_public_invoke_size,
+            error_body,
+            honeypot_triggered,
+            http_status_for,
+            invoke_snapshot_action,
+        )
+        from builder_kernel.rate_limit import anonymous_write_allowed, get_rate_limiter
 
         raw = request.get_data(cache=True)
         body = request.get_json(silent=True) or {}
         oversized = check_public_invoke_size(request.content_length, raw, body)
         if oversized:
             return jsonify(oversized), 413
+        if honeypot_triggered(body):
+            return ("", 204)
         with db() as conn:
             project, snapshot = published_snapshot(conn, project_slug)
             if not snapshot:
-                from builder_kernel.invoke import error_body
-
                 return jsonify(error_body("not_found")), 404
             user = current_user()
             user_id = int(user["id"]) if user else None
+            if not user_id:
+                client_ip = (request.remote_addr or "unknown").strip() or "unknown"
+                if not anonymous_write_allowed(
+                    get_rate_limiter(),
+                    ip=client_ip,
+                    project_id=int(project["id"]),
+                ):
+                    return jsonify(error_body("rate_limited")), http_status_for("rate_limited")
             status, payload = invoke_snapshot_action(
                 conn,
                 snapshot=snapshot,

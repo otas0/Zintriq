@@ -60,7 +60,7 @@ class DesktopSchemaTests(unittest.TestCase):
         conn = sqlite3.connect(db)
         conn.row_factory = sqlite3.Row
         self.assertEqual(int(conn.execute("PRAGMA user_version").fetchone()[0]), DESKTOP_SCHEMA_VERSION)
-        self.assertEqual(DESKTOP_SCHEMA_VERSION, 2)
+        self.assertEqual(DESKTOP_SCHEMA_VERSION, 3)
         conn.execute(
             "INSERT INTO builder_kernel_events(project_id,event_id,status) VALUES (1,'core/record.created','ok')"
         )
@@ -74,6 +74,38 @@ class DesktopSchemaTests(unittest.TestCase):
         count = int(conn.execute("SELECT COUNT(*) FROM builder_kernel_events WHERE project_id=1").fetchone()[0])
         conn.close()
         self.assertEqual(count, KERNEL_EVENTS_MAX_PER_PROJECT)
+
+    def test_version_2_database_gains_record_surface(self):
+        from desktop.server_mode import DESKTOP_SCHEMA_VERSION, stamp_desktop_schema
+
+        temp = Path(tempfile.mkdtemp(prefix="zintriq-schema-v2-"))
+        db = temp / "zintriq.db"
+        conn = sqlite3.connect(db)
+        conn.execute(
+            """CREATE TABLE builder_data_records (
+                id INTEGER PRIMARY KEY,
+                project_id INTEGER NOT NULL,
+                model_key TEXT NOT NULL,
+                record_key TEXT NOT NULL,
+                data TEXT NOT NULL DEFAULT '{}',
+                status TEXT NOT NULL DEFAULT 'active'
+            )"""
+        )
+        conn.execute(
+            "INSERT INTO builder_data_records(project_id,model_key,record_key,data) VALUES (1,'notes','rec_old','{}')"
+        )
+        conn.execute("PRAGMA user_version=2")
+        conn.commit()
+        conn.close()
+        stamp_desktop_schema(db)
+        conn = sqlite3.connect(db)
+        conn.row_factory = sqlite3.Row
+        self.assertEqual(int(conn.execute("PRAGMA user_version").fetchone()[0]), DESKTOP_SCHEMA_VERSION)
+        cols = {row[1] for row in conn.execute("PRAGMA table_info(builder_data_records)").fetchall()}
+        self.assertIn("surface", cols)
+        row = conn.execute("SELECT surface FROM builder_data_records WHERE record_key='rec_old'").fetchone()
+        self.assertEqual(row["surface"], "preview")
+        conn.close()
 
     def test_missing_database_is_allowed(self):
         from desktop.server_mode import ensure_desktop_schema

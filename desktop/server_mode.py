@@ -28,7 +28,7 @@ MIN_TOKEN_LENGTH = 32
 LOCAL_EMAIL = "local@desktop.zintriq"
 DB_FILENAME = "zintriq.db"
 SECRET_FILENAME = "secret_key"
-DESKTOP_SCHEMA_VERSION = 2
+DESKTOP_SCHEMA_VERSION = 3
 # 40 MiB: larger than the 32 MiB project package cap.
 WAITRESS_MAX_REQUEST_BODY = 40 * 1024 * 1024
 WAITRESS_IDENT = ""
@@ -554,8 +554,10 @@ def stamp_desktop_schema(database: Path) -> None:
             _fail("这个数据目录是用更新的 Zintriq 创建的，请升级应用后再打开。")
         if version < DESKTOP_SCHEMA_VERSION:
             from builder_kernel.events import migrate_kernel_events
+            from builder_kernel.records import migrate_record_surface
 
             migrate_kernel_events(conn)
+            migrate_record_surface(conn)
             conn.execute(f"PRAGMA user_version={DESKTOP_SCHEMA_VERSION}")
             conn.commit()
     finally:

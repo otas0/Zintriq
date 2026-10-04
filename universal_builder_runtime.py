@@ -117,16 +117,17 @@ def _bound_value(binding, context):
 
 
 def render_document(snapshot: dict, document_key: str, *, state=None, notice: str = "", csrf: str = "", locale: str = "en",
-                    domain_data=None, route_path: str = "", work=None, invoke_url: str = "") -> str | None:
+                    domain_data=None, route_path: str = "", work=None, invoke_url: str = "",
+                    collections=None) -> str | None:
     documents = snapshot.get("documents") or []
     document = next((item for item in documents if item.get("key", item.get("document_key")) == document_key), None)
     if not document:
         return None
     document_id = document.get("id")
-    records = snapshot.get("data_records") or []
-    collections = {}
-    for record in records:
-        collections.setdefault(record.get("model_key"), []).append(_json(record.get("data"), {}))
+    if collections is None:
+        collections = {}
+        for record in snapshot.get("data_records") or []:
+            collections.setdefault(record.get("model_key"), []).append(_json(record.get("data"), {}))
     variables = {item.get("variable_key"): _json(item.get("value_json"), None) for item in snapshot.get("project_variables", [])}
     context = {"project": snapshot.get("project") or {}, "state": state or {}, "variable": variables, "collections": collections, "domain": domain_data or {}}
     conditions = {item.get("id"): _json(item.get("expression"), {}) for item in snapshot.get("conditions", [])}
@@ -364,8 +365,14 @@ def render_document(snapshot: dict, document_key: str, *, state=None, notice: st
                     break
             action_key = html.escape(str((submit_action or {}).get("action_key") or ""), quote=True)
             invoke_attr = html.escape(runtime_invoke, quote=True)
+            from builder_kernel.limits import HONEYPOT_FIELD
+
+            hp = html.escape(HONEYPOT_FIELD, quote=True)
             return f"""<form class='ub-form' method='post' action='{invoke_attr}'{attrs} data-target-model='{target_model}' data-action-key='{action_key}' data-invoke='{invoke_attr}'>
               <input type='hidden' name='csrf_token' value='{html.escape(csrf, quote=True)}'>
+              <div aria-hidden='true' style='position:absolute;left:-10000px;top:auto;width:1px;height:1px;overflow:hidden'>
+                <label>Leave blank<input type='text' name='{hp}' tabindex='-1' autocomplete='off'></label>
+              </div>
               <h2>{html.escape(str(props.get('title','Submit')))}</h2>
               {fields_content}
               <button class='ub-button' type='submit'>{html.escape(str(props.get('submit_label','Submit')))}</button>
@@ -429,3 +436,29 @@ def published_snapshot(conn, project_slug: str):
            WHERE p.slug=? AND d.status='active'""", (project_slug,),
     ).fetchone()
     return (row, _json(row["snapshot"], {})) if row else (None, None)
+
+
+def render_record_detail(
+    *,
+    project_slug: str,
+    model_key: str,
+    record: dict,
+    model_name: str = "",
+) -> str:
+    """Read-only detail page. All user values are html.escaped."""
+    data = record.get("data") if isinstance(record.get("data"), dict) else {}
+    rows = "".join(
+        f"<tr><th scope='row'>{html.escape(str(key))}</th><td>{html.escape(str(value))}</td></tr>"
+        for key, value in data.items()
+    ) or "<tr><td colspan='2'>No fields</td></tr>"
+    title = html.escape(str(model_name or model_key))
+    record_key = html.escape(str(record.get("record_key") or ""))
+    slug = html.escape(str(project_slug))
+    return f"""<!doctype html><html><head><meta charset='utf-8'><title>{title}</title>
+<meta name='robots' content='noindex'>
+<style>body{{font-family:system-ui,sans-serif;margin:2rem;color:#111}}
+table{{border-collapse:collapse;width:min(40rem,100%)}}th,td{{border:1px solid #ddd;padding:.5rem;text-align:left}}
+th{{width:30%;background:#f6f6f6}}a{{color:#0645ad}}</style></head>
+<body><p><a href='/build/{slug}'>Back</a></p>
+<h1>{title}</h1><p><code>{record_key}</code></p>
+<table><tbody>{rows}</tbody></table></body></html>"""

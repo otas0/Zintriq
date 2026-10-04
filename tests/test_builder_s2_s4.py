@@ -318,7 +318,15 @@ class TrackerScenarioTests(unittest.TestCase):
                 "SELECT COUNT(*) AS c FROM builder_data_records WHERE project_id=? AND status!='archived'",
                 (project_id,),
             ).fetchone()["c"]
+            surfaces = {
+                row["surface"]
+                for row in conn.execute(
+                    "SELECT surface FROM builder_data_records WHERE project_id=?",
+                    (project_id,),
+                ).fetchall()
+            }
         self.assertEqual(count, 2)
+        self.assertEqual(surfaces, {"published"})
 
     def test_s2_blank_project_seed_currently_injects_official_product_card(self):
         os.environ.pop("ZINTRIQ_DESKTOP", None)
@@ -350,13 +358,221 @@ class TrackerScenarioTests(unittest.TestCase):
             "blank projects currently have no customer-site, so commerce.products is not bound",
         )
 
-    @unittest.expectedFailure
     def test_s2_public_detail_and_live_list(self):
-        self.fail("needs K4 /build/<slug>/records/<model>/<record> and live repeater")
+        os.environ.pop("ZINTRIQ_DESKTOP", None)
+        from builder_http_support import auth_headers, login_editor
+        from builder_kernel.records import SURFACE_PREVIEW, SURFACE_PUBLISHED
 
-    @unittest.expectedFailure
+        client = self.app.test_client()
+        _user_id, _ws, csrf = login_editor(client, self.app_module)
+        headers = auth_headers(csrf)
+        created = client.post(
+            "/api/builder-core/projects",
+            headers=headers,
+            data=json.dumps({"name": f"S2 detail {uuid.uuid4().hex[:8]}", "csrf_token": csrf}),
+        )
+        self.assertIn(created.status_code, (200, 201), created.get_data(as_text=True)[:400])
+        project = created.get_json()
+        project_id = project["id"]
+        slug = project["slug"]
+        model = client.post(
+            f"/api/builder-core/projects/{project_id}/data-models",
+            headers=headers,
+            data=json.dumps({"csrf_token": csrf, "name": "notes", "schema": TRACKER}),
+        )
+        self.assertEqual(model.status_code, 201, model.get_data(as_text=True)[:400])
+        model_key = model.get_json()["key"]
+        boot = client.get(f"/api/builder-core/projects/{project_id}/bootstrap")
+        document = boot.get_json()["active_document"]
+        section = next(node for node in boot.get_json()["nodes"] if node["component_type"] == "section")
+        repeater = client.post(
+            f"/api/builder-core/projects/{project_id}/nodes",
+            headers=headers,
+            data=json.dumps({
+                "csrf_token": csrf,
+                "document_id": document["id"],
+                "component_type": "repeater",
+                "parent_key": section["key"],
+                "props": {"empty_text": "No notes yet"},
+            }),
+        )
+        self.assertEqual(repeater.status_code, 201, repeater.get_data(as_text=True)[:400])
+        binding = client.post(
+            f"/api/builder-core/projects/{project_id}/bindings",
+            headers=headers,
+            data=json.dumps({
+                "csrf_token": csrf,
+                "document_id": document["id"],
+                "node_key": repeater.get_json()["key"],
+                "binding_key": "items",
+                "source_type": "collection",
+                "source_config": {"model_key": model_key},
+            }),
+        )
+        self.assertEqual(binding.status_code, 201, binding.get_data(as_text=True)[:400])
+        preview_rec = client.post(
+            f"/api/builder-core/projects/{project_id}/data-models/{model_key}/records",
+            headers=headers,
+            data=json.dumps({"csrf_token": csrf, "data": {"title": "preview only"}}),
+        )
+        self.assertEqual(preview_rec.status_code, 201, preview_rec.get_data(as_text=True)[:400])
+        published = client.post(
+            f"/api/builder-core/projects/{project_id}/publish",
+            headers=headers,
+            data=json.dumps({"csrf_token": csrf, "note": "detail"}),
+        )
+        self.assertEqual(published.status_code, 201, published.get_data(as_text=True)[:400])
+        with self.app_module.db() as conn:
+            snap = conn.execute(
+                "SELECT snapshot FROM builder_project_revisions WHERE project_id=? ORDER BY id DESC LIMIT 1",
+                (project_id,),
+            ).fetchone()["snapshot"]
+            self.assertEqual(json.loads(snap).get("data_records"), [])
+            conn.execute(
+                """INSERT INTO builder_data_records(project_id,model_key,record_key,data,status,surface)
+                   VALUES (?,?,?,?, 'active', ?)""",
+                (project_id, model_key, "rec_" + ("a" * 32), json.dumps({"title": "live pub"}), SURFACE_PUBLISHED),
+            )
+        with client.session_transaction() as sess:
+            sess.pop("user_id", None)
+            sess.pop("active_workspace_id", None)
+        page = client.get(f"/build/{slug}/{document['key']}")
+        self.assertEqual(page.status_code, 200)
+        html = page.get_data(as_text=True)
+        self.assertIn("live pub", html)
+        self.assertNotIn("preview only", html)
+        all_q = client.get(f"/build/{slug}/{document['key']}?all=1&limit=9999")
+        self.assertEqual(all_q.status_code, 200)
+        detail = client.get(f"/build/{slug}/records/{model_key}/rec_{'a' * 32}")
+        self.assertEqual(detail.status_code, 200)
+        detail_html = detail.get_data(as_text=True)
+        self.assertIn("live pub", detail_html)
+        self.assertNotIn("<script", detail_html.lower())
+        missing = client.get(f"/build/{slug}/records/{model_key}/rec_{'b' * 32}")
+        private = client.get(f"/build/{slug}/records/missing_model/rec_{'a' * 32}")
+        self.assertEqual(missing.status_code, 404)
+        self.assertEqual(private.status_code, 404)
+        self.assertEqual(missing.get_data(as_text=True), private.get_data(as_text=True))
+        self.assertEqual(missing.get_data(as_text=True), "Not found.")
+        with self.app_module.db() as conn:
+            preview_count = conn.execute(
+                "SELECT COUNT(*) AS c FROM builder_data_records WHERE project_id=? AND surface=?",
+                (project_id, SURFACE_PREVIEW),
+            ).fetchone()["c"]
+            published_count = conn.execute(
+                "SELECT COUNT(*) AS c FROM builder_data_records WHERE project_id=? AND surface=?",
+                (project_id, SURFACE_PUBLISHED),
+            ).fetchone()["c"]
+        self.assertGreaterEqual(preview_count, 1)
+        self.assertGreaterEqual(published_count, 1)
+
     def test_s2_rate_limit_and_honeypot(self):
-        self.fail("needs K4 rate limit and honeypot")
+        os.environ.pop("ZINTRIQ_DESKTOP", None)
+        from builder_http_support import auth_headers, login_editor
+        from builder_kernel.rate_limit import get_rate_limiter
+
+        get_rate_limiter().reset()
+        client = self.app.test_client()
+        _user_id, _ws, csrf = login_editor(client, self.app_module)
+        headers = auth_headers(csrf)
+        created = client.post(
+            "/api/builder-core/projects",
+            headers=headers,
+            data=json.dumps({"name": f"S2 limit {uuid.uuid4().hex[:8]}", "csrf_token": csrf}),
+        )
+        project = created.get_json()
+        project_id = project["id"]
+        slug = project["slug"]
+        model = client.post(
+            f"/api/builder-core/projects/{project_id}/data-models",
+            headers=headers,
+            data=json.dumps({"csrf_token": csrf, "name": "notes", "schema": TRACKER}),
+        )
+        model_key = model.get_json()["key"]
+        boot = client.get(f"/api/builder-core/projects/{project_id}/bootstrap").get_json()
+        document = boot["active_document"]
+        section = next(node for node in boot["nodes"] if node["component_type"] == "section")
+        form = client.post(
+            f"/api/builder-core/projects/{project_id}/nodes",
+            headers=headers,
+            data=json.dumps({
+                "csrf_token": csrf,
+                "document_id": document["id"],
+                "component_type": "form",
+                "parent_key": section["key"],
+                "props": {"target_model": model_key, "title": "Notes"},
+            }),
+        )
+        form_key = form.get_json()["key"]
+        action = client.post(
+            f"/api/builder-core/projects/{project_id}/actions",
+            headers=headers,
+            data=json.dumps({
+                "csrf_token": csrf,
+                "document_id": document["id"],
+                "node_key": form_key,
+                "event_type": "on_submit",
+                "action_type": "create_record",
+                "configuration": {"model_key": model_key},
+            }),
+        )
+        action_key = action.get_json()["key"]
+        client.post(
+            f"/api/builder-core/projects/{project_id}/publish",
+            headers=headers,
+            data=json.dumps({"csrf_token": csrf, "note": "limit"}),
+        )
+        with client.session_transaction() as sess:
+            sess.pop("user_id", None)
+            sess.pop("active_workspace_id", None)
+            public_csrf = sess["csrf_token"]
+        invoke = f"/build/{slug}/{document['key']}/runtime/invoke"
+        honey = client.post(
+            invoke,
+            headers=auth_headers(public_csrf),
+            data=json.dumps({
+                "csrf_token": public_csrf,
+                "node_key": form_key,
+                "action_key": action_key,
+                "website": "http://spam.example",
+                "data": {"title": "bot"},
+            }),
+        )
+        self.assertEqual(honey.status_code, 204)
+        with self.app_module.db() as conn:
+            before = conn.execute(
+                "SELECT COUNT(*) AS c FROM builder_data_records WHERE project_id=?",
+                (project_id,),
+            ).fetchone()["c"]
+        self.assertEqual(before, 0)
+        # Loopback / anonymous writes: minute limit is 10.
+        for index in range(10):
+            ok = client.post(
+                invoke,
+                headers=auth_headers(public_csrf),
+                environ_base={"REMOTE_ADDR": "127.0.0.1"},
+                data=json.dumps({
+                    "csrf_token": public_csrf,
+                    "node_key": form_key,
+                    "action_key": action_key,
+                    "data": {"title": f"row-{index}"},
+                }),
+            )
+            self.assertEqual(ok.status_code, 200, ok.get_data(as_text=True)[:300])
+        blocked = client.post(
+            invoke,
+            headers=auth_headers(public_csrf),
+            environ_base={"REMOTE_ADDR": "127.0.0.1"},
+            data=json.dumps({
+                "csrf_token": public_csrf,
+                "node_key": form_key,
+                "action_key": action_key,
+                "data": {"title": "overflow"},
+            }),
+        )
+        self.assertEqual(blocked.status_code, 429)
+        self.assertEqual(blocked.get_json()["error"]["code"], "rate_limited")
+        get_rate_limiter().reset()
 
 
 class PersonalToolScenarioTests(unittest.TestCase):

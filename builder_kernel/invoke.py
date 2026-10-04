@@ -10,9 +10,11 @@ from builder_kernel.ids import new_record_key
 from builder_kernel.limits import (
     COMPOSE_MAX_DEPTH,
     COMPOSE_MAX_STEPS,
+    HONEYPOT_FIELD,
     PUBLIC_INVOKE_MAX_BYTES,
     PUBLIC_INVOKE_MAX_FIELD_BYTES,
 )
+from builder_kernel.records import SURFACE_PREVIEW, SURFACE_PUBLISHED, normalize_surface
 from builder_kernel.registry import kernel
 from builder_kernel.validate import prepare_record_write
 
@@ -48,6 +50,7 @@ INVOKE_MESSAGES = {
     "validation_error": "Some fields are invalid.",
     "adapter_unsupported": "This collection cannot be written.",
     "compose_limit": "This action is too complex to run.",
+    "rate_limited": "Too many requests. Try again later.",
 }
 
 
@@ -73,6 +76,7 @@ def http_status_for(code: str) -> int:
         "compose_limit": 400,
         "unknown_action": 400,
         "validation_error": 400,
+        "rate_limited": 429,
     }.get(code, 400)
 
 
@@ -85,6 +89,18 @@ def check_public_invoke_size(content_length: int | None, raw: bytes, payload: di
     if isinstance(data, dict) and _field_bytes(data) > PUBLIC_INVOKE_MAX_FIELD_BYTES:
         return error_body("payload_too_large")
     return None
+
+
+def honeypot_triggered(body: dict) -> bool:
+    """True when a hidden honeypot field is present and non-empty."""
+    if not isinstance(body, dict):
+        return False
+    if str(body.get(HONEYPOT_FIELD) or "").strip():
+        return True
+    data = body.get("data")
+    if isinstance(data, dict) and str(data.get(HONEYPOT_FIELD) or "").strip():
+        return True
+    return False
 
 
 def _field_bytes(data: dict) -> int:
@@ -231,10 +247,11 @@ def _run_record_action(action_id: str, ctx: dict) -> dict:
         if not write.ok:
             return write.to_dict()
         record_key = new_record_key()
+        surface = normalize_surface(ctx.get("surface"), default=SURFACE_PREVIEW)
         conn.execute(
-            """INSERT INTO builder_data_records(project_id,model_key,record_key,data,status,updated_at)
-               VALUES (?,?,?,?,?,datetime('now'))""",
-            (project_id, model["model_key"], record_key, json.dumps(payload), "active"),
+            """INSERT INTO builder_data_records(project_id,model_key,record_key,data,status,surface,updated_at)
+               VALUES (?,?,?,?,?,?,datetime('now'))""",
+            (project_id, model["model_key"], record_key, json.dumps(payload), "active", surface),
         )
         log_kernel_event(
             conn,
@@ -256,9 +273,10 @@ def _run_record_action(action_id: str, ctx: dict) -> dict:
         write = prepare_record_write(model.get("adapter") or "native", schema, payload)
         if not write.ok:
             return write.to_dict()
+        surface = normalize_surface(ctx.get("surface"), default=SURFACE_PREVIEW)
         row = conn.execute(
-            "SELECT id FROM builder_data_records WHERE project_id=? AND model_key=? AND record_key=?",
-            (project_id, model["model_key"], record_key),
+            "SELECT id FROM builder_data_records WHERE project_id=? AND model_key=? AND record_key=? AND surface=?",
+            (project_id, model["model_key"], record_key, surface),
         ).fetchone()
         if not row:
             return error_body("not_found")
@@ -280,9 +298,10 @@ def _run_record_action(action_id: str, ctx: dict) -> dict:
     if action_id in DELETE_IDS:
         if not record_key:
             return error_body("validation_error", fields=[{"path": "record_key", "code": "required"}])
+        surface = normalize_surface(ctx.get("surface"), default=SURFACE_PREVIEW)
         row = conn.execute(
-            "SELECT id FROM builder_data_records WHERE project_id=? AND model_key=? AND record_key=?",
-            (project_id, model["model_key"], record_key),
+            "SELECT id FROM builder_data_records WHERE project_id=? AND model_key=? AND record_key=? AND surface=?",
+            (project_id, model["model_key"], record_key, surface),
         ).fetchone()
         if not row:
             return error_body("not_found")
@@ -352,16 +371,16 @@ def invoke_snapshot_action(
         record_payload = {
             key: value
             for key, value in body.items()
-            if key not in CLIENT_CONTROL_KEYS
+            if key not in CLIENT_CONTROL_KEYS and key != HONEYPOT_FIELD
         }
-    else:
-        record_payload = {
-            key: value
-            for key, value in (record_payload or {}).items()
-            if key not in CLIENT_CONTROL_KEYS
-        }
+    record_payload = {
+        key: value
+        for key, value in (record_payload or {}).items()
+        if key not in CLIENT_CONTROL_KEYS and key != HONEYPOT_FIELD
+    }
     # Create always mints a server key; update/delete may take record_key from body.
     client_record_key = "" if action_id in CREATE_IDS else str(body.get("record_key") or "")
+    surface = SURFACE_PUBLISHED if public else SURFACE_PREVIEW
     ctx = {
         "conn": conn,
         "project_id": int(project["id"]),
@@ -369,6 +388,7 @@ def invoke_snapshot_action(
         "schema": schema,
         "member": member,
         "public": public,
+        "surface": surface,
         "record_payload": record_payload,
         "record_key": client_record_key,
         "node_key": node_key,
