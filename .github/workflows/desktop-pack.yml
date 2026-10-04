@@ -122,7 +122,7 @@ jobs:
       - name: Ad-hoc sign macOS CI app
         if: runner.os == 'macOS'
         run: |
-          app=$(find desktop/release -name '*.app' -maxdepth 3 | head -n 1)
+          app=$(find "$GITHUB_WORKSPACE/desktop/release" -name '*.app' -maxdepth 3 | head -n 1)
           test -n "$app"
           sh desktop/packaging/sign_macos_adhoc.sh "$app"
           echo "APP_PATH=$app" >> "$GITHUB_ENV"
@@ -132,7 +132,7 @@ jobs:
         if: runner.os == 'Windows'
         shell: bash
         run: |
-          exe=$(find desktop/release/win-unpacked -name 'Zintriq Studio.exe' | head -n 1)
+          exe=$(find "$GITHUB_WORKSPACE/desktop/release/win-unpacked" -name 'Zintriq Studio.exe' | head -n 1)
           test -n "$exe"
           echo "APP_BIN=$exe" >> "$GITHUB_ENV"
           echo "APP_PATH=$(dirname "$exe")" >> "$GITHUB_ENV"
@@ -140,9 +140,9 @@ jobs:
       - name: Locate Linux unpacked app
         if: runner.os == 'Linux'
         run: |
-          bin=$(find desktop/release -path '*unpacked/zintriq-studio' -o -path '*unpacked/Zintriq Studio' | head -n 1)
+          bin=$(find "$GITHUB_WORKSPACE/desktop/release" \( -path '*unpacked/zintriq-studio' -o -path '*unpacked/Zintriq Studio' \) | head -n 1)
           if [ -z "$bin" ]; then
-            bin=$(find desktop/release -type f -perm -111 ! -name '*.so' | awk '/unpacked/ {print; exit}')
+            bin=$(find "$GITHUB_WORKSPACE/desktop/release" -type f -perm -111 ! -name '*.so' | awk '/unpacked/ {print; exit}')
           fi
           test -n "$bin"
           echo "APP_BIN=$bin" >> "$GITHUB_ENV"
