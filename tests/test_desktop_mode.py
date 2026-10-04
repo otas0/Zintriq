@@ -278,7 +278,10 @@ class DesktopServerTests(unittest.TestCase):
         text = self.log_path.read_text(encoding="utf-8", errors="replace")
         match = re.search(r"^ZINTRIQ_READY pid=(\d+) port=(\d+)$", text, re.M)
         self.assertIsNotNone(match, text[-500:])
-        self.assertEqual(int(match.group(1)), self.proc.pid)
+        ready_pid = int(match.group(1))
+        if os.name != "nt":
+            self.assertEqual(ready_pid, self.proc.pid)
+        self.assertTrue(_pid_alive(ready_pid))
         self.assertEqual(int(match.group(2)), self.port)
         self.assertNotIn(self.token, match.group(0))
 
@@ -398,7 +401,8 @@ class DesktopServerTests(unittest.TestCase):
         self.assertEqual(changed, [])
         database = self.data_dir / "zintriq.db"
         self.assertTrue(database.is_file())
-        self.assertEqual(self.data_dir.stat().st_mode & 0o777, 0o700)
+        if os.name == "posix":
+            self.assertEqual(self.data_dir.stat().st_mode & 0o777, 0o700)
         conn = sqlite3.connect(database)
         try:
             row = conn.execute(
@@ -508,7 +512,9 @@ class DesktopProcessGuardTests(unittest.TestCase):
 
     def test_special_data_dir_wal_and_uri(self):
         base = Path(tempfile.mkdtemp(prefix="zintriq-path-"))
-        data_dir = base / "工作室 数据" / "a%b#c?d"
+        # Windows forbids '?' in path components; keep the URI-encoding coverage.
+        suffix = "a%b#c_d" if os.name == "nt" else "a%b#c?d"
+        data_dir = base / "工作室 数据" / suffix
         token = "p" * 40
         env = os.environ.copy()
         env.pop("SECRET_KEY", None)
@@ -534,7 +540,8 @@ class DesktopProcessGuardTests(unittest.TestCase):
         uri = uri_line.split("=", 1)[1]
         self.assertIn("%25", uri)
         self.assertIn("%23", uri)
-        self.assertIn("%3F", uri)
+        if os.name != "nt":
+            self.assertIn("%3F", uri)
         self.assertNotIn("#", uri.split("file://", 1)[-1])
         self.assertTrue((data_dir / "zintriq.db").is_file())
         self.assertEqual((data_dir / "uploads" / "note.txt").read_text(encoding="utf-8"), "hello")
@@ -562,10 +569,12 @@ class DesktopProcessGuardTests(unittest.TestCase):
         )
         try:
             pid, ready_port = _wait_for_ready(log_path, proc)
-            self.assertEqual(pid, proc.pid)
+            if os.name != "nt":
+                self.assertEqual(pid, proc.pid)
+            self.assertTrue(_pid_alive(pid))
             self.assertEqual(ready_port, port)
             pid_text = (data_dir / "zintriq.pid").read_text(encoding="utf-8")
-            self.assertIn(f"pid={pid}", pid_text)
+            self.assertRegex(pid_text, rf"(?m)^pid={pid}$")
             self.assertNotIn(token, pid_text)
             self.assertNotIn(token, (data_dir / "zintriq.lock").read_bytes().decode("utf-8", "replace"))
             second_port = _free_port()
@@ -690,9 +699,13 @@ class DesktopProcessGuardTests(unittest.TestCase):
         )
         try:
             ready_pid, ready_port = _wait_for_ready(log_path, proc)
-            self.assertEqual(ready_pid, proc.pid)
+            # On Windows the READY line can name a worker while Popen tracks the
+            # launcher pid; require the announced pid to own the port/lock instead.
+            if os.name != "nt":
+                self.assertEqual(ready_pid, proc.pid)
             self.assertEqual(ready_port, port)
             self.assertNotEqual(ready_pid, stale_pid)
+            self.assertTrue(_pid_alive(ready_pid))
             pid_text = (data_dir / "zintriq.pid").read_text(encoding="utf-8")
             self.assertRegex(pid_text, rf"(?m)^pid={ready_pid}$")
             self.assertNotRegex(pid_text, rf"(?m)^pid={stale_pid}$")
@@ -806,7 +819,9 @@ class DesktopProcessGuardTests(unittest.TestCase):
             try:
                 pid, ready_port = _wait_for_ready(restart_log, again)
                 self.assertEqual(ready_port, restart_port)
-                self.assertEqual(pid, again.pid)
+                if os.name != "nt":
+                    self.assertEqual(pid, again.pid)
+                self.assertTrue(_pid_alive(pid))
                 status, _pairs, body = _http_get(restart_port, "/healthz", token)
                 self.assertEqual(status, 200)
                 self.assertIn(b"ok", body)

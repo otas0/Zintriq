@@ -81,11 +81,7 @@
       "allowElevation": false,
       "allowToChangeInstallationDirectory": true,
       "deleteAppDataOnUninstall": false,
-      "include": "packaging/installer.nsh",
-      "installerLanguages": [
-        "en_US"
-      ],
-      "language": "en_US"
+      "include": "packaging/installer.nsh"
     },
     "linux": {
       "target": [

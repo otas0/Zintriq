@@ -216,7 +216,9 @@ function waitForReady(child, expectedPort, timeoutMs) {
       if (!match) return;
       const pid = Number(match[1]);
       const port = Number(match[2]);
-      if (pid !== child.pid || port !== expectedPort) {
+      // Windows can announce a worker pid while Node tracks the launcher pid.
+      const pidOk = process.platform === "win32" || pid === child.pid;
+      if (!pidOk || port !== expectedPort) {
         finish(reject, new Error(`ZINTRIQ_READY 不匹配 pid=${pid} port=${port}`));
         return;
       }
