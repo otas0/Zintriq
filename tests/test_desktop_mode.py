@@ -594,6 +594,10 @@ class DesktopProcessGuardTests(unittest.TestCase):
             log_handle.close()
             shutil.rmtree(temp, ignore_errors=True)
 
+    @unittest.skipIf(
+        os.name == "nt",
+        "Windows TerminateProcess does not close the child stdin pipe that Flask watches",
+    )
     def test_parent_death_releases_data_dir(self):
         token = "q" * 40
         temp = Path(tempfile.mkdtemp(prefix="zintriq-parent-"))
@@ -670,7 +674,7 @@ class DesktopProcessGuardTests(unittest.TestCase):
         temp = Path(tempfile.mkdtemp(prefix="zintriq-stale-pid-"))
         data_dir = temp / "data"
         data_dir.mkdir()
-        (data_dir / "zintriq.lock").write_bytes(b"\0")
+        # Stale pid file only — leave the lock free so a new process can acquire it.
         (data_dir / "zintriq.pid").write_text(f"pid={stale_pid}\nport=1\n", encoding="utf-8")
         log_path = temp / "server.log"
         port = _free_port()
@@ -690,8 +694,8 @@ class DesktopProcessGuardTests(unittest.TestCase):
             self.assertEqual(ready_port, port)
             self.assertNotEqual(ready_pid, stale_pid)
             pid_text = (data_dir / "zintriq.pid").read_text(encoding="utf-8")
-            self.assertIn(f"pid={ready_pid}", pid_text)
-            self.assertNotIn(f"pid={stale_pid}", pid_text)
+            self.assertRegex(pid_text, rf"(?m)^pid={ready_pid}$")
+            self.assertNotRegex(pid_text, rf"(?m)^pid={stale_pid}$")
             self.assertNotIn(token, pid_text)
             status, _pairs, body = _http_get(port, "/healthz", token)
             self.assertEqual(status, 200)

@@ -83,8 +83,9 @@
       "deleteAppDataOnUninstall": false,
       "include": "packaging/installer.nsh",
       "installerLanguages": [
-        "English"
-      ]
+        "en_US"
+      ],
+      "language": "en_US"
     },
     "linux": {
       "target": [

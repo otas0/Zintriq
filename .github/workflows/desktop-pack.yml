@@ -173,6 +173,9 @@ jobs:
             export APPIMAGE_EXTRACT_AND_RUN=1
           fi
           if [ "$RUNNER_OS" = "Linux" ]; then
+            # Hosted Python setup injects LD_LIBRARY_PATH; that breaks the frozen
+            # Electron/PyInstaller binaries under smoke.
+            unset LD_LIBRARY_PATH PYTHONHOME PYTHONPATH || true
             xvfb-run -a npm run smoke 2>&1 | tee "$SMOKE_LOG"
           else
             npm run smoke 2>&1 | tee "$SMOKE_LOG"
