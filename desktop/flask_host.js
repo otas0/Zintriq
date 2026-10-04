@@ -138,7 +138,17 @@ function forceKill(child) {
   if (!child || child.exitCode !== null || !child.pid) return;
   const pid = child.pid;
   if (process.platform === "win32") {
-    spawnSync("taskkill", ["/PID", String(pid), "/T", "/F"], { windowsHide: true });
+    // Retry once: CI runners sometimes return before the tree is gone.
+    for (let attempt = 0; attempt < 2; attempt += 1) {
+      const result = spawnSync("taskkill", ["/PID", String(pid), "/T", "/F"], {
+        windowsHide: true,
+        encoding: "utf8",
+      });
+      const code = result.status;
+      // 0 = killed; 128 = already gone.
+      if (code === 0 || code === 128) return;
+      spawnSync("cmd", ["/c", "ping", "127.0.0.1", "-n", "2", ">nul"], { windowsHide: true });
+    }
     return;
   }
   try {
@@ -249,6 +259,7 @@ function spawnFlask({ pythonPath, userData, token, port, appVersion }) {
   delete env.HOST;
   delete env.PYTHONPATH;
   delete env.PYTHONHOME;
+  delete env.LD_LIBRARY_PATH;
   const packaged = /zintriq-server(\.exe)?$/i.test(pythonPath);
   const args = packaged ? [] : [path.join(repoRoot(), "app.py")];
   return spawn(pythonPath, args, {

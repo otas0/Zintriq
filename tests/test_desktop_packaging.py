@@ -122,6 +122,12 @@ class DesktopPackagingGuardTests(unittest.TestCase):
         text = (ROOT / "desktop" / "flask_host.js").read_text(encoding="utf-8")
         self.assertIn("packaged ? [] : [path.join(repoRoot(), \"app.py\")]", text)
         self.assertNotRegex(text, r"spawn\(pythonPath,\s*\[path\.join\(repoRoot\(\),\s*\"app\.py\"\)")
+        self.assertIn("delete env.LD_LIBRARY_PATH", text)
+        self.assertIn('spawnSync("taskkill"', text)
+
+    def test_transfer_fsync_opens_writable_on_windows(self):
+        text = (ROOT / "desktop" / "transfer.py").read_text(encoding="utf-8")
+        self.assertIn('flags = os.O_RDWR if os.name == "nt" else os.O_RDONLY', text)
 
     def test_waitress_body_limit_exceeds_package_cap(self):
         from desktop.server_mode import WAITRESS_IDENT, WAITRESS_MAX_REQUEST_BODY

@@ -1779,7 +1779,9 @@ def _now() -> str:
 
 
 def _fsync(path: Path) -> None:
-    fd = os.open(path, os.O_RDONLY)
+    # Windows rejects fsync on read-only handles (EBADF); Unix is fine with O_RDONLY.
+    flags = os.O_RDWR if os.name == "nt" else os.O_RDONLY
+    fd = os.open(path, flags)
     try:
         os.fsync(fd)
     finally:

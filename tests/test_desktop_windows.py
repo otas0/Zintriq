@@ -18,11 +18,21 @@ DESKTOP = ROOT / "desktop"
 def _alive(pid: int) -> bool:
     if pid <= 0:
         return False
+    # os.kill(pid, 0) is unreliable on Windows; ask tasklist instead.
     try:
-        os.kill(pid, 0)
-    except OSError:
+        result = subprocess.run(
+            ["tasklist", "/FI", f"PID eq {pid}", "/NH"],
+            capture_output=True,
+            text=True,
+            timeout=15,
+            check=False,
+        )
+    except (OSError, subprocess.TimeoutExpired):
         return False
-    return True
+    text = (result.stdout or "") + (result.stderr or "")
+    if "No tasks" in text or "没有运行" in text:
+        return False
+    return str(pid) in text
 
 
 @unittest.skipUnless(sys.platform == "win32", "Windows only")
@@ -95,11 +105,11 @@ class WindowsDesktopTests(unittest.TestCase):
                 timeout=30,
             )
             self.assertEqual(killer.returncode, 0, killer.stdout + killer.stderr)
-            deadline = time.time() + 8
+            deadline = time.time() + 15
             while time.time() < deadline and (_alive(parent.pid) or _alive(child_pid)):
-                time.sleep(0.2)
-            self.assertFalse(_alive(parent.pid))
-            self.assertFalse(_alive(child_pid))
+                time.sleep(0.25)
+            self.assertFalse(_alive(parent.pid), f"parent {parent.pid} still alive")
+            self.assertFalse(_alive(child_pid), f"child {child_pid} still alive")
         finally:
             if parent.poll() is None:
                 subprocess.run(

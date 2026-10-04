@@ -107,9 +107,9 @@ AppImage 在无 FUSE 的环境用 `APPIMAGE_EXTRACT_AND_RUN=1`。
 
 ## 运行时约束
 
-- 冻结后的 `zintriq-server` 不得再把 `app.py` 传给 `sys.executable`（会递归拉起自己）。入口调用 `multiprocessing.freeze_support()`。
+- 冻结后的 `zintriq-server` 不得再把 `app.py` 传给 `sys.executable`（会递归拉起自己）。入口调用 `multiprocessing.freeze_support()`。Flask 子进程必须丢掉 Electron 继承的 `LD_LIBRARY_PATH`（Linux 上会指向 chrome/ffmpeg，冻结解释器对不上）。
 - 数据库 `PRAGMA user_version`：比应用新则拒绝打开并提示升级；比应用旧则迁移后盖章。当前桌面 schema 为 3（`builder_data_records.surface`：preview / published；发布快照不嵌入预览记录）。
 - 匿名公开写入限流：桌面用进程内 `builder_kernel.rate_limit.InProcessRateLimiter`（每 IP+项目 10/分钟、100/小时）。**云端多进程部署必须替换** `get_rate_limiter()` 为共享后端，否则各 worker 各自计数。
 - waitress：`max_request_body_size=40MiB`（大于 32MiB 作品包上限）、`expose_tracebacks=False`、空 `ident`（不暴露服务器标识）、`clear_untrusted_proxy_headers=True`。stdin EOF 时 `server.close()`，3 秒后 `os._exit` 兜底，从而释放锁文件。
-- 应用只写 userData。把安装目录设为只读后，打包 smoke 仍应成功。
+- 应用只写 userData。把安装目录设为只读后，打包 smoke 仍应成功。Windows CI 用 `icacls` 去掉继承并只授当前用户 `(OI)(CI)RX`（`attrib +R` 拦不住新建文件）。macOS / Linux 仍用 `chmod -R a-w`。
 - 许可清单只看 desktop lock 中的包。未知或需要审核的许可（GPL、AGPL、LGPL 等）时构建失败，除非该包已在 `desktop/packaging/license-exceptions.json` 写明原因。PyInstaller 本身带 GPL+exception，只作为构建工具列入该白名单。

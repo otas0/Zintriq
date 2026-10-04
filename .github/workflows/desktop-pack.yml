@@ -187,13 +187,28 @@ jobs:
         working-directory: desktop
         shell: pwsh
         run: |
+          $ErrorActionPreference = "Stop"
           $root = Join-Path $env:RUNNER_TEMP "zintriq-ro-install"
+          $app = Join-Path $root "app"
           if (Test-Path $root) { Remove-Item -Recurse -Force $root }
           New-Item -ItemType Directory -Path $root | Out-Null
-          Copy-Item -Recurse $env:APP_PATH (Join-Path $root "app")
-          attrib +R /S /D (Join-Path $root "app\*")
-          $env:ZINTRIQ_SMOKE_APP = Join-Path $root "app\Zintriq Studio.exe"
-          $env:ZINTRIQ_SMOKE_INSTALL_DIR = Join-Path $root "app"
+          Copy-Item -Recurse $env:APP_PATH $app
+          $user = $env:USERNAME
+          if (-not $user) { throw "USERNAME is empty; cannot lock install ACL" }
+          # attrib +R does not block new files; drop inherited Write and keep RX.
+          & icacls $app /inheritance:r /T /C /grant:r "${user}:(OI)(CI)RX"
+          if ($LASTEXITCODE -ne 0) { throw "icacls failed with exit $LASTEXITCODE" }
+          $probe = Join-Path $app "should-not-write.txt"
+          $stillWritable = $false
+          try {
+            [System.IO.File]::WriteAllText($probe, "no")
+            $stillWritable = $true
+          } catch {
+            Write-Host "install dir write denied as expected"
+          }
+          if ($stillWritable) { throw "install dir still writable after icacls RX" }
+          $env:ZINTRIQ_SMOKE_APP = Join-Path $app "Zintriq Studio.exe"
+          $env:ZINTRIQ_SMOKE_INSTALL_DIR = $app
           npm run smoke *>&1 | Tee-Object -FilePath $env:SMOKE_LOG
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 

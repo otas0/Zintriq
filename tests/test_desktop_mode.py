@@ -188,14 +188,31 @@ class DesktopServerTests(unittest.TestCase):
             probe.connect(("127.0.0.1", self.port))
         finally:
             probe.close()
-        output = subprocess.check_output(
-            ["lsof", "-nP", f"-iTCP:{self.port}", "-sTCP:LISTEN"],
-            text=True,
-            errors="replace",
-        )
-        self.assertIn(f"127.0.0.1:{self.port}", output)
-        self.assertNotIn(f"*:{self.port}", output)
-        self.assertNotIn(f"0.0.0.0:{self.port}", output)
+        if os.name == "nt":
+            output = subprocess.check_output(
+                ["netstat", "-ano", "-p", "TCP"],
+                text=True,
+                errors="replace",
+            )
+            listening = [
+                line
+                for line in output.splitlines()
+                if "LISTENING" in line.upper() and f":{self.port}" in line
+            ]
+            self.assertTrue(listening, f"no LISTENING row for port {self.port}\n{output[-1500:]}")
+            joined = "\n".join(listening)
+            self.assertIn(f"127.0.0.1:{self.port}", joined)
+            self.assertNotRegex(joined, rf"(?m)^\s*TCP\s+0\.0\.0\.0:{self.port}\b")
+            self.assertNotRegex(joined, rf"(?m)^\s*TCP\s+\*:{self.port}\b")
+        else:
+            output = subprocess.check_output(
+                ["lsof", "-nP", f"-iTCP:{self.port}", "-sTCP:LISTEN"],
+                text=True,
+                errors="replace",
+            )
+            self.assertIn(f"127.0.0.1:{self.port}", output)
+            self.assertNotIn(f"*:{self.port}", output)
+            self.assertNotIn(f"0.0.0.0:{self.port}", output)
         for family, _, _, _, address in socket.getaddrinfo(socket.gethostname(), None, socket.AF_INET):
             ip = address[0]
             if ip.startswith("127."):
