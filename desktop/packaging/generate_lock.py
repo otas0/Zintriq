@@ -75,6 +75,8 @@ def _keep(name: str, wanted: set) -> bool:
         "zipp",
         "typing-extensions",
         "colorama",
+        "pefile",
+        "pywin32-ctypes",
     }
     return lower in seeds or lower in wanted or any(lower.startswith(item) for item in wanted)
 

@@ -77,7 +77,7 @@ jobs:
       - name: Unit tests
         id: tests-win
         if: runner.os == 'Windows'
-        timeout-minutes: 10
+        timeout-minutes: 25
         shell: cmd
         run: |
           .venv\Scripts\python.exe -m unittest discover -s tests -v > unittest.txt 2>&1

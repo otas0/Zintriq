@@ -7,3 +7,6 @@ waitress==3.0.2
 pyinstaller==6.11.1
 # Windows-only Click dependency; must be pinned for --require-hashes installs.
 colorama==0.4.6
+# Windows-only PyInstaller dependency; pin for --require-hashes.
+pefile==2023.2.7
+pywin32-ctypes==0.2.3
