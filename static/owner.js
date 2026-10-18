@@ -123,7 +123,7 @@ document.addEventListener('DOMContentLoaded', () => {
     previewFrame.src = `${previewFrame.dataset.src}${previewFrame.dataset.src.includes('?') ? '&' : '?'}_=${Date.now()}`;
   };
 
-  const usePinnedPreview = () => window.matchMedia('(min-width: 1100px)').matches;
+  const usePinnedPreview = () => window.matchMedia('(min-width: 1024px)').matches;
 
   const openPreview = () => {
     if (!previewDock || !previewBackdrop) return;

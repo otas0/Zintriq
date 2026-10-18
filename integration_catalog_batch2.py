@@ -2289,22 +2289,7 @@ EXTRA_REPUTATION_PLUGINS: tuple[dict[str, Any], ...] = (
             ],
         },
     },
-    {
-        "slug": "youtube_brand",
-        "name": "YouTube Brand",
-        "provider": "youtube",
-        "description": "YouTube brand channel & video reviews",
-        "regions": ("global",),
-        "capabilities": ("read_reviews", "read_rating",),
-        "credential_fields": _CRED_REVIEW,
-        "setup_guide": {
-            "summary": "Claim your listing on YouTube Brand, then paste the business / listing ID from the owner console.",
-            "steps": ['Claim or register your business on YouTube Brand using the owner portal below.', 'Verify ownership (phone, email, or documents) as the official business representative.', 'After access, open your listing and copy the Business / listing ID from the URL or settings.', 'Store API keys only in this encrypted vault — never in email, chat, or public repos.', 'Use sandbox / test keys first; switch to live keys only after owner verification is complete.', 'Restrict API keys to the minimum scopes (payments or read-reviews only).', 'Rotate keys if a staff member with access leaves the business.', 'Paste Business ID below. Add an API key only if the platform issued partner API access. Save & verify.'],
-            "links": [
-                {"label": "YouTube account", "url": "https://www.youtube.com/"}
-            ],
-        },
-    },
+
     {
         "slug": "whatsapp_business",
         "name": "WhatsApp Business",
@@ -2833,7 +2818,6 @@ EXTRA_PLUGIN_BRANDS: dict[str, dict[str, str]] = {
     "instagram_business": {"domain": "instagram.com"},
     "tiktok_business": {"domain": "tiktok.com"},
     "linkedin_company": {"domain": "linkedin.com"},
-    "youtube_brand": {"domain": "youtube.com"},
     "whatsapp_business": {"domain": "whatsapp.com"},
     "line_official": {"domain": "line.me"},
     "eatigo": {"domain": "eatigo.com"},
@@ -3002,7 +2986,6 @@ EXTRA_BRAND_COLORS: dict[str, str] = {
     "instagram_business": "E4405F",
     "tiktok_business": "000000",
     "linkedin_company": "0A66C2",
-    "youtube_brand": "FF0000",
     "whatsapp_business": "25D366",
     "line_official": "00C300",
     "eatigo": "FF5722",
@@ -3171,7 +3154,6 @@ EXTRA_BRAND_INITIALS: dict[str, str] = {
     "instagram_business": "Ig",
     "tiktok_business": "Tk",
     "linkedin_company": "Li",
-    "youtube_brand": "Yt",
     "whatsapp_business": "Wa",
     "line_official": "LN",
     "eatigo": "Eg",
@@ -3262,5 +3244,4 @@ BATCH2_SIMPLE_ICONS: dict[str, str] = {
     "wolt": "wolt",
     "woocommerce": "woocommerce",
     "worldline": "worldline",
-    "youtube_brand": "youtube",
 }

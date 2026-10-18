@@ -1,9 +1,9 @@
 {% extends "customer_base.html" %}
-{% block title %}QR Disabled{% endblock %}
+{% block title %}{{ _('customer.qr.disabled_title') }}{% endblock %}
 {% block content %}
 <section class="mq-empty-state" style="text-align:center;padding:48px 24px;max-width:420px;margin:0 auto">
-  <h1 style="margin:0 0 12px;font-size:1.5rem">This QR is temporarily unavailable</h1>
-  <p class="cp-muted" style="margin:0 0 8px">{{ experience_name or "This QR Experience" }} has been disabled by the business.</p>
-  <p class="cp-muted" style="margin:0;font-size:14px">Please try again later or contact the business directly.</p>
+  <h1 style="margin:0 0 12px;font-size:1.5rem">{{ _('customer.qr.disabled_title') }}</h1>
+  <p class="cp-muted" style="margin:0 0 8px">{{ experience_name or "This QR Experience" }}</p>
+  <p class="cp-muted" style="margin:0;font-size:14px">{{ _('customer.qr.disabled_body') }}</p>
 </section>
 {% endblock %}

@@ -1,0 +1,19 @@
+{% set editor_views = editor_views|default([]) %}
+{% set current_pane = editor_pane|default(editor_views[0].id if editor_views else 'code') %}
+{% set surface = workbench_surface|default('library') %}
+{% set welcome = workbench_welcome|default(false) %}
+<div class="wb-host">
+<nav class="wb-modes" aria-label="Editor views" data-workbench="1" data-view="meta" data-document="description"{% if not editor_views or welcome %} hidden{% endif %}>
+  {% for item in editor_views %}
+  <button type="button" class="wb-modes__item{% if item.id == current_pane %} is-current{% endif %}" data-editor-view="{{ item.id }}" aria-pressed="{{ 'true' if item.id == current_pane else 'false' }}">{{ item.name }}</button>
+  {% endfor %}
+</nav>
+{% if not welcome %}
+<nav class="wb-surfaces" aria-label="Host">
+  <a class="wb-surfaces__item{% if surface == 'library' %} is-current{% endif %}" href="/studio">Home</a>
+  <a class="wb-surfaces__item{% if surface == 'community' %} is-current{% endif %}" href="/app/community" data-page="community">Community</a>
+  <a class="wb-surfaces__item{% if surface == 'settings' %} is-current{% endif %}" href="/studio/settings">Settings</a>
+</nav>
+{% endif %}
+{% include 'studio/_account_chip.html' %}
+</div>

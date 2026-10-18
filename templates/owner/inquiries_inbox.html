@@ -1,27 +1,27 @@
 {% extends 'owner_base.html' %}
 {% from 'owner/_insights_nav.html' import insights_nav %}
 {% set active_tab = 'insights' %}
-{% block title %}Customer requests — {{ store.name }}{% endblock %}
+{% block title %}{{ _('owner.customer_requests') }} — {{ store.name }}{% endblock %}
 {% block os_header %}
-<h1 class="os-page-title">Customer requests</h1>
-<p class="os-page-subtitle">Inquiries from your shop contact form{% if new_count %} · {{ new_count }} new{% endif %}.</p>
+<h1 class="os-page-title">{{ _('owner.customer_requests') }}</h1>
+<p class="os-page-subtitle">{{ _('owner.inquiries_subtitle') }}{% if new_count %} · {{ _('owner.n_new', n=new_count) }}{% endif %}.</p>
 {% endblock %}
 {% block owner_content %}
 {{ insights_nav(store, insights_section, inquiry_new_count|default(0)) }}
 
 <form method="get" class="fb-toolbar ins-inbox-toolbar">
-  <input type="search" class="os-input ins-inbox-search" name="q" value="{{ filters.q }}" placeholder="Search name, email, phone, message…" enterkeyhint="search">
+  <input type="search" class="os-input ins-inbox-search" name="q" value="{{ filters.q }}" placeholder="{{ _('owner.search_inquiries') }}" enterkeyhint="search">
   <select class="os-select ins-inbox-status" name="status" onchange="this.form.submit()">
-    <option value="">All statuses</option>
+    <option value="">{{ _('owner.all_statuses') }}</option>
     {% for s in inquiry_statuses %}
     <option value="{{ s }}"{% if filters.status == s %} selected{% endif %}>{{ s }}</option>
     {% endfor %}
   </select>
-  <button class="os-btn os-btn-ghost os-btn-sm ins-inbox-search-btn" type="submit">Search</button>
+  <button class="os-btn os-btn-ghost os-btn-sm ins-inbox-search-btn" type="submit">{{ _('bos.search') }}</button>
 </form>
 
 {% if not inquiries %}
-<p class="fb-empty-hint">No requests yet. Customers can reach you from the contact section at the bottom of your shop — or from Discover when you opt in.</p>
+<p class="fb-empty-hint">{{ _('owner.no_requests_inbox') }}</p>
 {% else %}
 <div class="fb-inbox-list ins-inbox-list">
   {% for r in inquiries %}
@@ -30,7 +30,7 @@
       <div class="fb-inbox-head ins-inbox-head">
         <span class="os-tag os-tag-sm ins-status-tag ins-status-tag--{{ r.status }}">{{ r.status }}</span>
         {% if r.source_ref %}
-        <span class="os-tag os-tag-sm ins-source-tag">via {{ r.source_ref|replace('_', ' ') }}</span>
+        <span class="os-tag os-tag-sm ins-source-tag">{{ _('owner.via_source', source=r.source_ref|replace('_', ' ')) }}</span>
         {% endif %}
         {% if r.item_name %}<span class="fb-meta ins-inbox-product">{{ r.item_name }}</span>{% endif %}
       </div>
@@ -43,8 +43,8 @@
       </span>
     </a>
     <div class="ins-inbox-quick">
-      {% if r.customer_phone %}<a class="os-btn os-btn-ghost os-btn-sm" href="tel:{{ r.customer_phone }}">Call</a>{% endif %}
-      {% if r.customer_email %}<a class="os-btn os-btn-ghost os-btn-sm" href="mailto:{{ r.customer_email }}">Email</a>{% endif %}
+      {% if r.customer_phone %}<a class="os-btn os-btn-ghost os-btn-sm" href="tel:{{ r.customer_phone }}">{{ _('owner.call') }}</a>{% endif %}
+      {% if r.customer_email %}<a class="os-btn os-btn-ghost os-btn-sm" href="mailto:{{ r.customer_email }}">{{ _('bos.email') }}</a>{% endif %}
     </div>
   </article>
   {% endfor %}

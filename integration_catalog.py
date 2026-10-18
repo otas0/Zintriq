@@ -30,7 +30,7 @@ REGION_LABELS: dict[str, str] = {
 
 PRIMARY_REGIONS = ("global", "cn", "jp", "kr", "hk", "tw", "mo", "sea", "eu", "us", "ca", "uk", "au")
 
-# Official brand sites — used for real color logos (local file, then Clearbit, then Google).
+# Official brand sites — used for real color logos (local file, then Simple Icons / DuckDuckGo favicon).
 PLUGIN_BRANDS: dict[str, dict[str, str]] = {
     "stripe": {"domain": "stripe.com"},
     "paypal": {"domain": "paypal.com"},
@@ -89,7 +89,6 @@ PLUGIN_BRANDS: dict[str, dict[str, str]] = {
     "affirm": {"domain": "affirm.com"},
     "amazon_pay": {"domain": "pay.amazon.com"},
     "yelp": {"domain": "yelp.com"},
-    "google_reviews": {"domain": "business.google.com"},
     "thefork": {"domain": "thefork.com"},
     "resy": {"domain": "resy.com"},
     "chope": {"domain": "chope.co"},
@@ -103,7 +102,6 @@ PLUGIN_BRANDS: dict[str, dict[str, str]] = {
     "reviews_io": {"domain": "reviews.io"},
     "feefo": {"domain": "feefo.com"},
     "trusted_shops": {"domain": "trustedshops.com"},
-    "google_customer_reviews": {"domain": "merchants.google.com"},
     "tripadvisor": {"domain": "tripadvisor.com"},
     "tablelog": {"domain": "tabelog.com"},
     "opentable": {"domain": "opentable.com"},
@@ -144,10 +142,10 @@ BRAND_COLORS: dict[str, str] = {
     "naver_pay": "03C75A", "au_pay": "EB5505", "d_barai": "CC0033", "merpay": "FF0211",
     "affirm": "0FA0EA", "amazon_pay": "FF9900",
     "yelp": "FF1A1A",
-    "google_reviews": "4285F4", "thefork": "548E3F", "resy": "E23744", "chope": "E31C23",
+    "thefork": "548E3F", "resy": "E23744", "chope": "E31C23",
     "keeta": "FF6A00", "hungrypanda": "FF5A00", "klook": "FF5722", "kkday": "00B2A9",
     "expedia": "191E3B", "trip_com": "287DFA", "g2": "FF492C", "reviews_io": "23B574",
-    "feefo": "00A0D2", "trusted_shops": "FFD200", "google_customer_reviews": "34A853", "tripadvisor": "34E0A1", "tablelog": "FF6600", "opentable": "DA3743",
+    "feefo": "00A0D2", "trusted_shops": "FFD200", "tripadvisor": "34E0A1", "tablelog": "FF6600", "opentable": "DA3743",
     "trustpilot": "00B67A", "gurunavi": "E60012", "hot_pepper": "E83929", "booking_com": "003580",
     "agoda": "E12B4A", "uber_eats": "06C167", "deliveroo": "00CCBC", "foursquare": "F94877",
     "facebook_reviews": "0866FF", "zomato": "E23744", "grab_reviews": "00B14F",
@@ -175,11 +173,10 @@ BRAND_INITIALS: dict[str, str] = {
     "momo": "Mo", "zalopay": "Z", "kakao_pay": "K", "toss": "T",
     "naver_pay": "N", "au_pay": "au", "d_barai": "d", "merpay": "め",
     "affirm": "Af", "amazon_pay": "a",
-    "google_reviews": "G", "thefork": "TF", "resy": "R", "chope": "C",
+    "thefork": "TF", "resy": "R", "chope": "C",
     "keeta": "K", "hungrypanda": "HP", "klook": "K", "kkday": "KK",
     "expedia": "E", "trip_com": "T", "g2": "G2", "reviews_io": "R",
-    "feefo": "F", "trusted_shops": "TS", "google_customer_reviews": "GCR",
-}
+    "feefo": "F", "trusted_shops": "TS", }
 
 
 def _logo_svg(slug: str) -> str:
@@ -200,7 +197,11 @@ def ensure_plugin_logos() -> None:
 
     folder = Path(__file__).resolve().parent / "static" / "integrations" / "logos"
     folder.mkdir(parents=True, exist_ok=True)
-    slugs = [p["slug"] for p in PAYMENT_PLUGINS] + [p["slug"] for p in REPUTATION_PLUGINS]
+    slugs = [
+        p["slug"]
+        for p in list(PAYMENT_PLUGINS) + list(REPUTATION_PLUGINS)
+        if p["slug"] not in REMOVED_CATALOG_SLUGS
+    ]
     for slug in slugs:
         path = folder / f"{slug}.svg"
         if path.is_file():
@@ -242,7 +243,7 @@ PAYMENT_PLUGINS: tuple[dict[str, Any], ...] = (
         "slug": "stripe",
         "name": "Stripe",
         "provider": "stripe",
-        "description": "Cards, Apple Pay, Google Pay — worldwide (except restricted regions)",
+        "description": "Cards and Apple Pay — worldwide (except restricted regions)",
         "regions": ("global", "us", "eu", "uk", "au", "jp", "hk", "tw", "sea", "latam", "af"),
         "checkout_ready": True,
         "credential_fields": [
@@ -2048,29 +2049,7 @@ REPUTATION_PLUGINS: tuple[dict[str, Any], ...] = (
             ],
         },
     },
-    {
-        "slug": "google_reviews",
-        "name": "Google Reviews",
-        "provider": "google",
-        "description": "Google Business Profile reviews — merchant OAuth only",
-        "regions": ("global", "us", "eu", "uk", "au", "jp", "kr", "hk", "tw", "mo", "sea"),
-        "capabilities": ("read_reviews", "read_rating"),
-        "oauth_required": True,
-        "credential_fields": [],
-        "setup_guide": {
-            "summary": "Connect with Google Business Profile OAuth. A Place ID or listing URL alone is not accepted — you must sign in as the business owner.",
-            "steps": [
-                "Claim or create the location in Google Business Profile (business.google.com) with the owner Google account.",
-                "This server needs Google OAuth client ID and secret (GOOGLE_REVIEWS_CLIENT_ID / GOOGLE_REVIEWS_CLIENT_SECRET) with scope business.manage.",
-                "Click Connect with Google below. Sign in as the owner and allow Business Profile access.",
-                "After redirect, the location account is linked. Use Sync reviews from Manage.",
-            ],
-            "links": [
-                {"label": "Google Business Profile (merchant)", "url": "https://www.google.com/"},
-                {"label": "Google Business Profile API (OAuth)", "url": "https://developers.google.com/"},
-            ],
-        },
-    },
+
     {
         "slug": "thefork",
         "name": "TheFork",
@@ -2369,31 +2348,7 @@ REPUTATION_PLUGINS: tuple[dict[str, Any], ...] = (
             ],
         },
     },
-    {
-        "slug": "google_customer_reviews",
-        "name": "Google Customer Reviews",
-        "provider": "google",
-        "description": "Google Merchant Center Customer Reviews (ecommerce badge) — not Business Profile",
-        "regions": ("global", "us", "eu", "uk", "au", "jp"),
-        "capabilities": ("read_reviews", "read_rating"),
-        "oauth_required": True,
-        "credential_fields": [
-            {"key": "merchant_id", "label": "Merchant Center ID", "required": True},
-        ],
-        "setup_guide": {
-            "summary": "This is Google Customer Reviews in Merchant Center — not Google Business Profile reviews. Connect Merchant Center (OAuth recommended) and paste the Merchant ID.",
-            "steps": [
-                "Open Google Merchant Center and complete store verification.",
-                "Growth → Manage programs → turn on Customer Reviews. Accept the terms.",
-                "Copy the Merchant ID from the Merchant Center gear menu.",
-                "If this server has GOOGLE_MERCHANT_CLIENT_ID / SECRET, click Connect with Google (scope: content). Also paste Merchant Center ID and Save.",
-            ],
-            "links": [
-                {"label": "Google Merchant Center", "url": "https://www.google.com/"},
-                {"label": "Google Customer Reviews program", "url": "https://support.google.com/"},
-            ],
-        },
-    },
+
 )
 
 from integration_catalog_batch2 import (
@@ -2432,13 +2387,23 @@ BRAND_INITIALS.update(CHINA_BRAND_INITIALS)
 PAYMENT_PLUGINS = PAYMENT_PLUGINS + EXTRA_PAYMENT_PLUGINS + BATCH3_PAYMENT_PLUGINS + CHINA_PAYMENT_PLUGINS
 REPUTATION_PLUGINS = REPUTATION_PLUGINS + EXTRA_REPUTATION_PLUGINS + CHINA_REPUTATION_PLUGINS
 
+# Google-owned integrations are retired from the product surface.
+REMOVED_CATALOG_SLUGS = frozenset({
+    "google_calendar",
+    "google_business",
+    "google_reviews",
+    "google_customer_reviews",
+    "google_pay",
+    "youtube_brand",
+})
+
 
 def payment_plugin_slugs() -> tuple[str, ...]:
-    return tuple(p["slug"] for p in PAYMENT_PLUGINS)
+    return tuple(p["slug"] for p in PAYMENT_PLUGINS if p["slug"] not in REMOVED_CATALOG_SLUGS)
 
 
 def reputation_plugin_slugs() -> tuple[str, ...]:
-    return tuple(p["slug"] for p in REPUTATION_PLUGINS)
+    return tuple(p["slug"] for p in REPUTATION_PLUGINS if p["slug"] not in REMOVED_CATALOG_SLUGS)
 
 
 def get_payment_plugin(slug: str) -> dict[str, Any] | None:
@@ -2452,6 +2417,8 @@ def get_reputation_plugin(slug: str) -> dict[str, Any] | None:
 def all_plugin_seeds() -> tuple[dict[str, Any], ...]:
     seeds = []
     for p in PAYMENT_PLUGINS:
+        if p["slug"] in REMOVED_CATALOG_SLUGS:
+            continue
         seeds.append({
             "slug": p["slug"],
             "name": p["name"],
@@ -2460,6 +2427,8 @@ def all_plugin_seeds() -> tuple[dict[str, Any], ...]:
             "category": "payments",
         })
     for p in REPUTATION_PLUGINS:
+        if p["slug"] in REMOVED_CATALOG_SLUGS:
+            continue
         seeds.append({
             "slug": p["slug"],
             "name": p["name"],
@@ -2496,8 +2465,16 @@ def catalog_api_payload() -> dict[str, Any]:
         "excluded_territories": list(EXCLUDED_TERRITORIES),
         "regions": [{"id": k, "label": v} for k, v in REGION_LABELS.items()],
         "primary_regions": list(PRIMARY_REGIONS),
-        "payments": [plugin_public_meta(p["slug"]) for p in PAYMENT_PLUGINS],
-        "reputation": [plugin_public_meta(p["slug"]) for p in REPUTATION_PLUGINS],
+        "payments": [
+            plugin_public_meta(p["slug"])
+            for p in PAYMENT_PLUGINS
+            if p["slug"] not in REMOVED_CATALOG_SLUGS
+        ],
+        "reputation": [
+            plugin_public_meta(p["slug"])
+            for p in REPUTATION_PLUGINS
+            if p["slug"] not in REMOVED_CATALOG_SLUGS
+        ],
     }
 
 

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import os
 from abc import ABC, abstractmethod
 from typing import Any
 
@@ -28,7 +29,7 @@ class AuthProvider(ABC):
 
 
 class LocalAuthProvider(AuthProvider):
-    """Placeholder for session/password auth — profile keyed by user id."""
+    """Session/password auth — profile keyed by user id."""
 
     slug = "local"
 
@@ -39,5 +40,20 @@ class LocalAuthProvider(AuthProvider):
         return True
 
 
+def auth_provider_name() -> str:
+    return (os.environ.get("AUTH_PROVIDER") or "local").strip().lower()
+
+
 def get_auth_provider(name: str | None = None) -> AuthProvider:
+    chosen = (name or auth_provider_name()).strip().lower()
+    if chosen == "auth0":
+        from integrations.auth.auth0_provider import Auth0AuthProvider
+
+        return Auth0AuthProvider()
     return LocalAuthProvider()
+
+
+def auth0_enabled() -> bool:
+    if auth_provider_name() != "auth0":
+        return False
+    return get_auth_provider("auth0").is_configured()

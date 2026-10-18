@@ -64,7 +64,9 @@ def migrate_customer_account_tables(conn) -> None:
 
 
 def is_customer_auth_path(path: str) -> bool:
-    return path.startswith("/account/")
+    from work_urls import parse_work_account_from_path
+
+    return parse_work_account_from_path(path) is not None
 
 
 def user_account_kind(row) -> str:
@@ -150,6 +152,10 @@ def clear_merchant_session(flask_session) -> None:
 
 
 def is_merchant_surface_path(path: str) -> bool:
+    if path.startswith("/store/") or path.startswith("/build/"):
+        return False
+    if path == "/account" or path.startswith("/account/"):
+        return True
     if path == "/app/account":
         return True
     return any(
@@ -158,7 +164,7 @@ def is_merchant_surface_path(path: str) -> bool:
     )
 
 
-def safe_customer_next_url(target: str | None, *, fallback: str = "/home") -> str:
+def safe_customer_next_url(target: str | None, *, fallback: str = "/") -> str:
     if not target or not target.startswith("/") or target.startswith("//"):
         return fallback
     if is_merchant_surface_path(target):
@@ -286,7 +292,7 @@ def effective_contact_hints(conn, visitor_key: str, customer_user_id: int | None
     return guest_contact_hints(conn, visitor_key)
 
 
-def _safe_next_url(target: str | None, *, fallback: str = "/home") -> str:
+def _safe_next_url(target: str | None, *, fallback: str = "/") -> str:
     return safe_customer_next_url(target, fallback=fallback)
 
 
@@ -318,20 +324,38 @@ def register_customer_account_platform(app) -> None:
         sign_out_customer(session)
         return None
 
+    from flask import g
+    from work_account_routes import work_account_route
+    from work_urls import current_work, resolve_work_or_404, work_url
+
+    def customer_href(rest: str = "account") -> str:
+        return work_url(current_work(), rest)
+
+    @app.before_request
+    def bind_customer_work():
+        from desktop.server_mode import desktop_enabled
+        from work_urls import parse_work_account_from_path
+
+        if desktop_enabled():
+            return None
+        parsed = parse_work_account_from_path(request.path)
+        if not parsed:
+            return None
+        kind, slug, _rest = parsed
+        g.work = resolve_work_or_404(kind, slug)
+        return None
+
     def customer_login_required(view):
         @wraps(view)
         def wrapped(*args, **kwargs):
             if not get_customer():
-                from flask import flash, redirect, request, url_for
+                from flask import flash, redirect, request
 
-                flash("Please sign in to your shopper account.", "error")
-                return redirect(
-                    url_for(
-                        "customer_account_home",
-                        open="login",
-                        next=request.path,
-                    )
-                )
+                flash("Please sign in to continue.", "error")
+                login = customer_href("account/login")
+                nxt = request.path
+                sep = "&" if "?" in login else "?"
+                return redirect(f"{login}{sep}next={nxt}")
             return view(*args, **kwargs)
 
         return wrapped
@@ -350,18 +374,30 @@ def register_customer_account_platform(app) -> None:
             )
         sign_in_customer(session, user_id, csrf_fn=csrf_token, remember_device=remember_device)
 
-    @app.route("/account/register", methods=["GET", "POST"])
-    def customer_register():
+    @work_account_route(app, "register", methods=["GET", "POST"])
+    def customer_register(work_slug: str):
         next_url = request.args.get("next") or request.form.get("next")
         if get_customer():
-            return redirect(_safe_next_url(next_url))
+            return redirect(_safe_next_url(next_url, fallback=customer_href("account")))
         if request.method == "GET":
-            return redirect(url_for("customer_account_home", open="signup", next=next_url))
+            target = customer_href("account")
+            extra = "open=signup"
+            if next_url:
+                extra += f"&next={next_url}"
+            return redirect(f"{target}?{extra}")
         if request.method == "POST":
+            from turnstile_protect import FAIL_MESSAGE as TURNSTILE_FAIL, request_passes_turnstile
+
             email = request.form.get("email", "").strip().lower()
             password = request.form.get("password", "")
             confirm = request.form.get("confirm_password", "")
             display_name = request.form.get("display_name", "").strip() or None
+            if not request_passes_turnstile():
+                return customer_auth_json_fail(
+                    TURNSTILE_FAIL,
+                    template="customer/register.html",
+                    next_url=next_url,
+                )
             if not request.form.get("legal_consent"):
                 return customer_auth_json_fail(
                     "Please accept the Terms of Service and Privacy Policy to continue.",
@@ -417,7 +453,7 @@ def register_customer_account_platform(app) -> None:
                     ).fetchone()
                 if existing and user_account_kind(existing) == ACCOUNT_KIND_MERCHANT:
                     return customer_auth_json_fail(
-                        "This email is used for a business account. Use another email for shopping.",
+                        "This email already has a Zintriq workspace account. Sign in to Builder, or use another email here.",
                         template="customer/register.html",
                         next_url=next_url,
                     )
@@ -431,24 +467,34 @@ def register_customer_account_platform(app) -> None:
             next_url=next_url,
         )
 
-    @app.route("/account/login", methods=["GET", "POST"])
-    def customer_login():
+    @work_account_route(app, "login", methods=["GET", "POST"])
+    def customer_login(work_slug: str):
         from customer_verification import find_user_by_login
 
         next_url = request.args.get("next") or request.form.get("next")
         if get_customer():
-            return redirect(_safe_next_url(next_url))
+            return redirect(_safe_next_url(next_url, fallback=customer_href("account")))
         if request.method == "GET":
-            return redirect(url_for("customer_account_home", open="login", next=next_url))
+            return render_template("customer/login.html", next_url=next_url)
+        from turnstile_protect import FAIL_MESSAGE as TURNSTILE_FAIL, request_passes_turnstile
+
+        if not request_passes_turnstile():
+            return customer_auth_json_fail(
+                TURNSTILE_FAIL,
+                template="customer/login.html",
+                next_url=next_url,
+            )
         identifier = request.form.get("email", "").strip() or request.form.get("identifier", "").strip()
+        from password_policy import verify_password
+
         with db() as conn:
             user = find_user_by_login(conn, identifier)
-        if user and check_password_hash(user["password_hash"], request.form.get("password", "")):
+        if user and verify_password(user["password_hash"], request.form.get("password", "")):
             with db() as conn:
                 uid = int(user["id"])
                 if user_account_kind(user) == ACCOUNT_KIND_MERCHANT and not user_has_shopper_profile(conn, uid):
                     return customer_auth_json_fail(
-                        "No shopper profile yet. Use Sign up to activate personal mode.",
+                        "No profile on this surface yet. Use Sign up with the same email.",
                         template="customer/login.html",
                         next_url=next_url,
                     )
@@ -464,56 +510,21 @@ def register_customer_account_platform(app) -> None:
                 email=login_email,
                 remember_device=parse_remember_device(request.form.get("remember_device")),
             )
-            return customer_auth_json_ok(_safe_next_url(next_url))
+            return customer_auth_json_ok(_safe_next_url(next_url, fallback=customer_href("account")))
         return customer_auth_json_fail(
             "Email, phone, or password is incorrect.",
             template="customer/login.html",
             next_url=next_url,
         )
 
-    @app.post("/account/switch/business")
-    def customer_switch_to_business():
-        from app import sign_in_user
-
-        cid = current_customer_id(session)
-        if not cid:
-            flash("Sign in to your personal account first.", "error")
-            return redirect(url_for("customer_account_home", open="login"))
-        with db() as conn:
-            if not user_can_use_business_mode(conn, cid):
-                flash("This account does not have a business profile.", "error")
-                return redirect(url_for("index"))
-        sign_in_user(int(cid))
-        flash("Switched to Business mode.", "success")
-        return redirect(url_for("bos.store"))
-
-    @app.post("/account/switch/personal")
-    def customer_switch_to_personal():
-        uid = session.get("user_id")
-        if not uid:
-            flash("Sign in to your business account first.", "error")
-            return redirect(url_for("login"))
-        with db() as conn:
-            from customer_verification import customer_needs_onboarding
-
-            if not user_can_use_personal_mode(conn, int(uid)):
-                flash("Activate personal mode first — sign up with the same email.", "info")
-                return redirect(url_for("customer_account_home", open="signup"))
-            needs = customer_needs_onboarding(conn, int(uid))
-        sign_in_customer(session, int(uid), csrf_fn=csrf_token)
-        flash("Switched to Personal mode.", "success")
-        if needs:
-            return redirect(url_for("customer_account_home"))
-        return redirect(url_for("index"))
-
-    @app.post("/account/logout")
-    def customer_logout():
+    @work_account_route(app, "logout", methods=["POST"])
+    def customer_logout(work_slug: str):
         sign_out_customer(session, forget_device=True)
-        flash("Signed out of your shopper account.", "success")
-        return redirect(_safe_next_url(request.form.get("next") or request.referrer))
+        flash("Signed out.", "success")
+        return redirect(_safe_next_url(request.form.get("next") or request.referrer, fallback=customer_href("account")))
 
-    @app.route("/account/forgot-password", methods=["GET", "POST"])
-    def customer_forgot_password():
+    @work_account_route(app, "forgot-password", methods=["GET", "POST"])
+    def customer_forgot_password(work_slug: str):
         if request.method == "POST":
             email = request.form.get("email", "").strip().lower()
             with db() as conn:
@@ -523,12 +534,12 @@ def register_customer_account_platform(app) -> None:
             if user and user_account_kind(user) == ACCOUNT_KIND_CUSTOMER:
                 token = create_auth_token(user["id"], "reset_customer")
                 _log.warning("customer_reset_link_sent token_prefix=%s", token[:8])
-            flash("If that email has a shopper account, a reset link has been sent.", "success")
-            return redirect(url_for("customer_login"))
+            flash("If that email has an account, a reset link has been sent.", "success")
+            return redirect(customer_href("account/login"))
         return render_template("customer/forgot_password.html")
 
-    @app.route("/account/reset-password/<token>", methods=["GET", "POST"])
-    def customer_reset_password(token: str):
+    @work_account_route(app, "reset-password/<token>", methods=["GET", "POST"])
+    def customer_reset_password(work_slug: str, token: str):
         if request.method == "POST":
             password = request.form.get("password", "")
             confirm = request.form.get("confirm_password", "")
@@ -538,14 +549,14 @@ def register_customer_account_platform(app) -> None:
                 auth_token = consume_auth_token(token, "reset_customer")
                 if not auth_token:
                     flash("This reset link is invalid or expired.", "error")
-                    return redirect(url_for("customer_forgot_password"))
+                    return redirect(customer_href("account/forgot-password"))
                 with db() as conn:
                     user = conn.execute(
                         "SELECT account_kind FROM users WHERE id = ?", (auth_token["user_id"],),
                     ).fetchone()
                     if not user or user_account_kind(user) != ACCOUNT_KIND_CUSTOMER:
-                        flash("Invalid reset link for shopper account.", "error")
-                        return redirect(url_for("customer_forgot_password"))
+                        flash("Invalid reset link.", "error")
+                        return redirect(customer_href("account/forgot-password"))
                     conn.execute(
                         "UPDATE users SET password_hash = ? WHERE id = ?",
                         (
@@ -554,11 +565,11 @@ def register_customer_account_platform(app) -> None:
                         ),
                     )
                 flash("Password changed. You can now sign in.", "success")
-                return redirect(url_for("customer_login"))
+                return redirect(customer_href("account/login"))
         return render_template("customer/reset_password.html", token=token)
 
-    @app.route("/account/magic-link", methods=["GET", "POST"])
-    def customer_magic_link():
+    @work_account_route(app, "magic-link", methods=["GET", "POST"])
+    def customer_magic_link(work_slug: str):
         if request.method == "POST":
             email = request.form.get("email", "").strip().lower()
             with db() as conn:
@@ -568,27 +579,27 @@ def register_customer_account_platform(app) -> None:
             if user and user_account_kind(user) == ACCOUNT_KIND_CUSTOMER:
                 token = create_auth_token(user["id"], "magic_customer")
                 _log.warning("customer_magic_link_sent token_prefix=%s", token[:8])
-            flash("If that email has a shopper account, a sign-in link has been sent.", "success")
-            return redirect(url_for("customer_login"))
+            flash("If that email has an account, a sign-in link has been sent.", "success")
+            return redirect(customer_href("account/login"))
         return render_template("customer/magic_link.html")
 
-    @app.get("/account/magic-signin/<token>")
-    def customer_magic_signin(token: str):
+    @work_account_route(app, "magic-signin/<token>", methods=["GET"])
+    def customer_magic_signin(work_slug: str, token: str):
         auth_token = consume_auth_token(token, "magic_customer")
         if not auth_token:
             flash("This sign-in link is invalid or expired.", "error")
-            return redirect(url_for("customer_login"))
+            return redirect(customer_href("account/login"))
         with db() as conn:
             user = conn.execute("SELECT * FROM users WHERE id = ?", (auth_token["user_id"],)).fetchone()
         if not user or user_account_kind(user) != ACCOUNT_KIND_CUSTOMER:
-            flash("Invalid sign-in link for shopper account.", "error")
-            return redirect(url_for("customer_login"))
+            flash("Invalid sign-in link.", "error")
+            return redirect(customer_href("account/login"))
         finish_customer_sign_in(int(user["id"]), email=user["email"])
         flash("You're signed in.", "success")
-        return redirect(url_for("index"))
+        return redirect(customer_href("account"))
 
-    @app.get("/account")
-    def customer_account_home():
+    @work_account_route(app, "", methods=["GET"])
+    def customer_account_home(work_slug: str):
         customer = get_customer()
         if not customer:
             return render_template("customer/account_guest.html", preview_mode=False)
@@ -625,9 +636,9 @@ def register_customer_account_platform(app) -> None:
             public_email=public_email,
         )
 
-    @app.post("/account")
+    @work_account_route(app, "", methods=["POST"])
     @customer_login_required
-    def customer_account_update():
+    def customer_account_update(work_slug: str):
         from app import save_uploaded_image, resolve_image_field
         from customer_verification import username_available, validate_username
 
@@ -641,12 +652,12 @@ def register_customer_account_platform(app) -> None:
             avatar_url = resolve_image_field("avatar_url", "avatar", None)
         except ValueError as exc:
             flash(str(exc), "error")
-            return redirect(url_for("customer_account_home"))
+            return redirect(customer_href("account"))
         with db() as conn:
             if username:
                 if not username_available(conn, username, exclude_user_id=int(customer["id"])):
                     flash("That username is taken.", "error")
-                    return redirect(url_for("customer_account_home"))
+                    return redirect(customer_href("account"))
             row = conn.execute(
                 "SELECT username, avatar_url FROM customer_account_profiles WHERE user_id = ?",
                 (customer["id"],),
@@ -685,7 +696,7 @@ def register_customer_account_platform(app) -> None:
                 phone=phone,
             )
         flash("Your profile was updated.", "success")
-        return redirect(url_for("customer_account_home"))
+        return redirect(customer_href("account"))
 
     @app.post("/api/customer/hub-intro-seen")
     def customer_hub_intro_seen_api():

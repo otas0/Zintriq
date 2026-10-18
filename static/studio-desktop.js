@@ -1,6 +1,6 @@
 /**
  * Studio desktop bridge + web fallback for /studio/desktop gate.
- * In Electron: Auth0 Native PKCE via window.zintriqDesktop.
+ * In Electron: Flask account PKCE via window.zintriqDesktop.
  * In browser: Sign in falls back to normal web /login → /studio.
  */
 (function () {
@@ -34,8 +34,8 @@
     if (signInBtn) signInBtn.disabled = true;
     try {
       const cfg = await desktop.getConfig();
-      if (!cfg.hasAuth0) {
-        showHint("Auth0 is not configured. Set AUTH0_DOMAIN and AUTH0_NATIVE_CLIENT_ID in desktop/.env.desktop.json");
+      if (!cfg.hasAccountOrigin) {
+        showHint("Set ZINTRIQ_ACCOUNT_ORIGIN (see desktop/.env.desktop.example)");
         return;
       }
       await desktop.login();

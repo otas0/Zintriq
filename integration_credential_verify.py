@@ -336,7 +336,7 @@ def verify_reputation_credentials(provider: str, fields: dict[str, str]) -> dict
     if not verifier:
         raise CredentialVerifyError(
             f"Live verification is required for “{provider}”. "
-            f"Use OAuth (Google / Tripadvisor / OpenTable / …) when configured, "
+            f"Use OAuth (Tripadvisor / OpenTable / …) when configured, "
             f"or connect Yelp / Foursquare with a real API key that the provider accepts."
         )
     return verifier(cleaned)

@@ -13,8 +13,12 @@ _log = logging.getLogger("app.integration")
 
 REMOVED_PLUGIN_SLUGS = (
     "google_calendar",
-    "notion",
     "google_business",
+    "google_reviews",
+    "google_customer_reviews",
+    "google_pay",
+    "youtube_brand",
+    "notion",
     "taiwan_pay",
     "ipeen",
 )
@@ -96,6 +100,8 @@ def init_integration_tables(conn) -> None:
     conn.executescript(SCHEMA_SQL)
     purge_removed_plugins(conn)
     for p in all_plugin_seeds():
+        if p["slug"] in REMOVED_PLUGIN_SLUGS:
+            continue
         conn.execute(
             """INSERT INTO integration_plugins (slug, name, provider, description, category, status)
                VALUES (?, ?, ?, ?, ?, 'available')
@@ -107,6 +113,7 @@ def init_integration_tables(conn) -> None:
                  updated_at=CURRENT_TIMESTAMP""",
             (p["slug"], p["name"], p["provider"], p["description"], p["category"]),
         )
+    purge_removed_plugins(conn)
     try:
         from payment_connect_plugin import init_payment_connection_tables
         init_payment_connection_tables(conn)

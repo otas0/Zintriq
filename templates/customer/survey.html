@@ -4,8 +4,8 @@
 <article class="material-sheet" style="max-width:560px;margin:0 auto;padding:24px">
   {% if submitted %}
   <div class="fb-confirm">
-    <h1>Thank you</h1>
-    <p>Your feedback has been received.</p>
+    <h1>{{ _('customer.survey.thanks') }}</h1>
+    <p>{{ _('customer.survey.received') }}</p>
   </div>
   {% else %}
   <header style="margin-bottom:24px">
@@ -22,12 +22,12 @@
       <textarea class="bos-input" name="q_{{ q.id }}" rows="3" {% if q.required %}required{% endif %}></textarea>
       {% elif q.type == 'rating' %}
       <select class="bos-input" name="q_{{ q.id }}" {% if q.required %}required{% endif %}>
-        <option value="">Select…</option>
+        <option value="">{{ _('customer.survey.select') }}</option>
         {% for n in range(1, 6) %}<option value="{{ n }}">{{ n }}</option>{% endfor %}
       </select>
       {% elif q.type == 'nps' %}
       <select class="bos-input" name="q_{{ q.id }}" {% if q.required %}required{% endif %}>
-        <option value="">Select…</option>
+        <option value="">{{ _('customer.survey.select') }}</option>
         {% for n in range(0, 11) %}<option value="{{ n }}">{{ n }}</option>{% endfor %}
       </select>
       {% elif q.type == 'single_choice' %}
@@ -41,8 +41,8 @@
       {% endif %}
     </div>
     {% endfor %}
-    <div class="bos-field"><label class="bos-label">Your name (optional)</label><input class="bos-input" name="customer_name"></div>
-    <button type="submit" class="mq-btn mq-btn-primary">Submit</button>
+    <div class="bos-field"><label class="bos-label">{{ _('customer.survey.name_optional') }}</label><input class="bos-input" name="customer_name"></div>
+    <button type="submit" class="mq-btn mq-btn-primary">{{ _('customer.survey.submit') }}</button>
   </form>
   {% endif %}
 </article>

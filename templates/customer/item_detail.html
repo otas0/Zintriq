@@ -5,9 +5,9 @@
 {% endblock %}
 {% block customer_header_actions %}
 {% if checkout_enabled|default(false) %}
-<a class="mq-public-header__guest-link sf-header-cart" href="{{ url_for('store_checkout_page', slug=store.slug) }}">Cart</a>
+<a class="mq-public-header__guest-link sf-header-cart" href="{{ url_for('store_checkout_page', slug=store.slug) }}">{{ _('cart.cart') }}</a>
 {% endif %}
-<a class="mq-btn mq-btn-primary mq-btn-sm" href="#sf-contact">Contact</a>
+<a class="mq-btn mq-btn-primary mq-btn-sm" href="#sf-contact">{{ _('store.contact') }}</a>
 {% endblock %}
 {% block content %}
 <section class="mq-hero mq-hero--compact{% if store.background_image %} has-bg{% endif %}"{% if store.background_image %} style="--store-bg-image: url('{{ store.background_image }}')"{% endif %}>
@@ -40,22 +40,22 @@
         {% endif %}
         {% if item.unit %}<span class="mq-detail-unit">{{ item.unit }}</span>{% endif %}
       </p>
-      <p class="mq-detail-desc">{{ item.description or 'No description provided.' }}</p>
+      <p class="mq-detail-desc">{{ item.description or _('item.no_description') }}</p>
       {% if group_name %}<p class="mq-detail-tags"><span class="mq-tag mq-tag--brand">{{ group_name }}</span></p>{% endif %}
       {% if item.inventory is not none %}
       <p class="mq-detail-stock mq-detail-stock--{% if item.inventory > 0 %}in{% else %}out{% endif %}">
-        {% if item.inventory > 0 %}In stock{% else %}Currently unavailable{% endif %}
+        {% if item.inventory > 0 %}{{ _('item.in_stock') }}{% else %}{{ _('item.unavailable') }}{% endif %}
       </p>
       {% endif %}
-      <a class="mq-btn mq-btn-ghost" href="{{ url_for('store_preview' if preview_mode else 'storefront', slug=store.slug, group=back_group) if back_group else url_for('store_preview' if preview_mode else 'storefront', slug=store.slug) }}">← Back to store</a>
+      <a class="mq-btn mq-btn-ghost" href="{{ url_for('store_preview' if preview_mode else 'storefront', slug=store.slug, group=back_group) if back_group else url_for('store_preview' if preview_mode else 'storefront', slug=store.slug) }}">{{ _('item.back_link') }}</a>
       {% if checkout_enabled|default(false) and (item.allow_cart|default(0)|int == 1) %}
-      <button type="button" class="mq-btn mq-btn-primary" id="item-add-cart" data-item-id="{{ item.id }}">Add to cart</button>
-      <a class="mq-btn mq-btn-ghost" href="{{ url_for('store_checkout_page', slug=store.slug) }}">Go to checkout</a>
+      <button type="button" class="mq-btn mq-btn-primary" id="item-add-cart" data-item-id="{{ item.id }}">{{ _('cart.add') }}</button>
+      <a class="mq-btn mq-btn-ghost" href="{{ url_for('store_checkout_page', slug=store.slug) }}">{{ _('cart.go_checkout') }}</a>
       {% elif checkout_enabled|default(false) %}
-      <p class="cp-muted" style="font-size:13px">This item is not enabled for online checkout. Enable <strong>Allow add to cart</strong> in Edit item.</p>
+      <p class="cp-muted" style="font-size:13px">{{ _('item.cart_disabled_edit') }}</p>
       {% endif %}
       {% if not preview_mode %}
-      <a class="mq-btn mq-btn-ghost" href="#sf-contact">Contact about this item</a>
+      <a class="mq-btn mq-btn-ghost" href="#sf-contact">{{ _('item.contact_about') }}</a>
       {% endif %}
     </div>
   </div>

@@ -1,7 +1,6 @@
 /**
- * Auth0 Authorization Code + PKCE helpers for Zintriq Studio (native/desktop).
- * code_verifier stays on the desktop; exchange goes through the Flask API
- * so Auth0 client secrets never ship inside the Electron app.
+ * Desktop account PKCE. The verifier stays on the machine; the browser
+ * confirms on the public Flask site (/desktop/authorize), not Auth0.
  */
 
 const crypto = require("crypto");
@@ -20,28 +19,29 @@ function createPkcePair() {
   return { verifier, challenge };
 }
 
-function buildAuthorizeUrl({
-  domain,
+function buildDesktopAuthorizeUrl({
+  origin,
   clientId,
   redirectUri,
   state,
   codeChallenge,
-  audience,
-  screenHint,
+  deviceName,
+  os,
+  version,
 }) {
-  const issuer = domain.startsWith("http") ? domain.replace(/\/$/, "") : `https://${domain}`;
+  const base = String(origin || "").replace(/\/$/, "");
   const params = new URLSearchParams({
     response_type: "code",
     client_id: clientId,
     redirect_uri: redirectUri,
-    scope: "openid profile email offline_access",
     state,
     code_challenge: codeChallenge,
     code_challenge_method: "S256",
   });
-  if (audience) params.set("audience", audience);
-  if (screenHint) params.set("screen_hint", screenHint);
-  return `${issuer}/authorize?${params.toString()}`;
+  if (deviceName) params.set("device_name", deviceName);
+  if (os) params.set("os", os);
+  if (version) params.set("version", version);
+  return `${base}/desktop/authorize?${params.toString()}`;
 }
 
 function parseAuthCallback(urlString) {
@@ -53,8 +53,28 @@ function parseAuthCallback(urlString) {
   return { code, state, error, errorDescription };
 }
 
+function authorizePathFromUrl(origin, authorizeUrl) {
+  const base = String(origin || "").replace(/\/$/, "");
+  const full = String(authorizeUrl || "");
+  if (full.startsWith(base)) return full.slice(base.length) || "/";
+  try {
+    const dest = new URL(full);
+    return `${dest.pathname}${dest.search}`;
+  } catch {
+    return "/desktop/authorize";
+  }
+}
+
+function buildDesktopRegisterUrl({ origin, authorizeUrl }) {
+  const base = String(origin || "").replace(/\/$/, "");
+  const next = authorizePathFromUrl(origin, authorizeUrl);
+  const params = new URLSearchParams({ from: "desktop", next });
+  return `${base}/register?${params.toString()}`;
+}
+
 module.exports = {
   createPkcePair,
-  buildAuthorizeUrl,
+  buildDesktopAuthorizeUrl,
+  buildDesktopRegisterUrl,
   parseAuthCallback,
 };

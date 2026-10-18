@@ -101,12 +101,12 @@ export function initShell() {
   initToastUndo();
   initQuickActions();
 
-  // Command palette loads after first paint (⌘K / Ctrl+K and / shortcut)
-  if (typeof requestIdleCallback === "function") {
-    requestIdleCallback(() => ensureCommandPalette(), { timeout: 2000 });
-  } else {
-    setTimeout(() => ensureCommandPalette(), 300);
-  }
+  // Command palette loads on first ⌘K / Ctrl+K (not idle-prefetched).
+  document.addEventListener("keydown", (e) => {
+    if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "k") {
+      ensureCommandPalette();
+    }
+  }, { once: false, capture: true });
 
   const workspaceReady = loadWorkspaceList().catch(() => {});
   initShellKeyboard();
@@ -158,6 +158,26 @@ export function initModule() {
   });
 }
 
-initModule();
-initShell();
 initMobileShell();
+
+const hasSpaSurface = Boolean(
+  document.getElementById("bos-module-root") ||
+  document.getElementById("bos-store-hub") ||
+  (document.body.dataset.module || "").trim()
+);
+
+if (hasSpaSurface) {
+  initModule();
+  initShell();
+} else {
+  // Account / help / 2FA use the BOS layout chrome without the SPA runtime.
+  const sidebar = document.getElementById("bos-sidebar");
+  const backdrop = document.getElementById("bos-sidebar-backdrop");
+  const menuBtn = document.getElementById("bos-menu-btn");
+  const closeBtn = document.getElementById("bos-sidebar-close");
+  const openSidebar = () => { sidebar?.classList.add("is-open"); backdrop?.classList.remove("hidden"); };
+  const closeSidebar = () => { sidebar?.classList.remove("is-open"); backdrop?.classList.add("hidden"); };
+  menuBtn?.addEventListener("click", openSidebar);
+  closeBtn?.addEventListener("click", closeSidebar);
+  backdrop?.addEventListener("click", closeSidebar);
+}

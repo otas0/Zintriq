@@ -1,14 +1,14 @@
 {% extends 'base.html' %}
-{% block title %}Accept invitation — Zintriq{% endblock %}
+{% block title %}{{ _('invite.title_doc') }}{% endblock %}
 {% block content %}
 <section class="mq-auth-page">
   <div class="mq-auth-card">
-    <p class="mq-section-label">Team invitation</p>
-    <h1>Join workspace</h1>
-    <p class="mq-auth-lead">You've been invited to collaborate on a workspace.</p>
-    <button class="mq-btn mq-btn-primary" type="button" id="accept-invite-btn" data-token="{{ token }}">Accept invitation</button>
+    <p class="mq-section-label">{{ _('invite.eyebrow') }}</p>
+    <h1>{{ _('invite.title') }}</h1>
+    <p class="mq-auth-lead">{{ _('invite.lead') }}</p>
+    <button class="mq-btn mq-btn-primary" type="button" id="accept-invite-btn" data-token="{{ token }}">{{ _('invite.accept') }}</button>
     <p id="accept-invite-msg" class="mq-auth-error" hidden></p>
-    <p class="mq-auth-links"><a href="/app/team">Go to Team</a></p>
+    <p class="mq-auth-links"><a href="{{ url_for('account') }}">{{ _('nav.account') }}</a></p>
   </div>
 </section>
 <script>
@@ -23,10 +23,10 @@ document.getElementById("accept-invite-btn")?.addEventListener("click", async ()
       body: JSON.stringify({ token }),
     });
     const data = await res.json();
-    if (!res.ok) throw new Error(data.error || "Failed");
+    if (!res.ok) throw new Error(data.error || {{ _('invite.failed')|tojson }});
     window.location.href = "/app/team";
   } catch (e) {
-    if (msg) { msg.textContent = e.message || "Could not accept invitation"; msg.hidden = false; }
+    if (msg) { msg.textContent = e.message || {{ _('invite.failed')|tojson }}; msg.hidden = false; }
   }
 });
 </script>

@@ -1,0 +1,110 @@
+/* Interactive motion layer — magnetic, spotlight, progress, tilt */
+
+.mq-scroll-progress {
+  position: fixed;
+  top: 0;
+  left: 0;
+  height: 2px;
+  width: 0;
+  z-index: 200;
+  background: var(--color-brand);
+  transform-origin: left center;
+  pointer-events: none;
+}
+
+.mq-spotlight {
+  position: relative;
+  overflow: hidden;
+  --spot-x: 50%;
+  --spot-y: 40%;
+}
+
+.mq-spotlight::after {
+  content: "";
+  position: absolute;
+  inset: -20%;
+  pointer-events: none;
+  background: radial-gradient(
+    420px circle at var(--spot-x) var(--spot-y),
+    var(--color-brand-soft) 0%,
+    transparent 58%
+  );
+  opacity: 0;
+  transition: opacity 280ms var(--motion-smooth, cubic-bezier(0.22, 1, 0.36, 1));
+  z-index: 0;
+}
+
+.mq-spotlight.is-spot-active::after {
+  opacity: 1;
+}
+
+.mq-spotlight > * {
+  position: relative;
+  z-index: 1;
+}
+
+.zh-hero.mq-spotlight::after {
+  opacity: 0.85;
+  background: radial-gradient(
+    520px circle at var(--spot-x) var(--spot-y),
+    rgba(255, 213, 0, 0.22) 0%,
+    transparent 55%
+  );
+}
+
+.zh-close.mq-spotlight::after {
+  background: radial-gradient(
+    480px circle at var(--spot-x) var(--spot-y),
+    rgba(255, 255, 255, 0.12) 0%,
+    transparent 55%
+  );
+}
+
+.mq-magnetic {
+  display: inline-flex;
+  will-change: transform;
+  transform: translate3d(var(--mx, 0px), var(--my, 0px), 0);
+  transition: transform 80ms linear;
+}
+
+.mq-tilt {
+  transform-style: preserve-3d;
+  will-change: transform;
+  transition: transform 120ms linear;
+}
+
+.zh-hero__cell.mq-tilt {
+  transition: transform 140ms linear, box-shadow var(--motion-hover);
+  transform-origin: center center;
+  /* backdrop-filter + radius clips glyphs; keep labels inside safe inset */
+  overflow: visible;
+}
+
+.zh-hero__grid.is-tracking .zh-hero__cell {
+  /* pointer parallax applied via JS transform */
+}
+
+.mq-scramble {
+  display: inline-block;
+  min-width: 1ch;
+}
+
+@media (hover: none), (pointer: coarse) {
+  .mq-spotlight::after {
+    display: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .mq-scroll-progress,
+  .mq-spotlight::after {
+    display: none !important;
+  }
+
+  .mq-magnetic,
+  .mq-tilt,
+  .zh-hero__cell {
+    transform: none !important;
+    transition: none !important;
+  }
+}

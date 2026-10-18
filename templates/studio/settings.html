@@ -1,0 +1,81 @@
+<!doctype html>
+<html lang="en">
+<head>
+  {% include 'partials/theme_init.html' %}
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="csrf-token" content="{{ csrf_token() }}">
+  <title>Settings — Zintriq</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='tokens.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='desktop-app.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='studio/workbench.css') }}">
+</head>
+<body class="da-app">
+  {% set workbench_surface = 'settings' %}
+  {% include 'studio/_workbench_bar.html' %}
+  <main class="da-welcome-main">
+    <h1 class="da-welcome-title">Settings</h1>
+    <p class="da-welcome-kicker">Layout, keymap, and Git ignore stay on this machine. They are not uploaded.</p>
+    <section>
+      <h2>Layout file</h2>
+      <p id="da-settings-layout-path">workbench-layout.json in the data directory</p>
+      <pre id="da-settings-layout"></pre>
+      <button type="button" class="da-btn" id="da-settings-save-layout">Save layout on this machine</button>
+    </section>
+    <section>
+      <h2>Keymap conflicts</h2>
+      <p id="da-keymap-conflicts" role="status"></p>
+      <button type="button" class="da-btn" id="da-keymap-export">Export keymap</button>
+      <button type="button" class="da-btn" id="da-keymap-import">Import keymap</button>
+      <input id="da-keymap-file" type="file" accept="application/json,.json" hidden>
+    </section>
+    <section>
+      <h2>Git ignore</h2>
+      <p>Writes <code>.gitignore</code> next to the local data directory. Cloud sync is not involved.</p>
+      <button type="button" class="da-btn" id="da-git-ignore">Write local .gitignore</button>
+      <p id="da-git-ignore-status" role="status"></p>
+    </section>
+    <section>
+      <h2>Community history depth</h2>
+      <p>Kind filter navigation uses <code>pushState</code>. Cap consecutive pushes so Back stays usable. Search still replaces.</p>
+      <label for="da-settings-push-max">Push depth</label>
+      <select id="da-settings-push-max" class="da-select">
+        <option value="4">4</option>
+        <option value="8">8</option>
+        <option value="0">∞</option>
+      </select>
+      <p id="da-settings-push-status" role="status"></p>
+    </section>
+    <section>
+      <h2>Layout sync debounce</h2>
+      <p>When another window writes <code>workbench-layout.json</code>, wait before applying modes scroll.</p>
+      <label for="da-settings-layout-debounce">Debounce</label>
+      <select id="da-settings-layout-debounce" class="da-select">
+        <option value="low">Low latency (40ms)</option>
+        <option value="stable">Stable (120ms)</option>
+      </select>
+      <p id="da-settings-layout-debounce-status" role="status"></p>
+    </section>
+    <section>
+      <h2>Empty draft long-press</h2>
+      <p>Hold duration before the Fill / Rename / Remove menu opens.</p>
+      <label for="da-settings-hold-touch">Touch (ms)</label>
+      <input id="da-settings-hold-touch" class="da-select" type="number" min="200" max="1200" step="50" value="400">
+      <label for="da-settings-hold-mouse">Mouse (ms)</label>
+      <input id="da-settings-hold-mouse" class="da-select" type="number" min="300" max="1500" step="50" value="650">
+      <p id="da-settings-hold-status" role="status"></p>
+    </section>
+    <section>
+      <h2>Export / import local prefs</h2>
+      <p>Community push depth, layout debounce, and long-press timings. Stays on this machine.</p>
+      <button type="button" class="da-btn" id="da-settings-prefs-export">Export prefs</button>
+      <button type="button" class="da-btn" id="da-settings-prefs-import">Import prefs</button>
+      <input id="da-settings-prefs-file" type="file" accept="application/json,.json" hidden>
+      <p id="da-settings-prefs-status" role="status"></p>
+    </section>
+  </main>
+  <script src="{{ url_for('static', filename='studio/zintriq.js') }}"></script>
+  <script src="{{ url_for('static', filename='studio/account-chip.js') }}"></script>
+  <script src="{{ url_for('static', filename='studio/workbench-settings.js') }}"></script>
+</body>
+</html>

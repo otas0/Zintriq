@@ -1,8 +1,9 @@
-"""Zintriq Studio surface — desktop/native composition shell, isolated from web Community.
+"""Zintriq Studio surface — desktop meta factory.
 
-Web owns: Community, marketing, published runtimes, account UX.
-Studio owns: Project composition (Data / Interface / Logic / Connection / Publish).
-Same Auth0/user identity; Studio may authenticate via session cookie OR Bearer API token.
+Web owns: marketing, download, published runtimes, account UX.
+Studio (desktop) owns: describe, simulate, instantiate, space, and boundary
+(a boundary is itself describable and buildable), plus Community.
+Same existing Flask account as the website. Desktop signs in via /desktop/authorize (PKCE), not Auth0.
 """
 
 from __future__ import annotations
@@ -11,12 +12,11 @@ import hashlib
 import logging
 import os
 import secrets
-import urllib.error
 from datetime import datetime, timedelta
 from functools import wraps
 from urllib.parse import urlencode
 
-from flask import g, jsonify, redirect, render_template, request, session, url_for
+from flask import abort, g, jsonify, redirect, render_template, request, session, url_for
 
 _log = logging.getLogger("app.studio")
 
@@ -25,7 +25,7 @@ SURFACE_WEB = "web"
 SURFACE_STUDIO = "studio"
 SURFACE_COMMUNITY = "community"
 
-PRIMITIVES = ("data", "interface", "logic", "connection", "publish")
+PRIMITIVES = ("describe", "simulate", "instantiate", "boundary", "space")
 
 DEFAULT_DEEP_LINK_SCHEME = "zintriq"
 
@@ -64,7 +64,7 @@ def studio_home_path(install: str | None = None) -> str:
 
 
 def studio_project_path(project_id: int) -> str:
-    return f"/studio/p/{int(project_id)}"
+    return "/studio/meta"
 
 
 def studio_deep_link(*, action: str = "open", package_id: str | None = None, project_id: int | None = None) -> str:
@@ -77,7 +77,7 @@ def studio_deep_link(*, action: str = "open", package_id: str | None = None, pro
 
 
 def handoff_payload(*, package_id: str | None = None, project_id: int | None = None) -> dict:
-    """URLs for Community (web) ↔ Studio (app) handoff without embedding Community in the app."""
+    """URLs for Community ↔ Studio handoff inside the desktop app."""
     install = (package_id or "").strip() or None
     return {
         "surface_web": SURFACE_WEB,
@@ -87,7 +87,7 @@ def handoff_payload(*, package_id: str | None = None, project_id: int | None = N
         "studio_url": studio_project_path(project_id) if project_id else studio_home_path(install),
         "deep_link": studio_deep_link(action="install" if install else "open", package_id=install, project_id=project_id),
         "primitives": list(PRIMITIVES),
-        "note": "Community and the project editor open in the desktop app. Same user identity.",
+        "note": "Describe, simulate, and instantiate any meta object, including a boundary. Creators only.",
     }
 
 
@@ -212,68 +212,244 @@ def register_studio_platform(app) -> None:
     @app.get("/studio")
     @login_required
     def studio_home():
-        # Reuse project dashboard; Studio is the product chrome, not Workspace modules.
-        from universal_builder_core import ensure_studio_workspace_for_user
+        from desktop.server_mode import desktop_enabled
+        from flask import abort
 
-        user = current_user()
-        needs_setup = ensure_studio_workspace_for_user(user["id"])
-        from app import workspace_snapshot
+        if not desktop_enabled():
+            abort(404)
+        from desktop.meta_store import MetaStoreError, current_draft_slug, data_dir, studio_index
+        from plugin_catalog import catalog, installed_index, pack_view_id, plugin_drafts, primary_installed_pack, unlocked_editor_views
 
+        index = studio_index()
+        fill_pack = ""
+        fill_label = "Fill"
+        fill_pane = ""
+        try:
+            root = data_dir()
+            have = set(installed_index(root))
+            bound = plugin_drafts(root)
+            installed_packs = []
+            for pack in catalog(include_pending=False, data_root=root):
+                if pack.get("id") not in have:
+                    continue
+                row = dict(pack)
+                row["draft_slug"] = bound.get(str(pack.get("id") or "")) or ""
+                installed_packs.append(row)
+            editor_views = unlocked_editor_views("describe", root)
+            primary = primary_installed_pack(root)
+            if primary:
+                fill_pack = str(primary.get("id") or "")
+                fill_label = "Fill from " + str(primary.get("name") or pack_view_id(primary) or "plugin")
+                fill_pane = pack_view_id(primary) or ""
+        except (MetaStoreError, OSError, TypeError, ValueError):
+            installed_packs = []
+            editor_views = []
+        wanted_pane = str(request.args.get("pane") or "").strip()
+        editor_ids = {item["id"] for item in editor_views}
+        editor_pane = wanted_pane if wanted_pane in editor_ids else (editor_views[0]["id"] if editor_views else "")
+        current_draft = str(request.args.get("draft") or "") or current_draft_slug() or ""
         return render_template(
-            "workspace_dashboard.html",
+            "studio/factory.html",
             page_title="Studio",
-            workspace=workspace_snapshot(user["id"]),
-            needs_workspace_setup=needs_setup,
-            studio_mode=True,
             studio_base="/studio",
+            local_drafts=index["drafts"],
+            local_artifacts=index["artifacts"],
+            installed_packs=installed_packs,
+            editor_views=editor_views,
+            editor_pane=editor_pane,
+            current_draft=current_draft,
+            fill_pack=fill_pack,
+            fill_label=fill_label,
+            fill_pane=fill_pane,
         )
 
     @app.get("/account/workspaces")
     @login_required
     def account_workspaces():
-        return studio_home()
+        from desktop.server_mode import desktop_enabled
+        from flask import abort
+
+        if desktop_enabled():
+            return studio_home()
+        abort(404)
 
     @app.get("/studio/p/<int:project_id>")
     @login_required
     def studio_editor(project_id: int):
-        user = current_user()
-        with db() as conn:
-            project = conn.execute("SELECT * FROM builder_projects WHERE id=?", (project_id,)).fetchone()
-            if not project:
-                from flask import abort
+        from flask import abort
 
-                abort(404)
-            member = conn.execute(
-                """SELECT 1 FROM workspace_members
-                   WHERE workspace_id=? AND user_id=? AND status='active'""",
-                (int(project["workspace_id"]), int(user["id"])),
-            ).fetchone()
-            if not member:
-                from flask import abort
+        from desktop.server_mode import desktop_enabled
 
-                abort(403)
-            session["active_workspace_id"] = int(project["workspace_id"])
+        if desktop_enabled():
+            return redirect("/studio")
+        abort(404)
+
+    def _render_meta_editor(slug: str | None, meta_view: str):
+        from desktop.server_mode import desktop_enabled
+        from flask import abort
+
+        if not desktop_enabled():
+            abort(404)
+        from meta.description import to_json
+        from meta.instantiation import default_site_desc
+
+        initial_code = to_json(default_site_desc(), indent=2)
+        initial_slug = slug or "site"
+        initial_events = ""
+        from desktop.meta_store import current_draft_slug, load_artifact, load_draft, save_draft, unused_slug
+        from meta.instantiation import description_from_artifact
+
+        view = str(meta_view or "describe").strip().lower()
+        if view not in {"describe", "simulate", "instantiate", "space"}:
+            view = "describe"
+        qview = str(request.args.get("view") or "").strip().lower()
+        if qview in {"describe", "simulate", "instantiate", "space"}:
+            view = qview
+        fresh = str(request.args.get("new") or "").strip().lower() in {"1", "true", "yes"}
+        open_space = str(request.args.get("space") or "").strip().lower() in {"1", "true", "yes"}
+        if open_space and view == "describe" and not slug:
+            return redirect("/studio/space")
+        if view == "space":
+            from meta.boundary import space_desc
+
+            initial_code = to_json(space_desc(), indent=2)
+            initial_slug = "meta-space"
+            try:
+                draft = load_draft("meta-space")
+                initial_code = draft["code"]
+                initial_slug = draft.get("slug") or "meta-space"
+                initial_events = draft.get("events") or ""
+            except (OSError, ValueError, TypeError, KeyError):
+                pass
+        elif fresh and not slug:
+            from plugin_catalog import default_new_code
+
+            try:
+                initial_slug = unused_slug()
+            except (OSError, ValueError):
+                initial_slug = "site"
+            try:
+                from desktop.meta_store import data_dir as meta_data_dir
+
+                initial_code = default_new_code(meta_data_dir())
+            except (OSError, TypeError, ValueError):
+                initial_code = "{}"
+            initial_events = ""
+            try:
+                save_draft(initial_slug, code=initial_code, current=True)
+            except (OSError, ValueError, TypeError):
+                pass
+        else:
+            load_slug = slug or current_draft_slug()
+            if load_slug:
+                try:
+                    draft = load_draft(load_slug)
+                    initial_code = draft["code"]
+                    initial_slug = draft["slug"]
+                    initial_events = draft["events"]
+                except (OSError, ValueError):
+                    if slug:
+                        try:
+                            artifact = load_artifact(slug)
+                            initial_code = to_json(description_from_artifact(artifact), indent=2)
+                            initial_slug = artifact.slug or slug
+                        except (OSError, ValueError):
+                            pass
+        titles = {
+            "describe": initial_slug or "Empty Space",
+            "simulate": initial_slug or "Empty Space",
+            "instantiate": initial_slug or "Empty Space",
+            "space": initial_slug or "Empty Space",
+        }
+        from meta.editor_views import CORE_VIEW_IDS
+        from meta.editor_views import list_views as list_editor_views
+        from plugin_catalog import hardware_host_unlocked, unlocked_installs, view_unlocked
+
+        from desktop.meta_store import MetaStoreError, data_dir
+
+        editor_views = list_editor_views(view)
+        try:
+            installed = unlocked_installs(data_dir())
+        except MetaStoreError:
+            installed = []
+        editor_views = [item for item in editor_views if view_unlocked(item["id"], installed)]
+        wanted_pane = str(request.args.get("pane") or "").strip()
+        editor_ids = [item["id"] for item in editor_views]
+        editor_id_set = set(editor_ids)
+        editor_pane = wanted_pane if wanted_pane in editor_id_set else (editor_views[0]["id"] if editor_views else "")
+
         return render_template(
-            "builder/editor.html",
-            page_title=project["name"],
-            project_id=project_id,
+            "studio/meta_editor.html",
+            page_title=titles[view],
             studio_mode=True,
             studio_base="/studio",
-            community_url=community_path(),
+            initial_code=initial_code,
+            initial_slug=initial_slug,
+            initial_events=initial_events,
+            meta_view=view,
+            meta_slug=initial_slug,
+            workbench_surface=view,
+            editor_views=editor_views,
+            editor_ids=editor_ids,
+            editor_pane=editor_pane,
+            plugin_stage=bool(editor_id_set - CORE_VIEW_IDS),
+            hardware_stage=hardware_host_unlocked(installed) and view == "instantiate",
         )
+
+    @app.get("/studio/meta")
+    @app.get("/studio/meta/<slug>")
+    @login_required
+    def studio_meta_editor(slug: str | None = None):
+        return _render_meta_editor(slug, "describe")
+
+    @app.get("/studio/simulate")
+    @app.get("/studio/simulate/<slug>")
+    @login_required
+    def studio_meta_simulate(slug: str | None = None):
+        return _render_meta_editor(slug, "simulate")
+
+    @app.get("/studio/instantiate")
+    @app.get("/studio/instantiate/<slug>")
+    @login_required
+    def studio_meta_instantiate(slug: str | None = None):
+        return _render_meta_editor(slug, "instantiate")
+
+    @app.get("/studio/space")
+    @app.get("/studio/space/<slug>")
+    @login_required
+    def studio_meta_space(slug: str | None = None):
+        return _render_meta_editor(slug, "space")
 
     @app.get("/app/community")
     @login_required
-    def studio_community_placeholder():
-        from app import csrf_token as issue_csrf
+    def studio_community():
+        """Community lives only in the desktop Studio shell — never on the public website."""
+        from desktop.server_mode import desktop_enabled
+        from flask import abort
 
-        token = issue_csrf()
-        return (
-            "<!doctype html><html lang=\"en\"><head>"
-            f"<meta charset=\"utf-8\"><meta name=\"csrf-token\" content=\"{token}\">"
-            "<title>Community</title></head><body>"
-            "<main><p>Templates and projects</p></main>"
-            "</body></html>"
+        if not desktop_enabled():
+            abort(404)
+        pending = (request.args.get("open") or request.args.get("package") or "").strip()
+        return render_template(
+            "studio/community.html",
+            page_title="Community",
+            studio_base="/studio",
+            pending_package=pending,
+        )
+
+    @app.get("/studio/settings")
+    @login_required
+    def studio_settings():
+        from desktop.server_mode import desktop_enabled
+        from flask import abort
+
+        if not desktop_enabled():
+            abort(404)
+        return render_template(
+            "studio/settings.html",
+            page_title="Settings",
+            studio_base="/studio",
+            workbench_surface="settings",
         )
 
     @app.get("/api/studio/surfaces")
@@ -281,8 +457,12 @@ def register_studio_platform(app) -> None:
         return jsonify(
             {
                 "surfaces": {
-                    SURFACE_WEB: {"owns": ["marketing", "account", "published_runtimes"]},
-                    SURFACE_COMMUNITY: {"path": "/app/community", "owns": ["discover", "import_handoff"]},
+                    SURFACE_WEB: {"owns": ["marketing", "download", "account", "published_runtimes"]},
+                    SURFACE_COMMUNITY: {
+                        "path": "/app/community",
+                        "owns": ["discover", "import_handoff"],
+                        "desktop_only": True,
+                    },
                     SURFACE_STUDIO: {
                         "path": "/studio",
                         "owns": list(PRIMITIVES),
@@ -368,46 +548,8 @@ def register_studio_platform(app) -> None:
 
     @app.post("/api/studio/auth/pkce/exchange")
     def api_studio_pkce_exchange():
-        """Desktop Auth0 Native PKCE → Studio API token (no CSRF; public client)."""
-        from app import upsert_user_from_auth_claims
-        from integrations.auth.auth0_provider import Auth0AuthProvider
-
-        data = request.get_json(silent=True) or {}
-        code = (data.get("code") or "").strip()
-        verifier = (data.get("code_verifier") or "").strip()
-        redirect_uri = (data.get("redirect_uri") or "").strip()
-        if not code or not verifier or not redirect_uri:
-            return jsonify({"ok": False, "error": "code, code_verifier, and redirect_uri required"}), 400
-        if not redirect_uri.startswith("zintriq://"):
-            return jsonify({"ok": False, "error": "redirect_uri must use zintriq:// for Studio"}), 400
-
-        provider = Auth0AuthProvider()
-        if not provider.domain or not (os.environ.get("AUTH0_NATIVE_CLIENT_ID") or provider.client_id):
-            return jsonify({"ok": False, "error": "Auth0 Native is not configured on the server"}), 503
-
-        try:
-            token_data = provider.exchange_code_pkce(
-                code=code,
-                code_verifier=verifier,
-                redirect_uri=redirect_uri,
-            )
-            claims = provider.claims_from_token_response(token_data)
-        except (ValueError, urllib.error.URLError, TimeoutError, OSError) as exc:
-            _log.warning("studio_pkce_exchange_failed error=%s", str(exc)[:160])
-            return jsonify({"ok": False, "error": "Could not complete sign-in"}), 401
-
-        with db() as conn:
-            user_id = upsert_user_from_auth_claims(conn, claims)
-            raw, meta = create_studio_token(conn, user_id, name="Desktop Studio", days=90)
-            row = conn.execute("SELECT id, email FROM users WHERE id=?", (user_id,)).fetchone()
-        return jsonify(
-            {
-                "ok": True,
-                "token": raw,
-                "token_meta": meta,
-                "user": {"id": int(row["id"]), "email": row["email"]},
-            }
-        )
+        """Retired Auth0 Native exchange. Desktop signs in at /desktop/authorize."""
+        abort(404)
 
     @app.get("/api/studio/download/<platform>")
     def api_studio_download(platform: str):

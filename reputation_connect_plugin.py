@@ -52,28 +52,6 @@ OAUTH_CONFIG = {
         "client_secret_env": "OPENTABLE_CLIENT_SECRET",
         "redirect_env": "OPENTABLE_OAUTH_REDIRECT_URI",
     },
-    "google_reviews": {
-        "auth_url": "https://accounts.google.com/o/oauth2/v2/auth",
-        "token_url": "https://oauth2.googleapis.com/token",
-        "scope": "https://www.googleapis.com/auth/business.manage",
-        "client_id_env": "GOOGLE_REVIEWS_CLIENT_ID",
-        "client_secret_env": "GOOGLE_REVIEWS_CLIENT_SECRET",
-        "redirect_env": "GOOGLE_REVIEWS_OAUTH_REDIRECT_URI",
-        "extra_auth_params": {"access_type": "offline", "prompt": "consent", "include_granted_scopes": "true"},
-        "token_in_body": True,
-        "profile": "google_business",
-    },
-    "google_customer_reviews": {
-        "auth_url": "https://accounts.google.com/o/oauth2/v2/auth",
-        "token_url": "https://oauth2.googleapis.com/token",
-        "scope": "https://www.googleapis.com/auth/content",
-        "client_id_env": "GOOGLE_MERCHANT_CLIENT_ID",
-        "client_secret_env": "GOOGLE_MERCHANT_CLIENT_SECRET",
-        "redirect_env": "GOOGLE_MERCHANT_OAUTH_REDIRECT_URI",
-        "extra_auth_params": {"access_type": "offline", "prompt": "consent", "include_granted_scopes": "true"},
-        "token_in_body": True,
-        "profile": "google_merchant",
-    },
 }
 
 
@@ -135,21 +113,6 @@ def _http_get_json(url: str, access_token: str) -> dict:
         with urllib.request.urlopen(req, timeout=10) as resp:
             raw = resp.read().decode()
             return json.loads(raw) if raw else {}
-
-
-def _google_profile(access: str, kind: str) -> tuple[str, str, str]:
-    if kind == "google_merchant":
-        data = _http_get_json("https://shoppingcontent.googleapis.com/content/v2.1/accounts/authinfo", access)
-        ids = data.get("accountIdentifiers") or []
-        first = ids[0] if ids else {}
-        mid = str(first.get("merchantId") or first.get("aggregatorId") or "")
-        return mid, "", "Google Merchant Center"
-    data = _http_get_json("https://mybusinessaccountmanagement.googleapis.com/v1/accounts", access)
-    accounts = data.get("accounts") or []
-    first = accounts[0] if accounts else {}
-    name = first.get("accountName") or first.get("name") or "Google Business Profile"
-    account_id = first.get("name") or first.get("accountName") or ""
-    return account_id, first.get("email") or "", name
 
 
 def _http_post_form(url: str, data: dict, *, headers: dict | None = None) -> dict:
@@ -331,11 +294,6 @@ def register_reputation_connect_plugin(app) -> None:
             external_id = token_data.get("business_id") or token_data.get("account_id") or ""
             email = token_data.get("email") or ""
             business_name = token_data.get("business_name") or provider.title()
-            if cfg.get("profile") and access:
-                try:
-                    external_id, email, business_name = _google_profile(access, cfg["profile"])
-                except Exception:
-                    logging.getLogger("app.reputation").error("google_profile_fetch_failed", exc_info=True)  # SUSPECT: swallow may hide bug — see Phase 1.1
             with db() as conn:
                 _store_oauth_connection(
                     conn,
@@ -370,10 +328,8 @@ def register_reputation_connect_plugin(app) -> None:
         spec = get_reputation_plugin(provider)
         if not spec:
             return jsonify({"error": "Unknown review platform"}), 404
-        if spec.get("oauth_required") and provider == "google_reviews":
-            return jsonify({
-                "error": "Google Reviews must be connected with Google Business Profile OAuth — a listing ID is not accepted.",
-            }), 400
+        if provider.startswith("google"):
+            return jsonify({"error": "Google integrations have been removed from this product."}), 410
         data = request.get_json(silent=True) or {}
         fields: dict[str, str] = {}
         missing: list[str] = []

@@ -58,7 +58,8 @@
   };
 
   const toast = (message) => {
-    els.toast.textContent = message;
+    const localize = (typeof window.t === 'function') ? window.t : (s) => s;
+    els.toast.textContent = localize(String(message || ''));
     els.toast.classList.remove('hidden');
     clearTimeout(toast._timer);
     toast._timer = setTimeout(() => els.toast.classList.add('hidden'), 2400);

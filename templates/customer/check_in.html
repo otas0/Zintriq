@@ -1,5 +1,5 @@
 {% extends 'customer_base.html' %}
-{% block title %}Check-in — {{ point.name }}{% endblock %}
+{% block title %}{{ _('customer.checkin.now') }} — {{ point.name }}{% endblock %}
 {% block customer_head %}
 <link rel="stylesheet" href="{{ url_for('static', filename='event-passes.css') }}">
 {% endblock %}
@@ -15,36 +15,36 @@
 
   {% if point.opening_hours %}
   <section class="qr-checkin-section">
-    <h2>Hours</h2>
+    <h2>{{ _('customer.checkin.hours') }}</h2>
     <p>{{ point.opening_hours }}</p>
   </section>
   {% endif %}
 
   {% if checked_in %}
   <div class="qr-checkin-success ep-scan-result" data-state="valid">
-    <span class="ep-scan-result__label">Check-in successful</span>
+    <span class="ep-scan-result__label">{{ _('customer.checkin.success') }}</span>
     <span class="ep-scan-result__msg">{{ message }}</span>
     {% if check_time %}<span class="ep-scan-result__name">{{ check_time }}</span>{% endif %}
   </div>
   {% elif preview_mode %}
-  <p class="ep-muted">Preview mode — check-in is disabled.</p>
+  <p class="ep-muted">{{ _('customer.checkin.preview_disabled') }}</p>
   {% else %}
   <section class="qr-checkin-section">
-    <h2>Instructions</h2>
+    <h2>{{ _('customer.checkin.instructions') }}</h2>
     <ul>
-      <li>Tap the button below to check in at this location</li>
+      <li>{{ _('customer.checkin.tap') }}</li>
       {% if point.notes %}<li>{{ point.notes }}</li>{% endif %}
-      <li>You'll receive a confirmation with the time</li>
+      <li>{{ _('customer.checkin.confirm') }}</li>
     </ul>
     <form method="post">
       <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-      <button class="mq-btn mq-btn-primary" type="submit">Check in now</button>
+      <button class="mq-btn mq-btn-primary" type="submit">{{ _('customer.checkin.now') }}</button>
     </form>
   </section>
   {% endif %}
 
   {% if point.active_status != 'active' %}
-  <p class="qr-checkin-warning">This check-in point is currently inactive.</p>
+  <p class="qr-checkin-warning">{{ _('customer.checkin.inactive') }}</p>
   {% endif %}
 </article>
 {% endblock %}

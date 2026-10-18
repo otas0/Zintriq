@@ -1,6 +1,7 @@
 <!doctype html>
-<html lang="en" data-theme="light">
+<html lang="{{ html_lang|default('en') }}" dir="{{ ui_lang_dir|default('ltr') }}" data-theme="light">
 <head>
+  {% include 'partials/theme_init.html' %}
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <meta name="theme-color" content="#FFFFFF">
@@ -21,7 +22,6 @@
   <link rel="stylesheet" href="{{ url_for('static', filename='bos/components.css') }}">
   <link rel="stylesheet" href="{{ url_for('static', filename='bos/components-ui.css') }}">
   <link rel="stylesheet" href="{{ url_for('static', filename='bos/merchant.css') }}">
-  <link rel="stylesheet" href="{{ url_for('static', filename='bos/polish.css') }}">
   <link rel="stylesheet" href="{{ url_for('static', filename='bos/mobile-shell.css') }}">
   {% block bos_head %}{% endblock %}
 </head>
@@ -33,15 +33,15 @@
         {% if messages %}
         <div class="bos-flashes" id="bos-flashes">
           {% for category, message in messages %}
-          <div class="material-feedback bos-toast bos-toast-{{ category }}" role="status">{{ message }}</div>
+          <div class="material-feedback bos-toast bos-toast-{{ category }}" role="status">{{ _(message) }}</div>
           {% endfor %}
         </div>
         {% endif %}
       {% endwith %}
       <div id="bos-page-actions-mount" class="hidden" aria-hidden="true"></div>
-      <button type="button" class="bos-mobile-nav-trigger" id="bos-menu-btn" aria-label="Open menu">☰</button>
+      <button type="button" class="bos-mobile-nav-trigger" id="bos-menu-btn" aria-label="{{ _('bos.open_menu') }}">☰</button>
       <div class="bos-filter-row hidden" id="bos-filter-row">
-        <input type="search" class="os-input bos-filter-search" id="bos-search-input" placeholder="Filter list…" autocomplete="off">
+        <input type="search" class="os-input bos-filter-search" id="bos-search-input" placeholder="{{ _('bos.filter_list') }}" autocomplete="off">
         <div class="bos-filter-bar" id="bos-filter-bar"></div>
       </div>
       <div class="bos-workspace-shell">
@@ -55,33 +55,33 @@
 
   <aside class="material-overlay bos-drawer hidden" id="bos-drawer" aria-hidden="true">
     <div class="bos-drawer__header">
-      <h2 class="bos-drawer__title" id="bos-drawer-title">Details</h2>
-      <button type="button" class="bos-drawer__close" id="bos-drawer-close" aria-label="Close">×</button>
+      <h2 class="bos-drawer__title" id="bos-drawer-title">{{ _('bos.details') }}</h2>
+      <button type="button" class="bos-drawer__close" id="bos-drawer-close" aria-label="{{ _('bos.close') }}">×</button>
     </div>
     <div class="bos-drawer__body" id="bos-drawer-body"></div>
   </aside>
 
   <div class="material-panel bos-action-bar hidden" id="bos-action-bar">
-    <span class="bos-action-bar__count" id="bos-action-bar-count">0 selected</span>
+    <span class="bos-action-bar__count" id="bos-action-bar-count">{{ _('bos.selected_n', n=0) }}</span>
     <div class="bos-action-bar__actions" id="bos-action-bar-actions"></div>
   </div>
 
   <div class="bos-context-menu hidden" id="bos-context-menu"></div>
   <div class="material-feedback bos-toast hidden" id="bos-toast">
     <span class="bos-toast__msg"></span>
-    <button type="button" class="os-btn os-btn-ghost os-btn-sm hidden" id="bos-toast-undo">Undo</button>
+    <button type="button" class="os-btn os-btn-ghost os-btn-sm hidden" id="bos-toast-undo">{{ _('bos.undo') }}</button>
   </div>
 
-  <button type="button" class="bos-quick-fab" id="bos-quick-fab" aria-label="Quick actions" aria-haspopup="true">+</button>
+  <button type="button" class="bos-quick-fab" id="bos-quick-fab" aria-label="{{ _('bos.quick_actions') }}" aria-haspopup="true">+</button>
   <div class="bos-quick-menu material-panel hidden" id="bos-quick-menu" role="menu"></div>
 
   <div class="bos-sidebar-backdrop hidden" id="bos-sidebar-backdrop"></div>
 
-  <div class="bos-command-palette hidden" id="bos-command-palette" role="dialog" aria-modal="true" aria-label="Command palette">
+  <div class="bos-command-palette hidden" id="bos-command-palette" role="dialog" aria-modal="true" aria-label="{{ _('bos.command_palette') }}">
     <div class="material-overlay bos-command-palette__panel">
-      <input type="search" class="os-input bos-command-palette__input" id="bos-command-input" placeholder="Search, navigate, create…" autocomplete="off">
+      <input type="search" class="os-input bos-command-palette__input" id="bos-command-input" placeholder="{{ _('bos.command_search') }}" autocomplete="off">
       <div class="bos-command-palette__results" id="bos-command-results"></div>
-      <button type="button" class="os-btn os-btn-ghost os-btn-sm" data-palette-close style="margin-top:12px">Close (Esc)</button>
+      <button type="button" class="os-btn os-btn-ghost os-btn-sm" data-palette-close style="margin-top:12px">{{ _('bos.close_escape') }}</button>
     </div>
   </div>
 
@@ -90,7 +90,9 @@
       activeWorkspaceId: {{ bos_active_workspace_id|default(none)|tojson }},
       activeWorkspaceName: {{ bos_active_workspace_name|default('')|tojson }}
     };
+    window.__MQ_T__ = {{ ui_js_messages|default({})|tojson }};
   </script>
+  <script src="{{ url_for('static', filename='mq-i18n.js') }}"></script>
   <script type="module" src="{{ url_for('static', filename='bos/main.js') }}"></script>
   {% block bos_scripts %}{% endblock %}
 </body>

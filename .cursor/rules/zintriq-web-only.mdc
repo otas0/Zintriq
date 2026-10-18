@@ -1,0 +1,14 @@
+---
+description: 当前代理只负责 Web 门户，不碰桌面工厂
+alwaysApply: true
+---
+
+# 职责：只做 Web
+
+本会话默认**只负责公开门户**（营销、下载、账号、订阅入口、文档、法律）。双端分工见 `docs/website/web-portal-spec.md`。
+
+- 不要实现、规划或把「下一步」导向 Electron、`/desktop`、Meta 编辑器、画布、`/build`、本地 Flask 子进程或 `ZINTRIQ_DESKTOP=1`。
+- 公开站不新增编辑器、画布或可运行的元系统 UI。不把门户改成 Next.js。
+- 桌面工厂、阶段 1 桌面不做项、artifact/画布，由别的工作承担；Web 侧最多保持门户文案与门面一致。
+- Flask 改动只服务门户（页面、i18n、计费入口、账号）。不要为桌面改宿主或监听。
+- 用户未明确改口前，未完成项只报 **Web** 缺口（安装包文案、Stripe live、法律主体、文档正文、阶段 2 门户页），不要报桌面编辑器进度。

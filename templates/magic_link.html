@@ -1,18 +1,18 @@
-{% extends 'base.html' %}
-{% block title %}Email sign-in link — Zintriq{% endblock %}
+{% extends 'marketing_base.html' %}
+{% block title %}{{ _('auth.page.title_magic') }}{% endblock %}
 {% block content %}
 <section class="mq-auth-page">
   <div class="mq-auth-card">
-    <p class="mq-section-label">Passwordless sign-in</p>
-    <h1>Email me a link</h1>
-    <p class="mq-auth-lead">We'll send a one-time sign-in link that expires in 15 minutes.</p>
+    <p class="page-kicker">{{ _('auth.page.magic_eyebrow') }}</p>
+    <h1>{{ _('auth.page.magic_title') }}</h1>
+    <p class="mq-auth-lead">{{ _('auth.page.magic_lead') }}</p>
     <form class="mq-auth-form" method="post">
       <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
       <div class="mq-field">
-        <label class="mq-label">Email address</label>
-        <input class="mq-input" name="email" type="email" autocomplete="email" required>
+        <label class="mq-label" for="magic-email">{{ _('auth.page.email') }}</label>
+        <input class="mq-input" id="magic-email" name="email" type="email" autocomplete="email" required>
       </div>
-      <button class="mq-btn mq-btn-primary" type="submit">Send sign-in link</button>
+      <button class="mq-btn mq-btn-primary" type="submit">{{ _('auth.page.send_magic') }}</button>
     </form>
   </div>
 </section>

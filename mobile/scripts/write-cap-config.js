@@ -22,12 +22,13 @@ function loadEnv() {
 
 const env = { ...process.env, ...loadEnv() };
 const base = (env.MOBILE_SERVER_URL || env.PUBLIC_BASE_URL || "http://127.0.0.1:5001").replace(/\/$/, "");
-const startUrl = `${base}/app`;
+// Studio shell only — Community / marketing stay on the web browser.
+const startUrl = `${base}/studio`;
 const cleartext = base.startsWith("http://");
 
 const config = {
-  appId: "com.businessos.app",
-  appName: "Zintriq",
+  appId: "com.zintriq.studio",
+  appName: "Zintriq Studio",
   webDir: "www",
   server: {
     url: startUrl,

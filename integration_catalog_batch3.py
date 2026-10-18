@@ -60,27 +60,7 @@ EXTRA_PAYMENT_PLUGINS: tuple[dict[str, Any], ...] = (
             ],
         },
     },
-    {
-        "slug": "google_pay",
-        "name": "Google Pay",
-        "provider": "google",
-        "description": "Google Pay wallet checkout — enable via Stripe, Adyen, or your acquirer",
-        "regions": ("global", "us", "eu", "uk", "au", "jp", "hk", "tw", "sea"),
-        "checkout_ready": True,
-        "credential_fields": [
-            {"key": "secret_key", "label": "Gateway secret key (Stripe sk_…)", "type": "password", "required": True},
-            {"key": "merchant_id", "label": "Google Pay merchant ID (from gateway console)"},
-        ],
-        "setup_guide": {
-            "summary": "Enable Google Pay on your payment gateway, then paste the gateway API secret used for wallet checkout.",
-            "steps": _wallet_steps("Google Pay", "Stripe or Adyen"),
-            "links": [
-                {"label": "Google Pay — web integration", "url": "https://developers.google.com/pay/api"},
-                {"label": "Stripe — Google Pay", "url": "https://stripe.com/docs/google-pay"},
-                {"label": "Adyen — Google Pay", "url": "https://docs.adyen.com/payment-methods/google-pay/"},
-            ],
-        },
-    },
+
     {
         "slug": "nets",
         "name": "NETS",
@@ -309,7 +289,6 @@ EXTRA_PAYMENT_PLUGINS: tuple[dict[str, Any], ...] = (
 
 EXTRA_PLUGIN_BRANDS: dict[str, dict[str, str]] = {
     "apple_pay": {"domain": "apple.com"},
-    "google_pay": {"domain": "google.com"},
     "nets": {"domain": "nets.com.sg"},
     "paylah": {"domain": "dbs.com.sg"},
     "hitpay": {"domain": "hitpayapp.com"},
@@ -325,7 +304,6 @@ EXTRA_PLUGIN_BRANDS: dict[str, dict[str, str]] = {
 
 EXTRA_BRAND_COLORS: dict[str, str] = {
     "apple_pay": "000000",
-    "google_pay": "4285F4",
     "nets": "ED1C24",
     "paylah": "C41230",
     "hitpay": "0066FF",
@@ -341,7 +319,6 @@ EXTRA_BRAND_COLORS: dict[str, str] = {
 
 EXTRA_BRAND_INITIALS: dict[str, str] = {
     "apple_pay": "",
-    "google_pay": "G",
     "nets": "N",
     "paylah": "PL",
     "hitpay": "H",
@@ -357,7 +334,6 @@ EXTRA_BRAND_INITIALS: dict[str, str] = {
 
 BATCH3_SIMPLE_ICONS: dict[str, str] = {
     "apple_pay": "applepay",
-    "google_pay": "googlepay",
     "shop_pay": "shopify",
     "ipay88": "ipay88",
 }

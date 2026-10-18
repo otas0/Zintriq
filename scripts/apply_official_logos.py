@@ -120,7 +120,7 @@ ALIAS_GROUPS: tuple[frozenset[str], ...] = (
     frozenset({"tap_and_go", "octopus"}),
     frozenset({"payu_india", "payu_europe", "payu_latam"}),
     frozenset({"shopeepay", "shopee_seller"}),
-    frozenset({"google_reviews", "google_customer_reviews"}),
+    frozenset(),  # retired Google plug-ins
     frozenset({"sofort", "klarna"}),
     frozenset({"hoolah", "atome"}),
     frozenset({"becs_direct_debit", "stripe"}),

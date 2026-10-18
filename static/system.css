@@ -45,6 +45,8 @@ html { scroll-behavior: smooth; }
   transform: translateY(0);
 }
 
+/* Marketing pages load marketing-motion.css for richer reveal/stagger. */
+
 /* ── Tools: buttons (44px) ── */
 .mq-btn,
 .os-btn,
@@ -68,20 +70,46 @@ html { scroll-behavior: smooth; }
   white-space: nowrap;
 }
 
+a.mq-btn:visited,
+a.os-btn:visited,
+a.button:visited,
+a.outline:visited {
+  color: var(--color-text-primary);
+}
+
+a.mq-btn-primary:visited,
+a.os-btn-primary:visited,
+a.button:visited {
+  color: var(--color-on-brand);
+}
+
+a.mq-btn-ghost:visited,
+a.os-btn-ghost:visited,
+a.outline:visited {
+  color: var(--color-text-primary);
+}
+
+a.mq-btn-danger:visited,
+a.os-btn-danger:visited,
+a.danger-button:visited {
+  color: var(--color-danger);
+}
+
 .mq-btn:active, .os-btn:active { transform: scale(0.98); }
 
 .mq-btn-primary,
 .os-btn-primary,
 .button {
-  background: var(--color-accent-yellow);
+  background: var(--color-brand);
   border-color: var(--color-text-primary);
-  color: var(--color-text-primary);
+  color: var(--color-on-brand);
+  font-weight: var(--weight-bold);
 }
 
 .mq-btn-primary:hover, .os-btn-primary:hover, .button:hover {
-  background: var(--color-accent-yellow-hover);
+  background: var(--color-brand-hover);
   border-color: var(--color-text-primary);
-  color: var(--color-text-primary);
+  color: var(--color-on-brand);
 }
 
 .mq-btn-ghost,
@@ -348,6 +376,16 @@ html { scroll-behavior: smooth; }
   transition: border-color var(--motion-hover);
 }
 
+.mq-input:-webkit-autofill,
+.mq-input:-webkit-autofill:hover,
+.mq-input:-webkit-autofill:focus,
+input.mq-input:-webkit-autofill {
+  -webkit-text-fill-color: var(--color-text-primary);
+  caret-color: var(--color-text-primary);
+  box-shadow: 0 0 0 1000px var(--module-bg) inset;
+  transition: background-color 99999s ease-out;
+}
+
 .mq-textarea, .os-textarea, textarea { padding: var(--space-2); min-height: 96px; }
 
 .mq-input::placeholder, input::placeholder, textarea::placeholder {
@@ -521,6 +559,48 @@ html { scroll-behavior: smooth; }
   background: transparent;
 }
 
+/* Theme-aware wordmark: show the SVG that matches data-theme */
+.zintriq-logo-theme,
+span.mq-shell-brand__logo.zintriq-logo-theme,
+span.zintriq-logo.zintriq-logo-theme {
+  display: inline-flex;
+  align-items: center;
+  line-height: 0;
+  height: auto;
+  max-width: none;
+  object-fit: unset;
+}
+
+.zintriq-logo-theme .zintriq-logo--on-light,
+.zintriq-logo-theme .zintriq-logo--on-dark,
+.zw-logo--on-light,
+.zw-logo--on-dark {
+  display: none !important;
+}
+
+html:not([data-theme="dark"]) .zintriq-logo-theme .zintriq-logo--on-light,
+html[data-theme="light"] .zintriq-logo-theme .zintriq-logo--on-light,
+html:not([data-theme="dark"]) .zw-logo--on-light,
+html[data-theme="light"] .zw-logo--on-light {
+  display: block !important;
+}
+
+html[data-theme="dark"] .zintriq-logo-theme .zintriq-logo--on-dark,
+html[data-theme="dark"] .zw-logo--on-dark {
+  display: block !important;
+}
+
+@media (prefers-color-scheme: dark) {
+  html:not([data-theme]) .zintriq-logo-theme .zintriq-logo--on-light,
+  html:not([data-theme]) .zw-logo--on-light {
+    display: none !important;
+  }
+  html:not([data-theme]) .zintriq-logo-theme .zintriq-logo--on-dark,
+  html:not([data-theme]) .zw-logo--on-dark {
+    display: block !important;
+  }
+}
+
 .mq-shell-brand:focus,
 .mq-shell-brand:focus-visible,
 .mq-home-hero__brand:focus,
@@ -569,7 +649,7 @@ html { scroll-behavior: smooth; }
   text-align: center;
   padding: var(--space-5);
   color: var(--color-text-secondary);
-  border: 1px dashed var(--color-border-strong);
+  border: 1px solid var(--color-border);
   border-radius: var(--module-radius);
   background: var(--module-bg);
 }
@@ -626,9 +706,9 @@ html { scroll-behavior: smooth; }
 }
 
 .mq-public-footer, .mq-footer {
-  text-align: center;
+  text-align: start;
   padding: var(--space-3);
-  color: var(--color-text-muted);
+  color: var(--color-text-secondary);
   font-size: var(--font-small);
   border-top: 1px solid var(--color-border);
   background: var(--canvas-bg);

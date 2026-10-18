@@ -1846,5 +1846,17 @@
   "studio.editor.select_layer": "레이어 선택",
   "customer.survey.submit": "제출",
   "studio.editor.publish": "Publish",
-  "owner.builder": "Builder"
+  "owner.builder": "Builder",
+  "home.hero.kicker": "작업대 · 이 컴퓨터에서",
+  "product.kicker": "한 공간에서 자유롭게 만든다",
+  "hw.kicker": "하나의 대상 · 같은 공간",
+  "dl.kicker": "설치하고 · 만든다",
+  "pricing.kicker": "전체 공간 · 모든 요금제",
+  "docs.kicker": "짧은 메모 · 앱용",
+  "about.kicker": "메타공간 · 벽 없음",
+  "contact.kicker": "쓰면 · 답한다",
+  "sec.kicker": "이 컴퓨터가 먼저",
+  "changelog.kicker": "나올 때마다 · 여기에",
+  "compare.kicker": "같은 공간 · 다른 도구",
+  "translate.kicker": "언어 · 당신이 가져온다"
 }

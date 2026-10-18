@@ -4,8 +4,12 @@ from __future__ import annotations
 
 import json
 import os
+import sys
 import unittest
 import uuid
+from pathlib import Path
+
+sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 os.environ.setdefault("SECRET_KEY", "test-builder-http")
 
@@ -31,12 +35,16 @@ class EditorWriteHttpTests(unittest.TestCase):
             app_module.init_db()
 
     def setUp(self):
-        os.environ.pop("ZINTRIQ_DESKTOP", None)
-        from builder_http_support import auth_headers, login_editor
+        from builder_http_support import application_client, auth_headers, login_editor
 
-        self.client = self.app.test_client()
+        self.client = application_client(self.app)
         self.user_id, self.workspace_id, self.csrf = login_editor(self.client, self.app_module)
         self.headers = auth_headers(self.csrf)
+
+    def tearDown(self):
+        from builder_http_support import disable_application_host
+
+        disable_application_host()
 
     def _create_project(self):
         created = self.client.post(

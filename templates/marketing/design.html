@@ -1,0 +1,103 @@
+{% extends 'base.html' %}
+{% block title %}Design tokens{% endblock %}
+{% block content %}
+<article class="design-lab">
+  <h1>Design tokens</h1>
+  <p class="type-body">Debug-only preview of colors, type, buttons, badges and form controls.</p>
+
+  <h2>Theme</h2>
+  <div class="design-lab__row">{% with theme_switch_id='lab' %}{% include 'partials/theme_switch.html' %}{% endwith %}</div>
+
+  <h2>Language</h2>
+  <div class="design-lab__row">{% include 'partials/lang_switch_btn.html' %}</div>
+
+  <h2>Color</h2>
+  <div class="swatch-row">
+    {% for name, token in [
+      ('bg', 'var(--color-bg)'),
+      ('bg-subtle', 'var(--color-bg-subtle)'),
+      ('surface', 'var(--color-surface)'),
+      ('surface-2', 'var(--color-surface-2)'),
+      ('border', 'var(--color-border)'),
+      ('text', 'var(--color-text)'),
+      ('text-muted', 'var(--color-text-muted)'),
+      ('accent-solid', 'var(--color-accent-solid)'),
+      ('accent-text', 'var(--color-accent-text)'),
+      ('accent-subtle-bg', 'var(--color-accent-subtle-bg)'),
+      ('focus', 'var(--color-focus)'),
+      ('danger', 'var(--color-danger-text)'),
+      ('success', 'var(--color-success-text)'),
+      ('tint-data', 'var(--tint-data)'),
+      ('tint-interface', 'var(--tint-interface)'),
+      ('tint-logic', 'var(--tint-logic)'),
+      ('tint-connect', 'var(--tint-connect)'),
+      ('tint-publish', 'var(--tint-publish)'),
+    ] %}
+    <div class="swatch">
+      <div class="swatch__chip" style="background: {{ token }}"></div>
+      <div class="swatch__meta">{{ name }}</div>
+    </div>
+    {% endfor %}
+  </div>
+
+  <h2>Type</h2>
+  <p class="type-h1 type-sample">Display {{ _('home.hero.title') }}</p>
+  <p class="type-h2 type-sample">Heading {{ _('nav.product') }}</p>
+  <p class="type-body type-sample">{{ _('home.hero.lead') }}</p>
+  <p class="type-sample" style="font-size: var(--step--1); color: var(--color-text-muted);">Caption · Inter 400/500/650</p>
+
+  <h2>Buttons</h2>
+  <div class="design-lab__row">
+    <button type="button" class="btn-primary">Primary</button>
+    <button type="button" class="btn-secondary">Secondary</button>
+    <button type="button" class="btn-ghost btn-cta-arrow">Ghost</button>
+  </div>
+
+  <h2>Badges</h2>
+  <div class="design-lab__row">
+    <span class="badge-now">{{ _('dl.detected_badge').replace('{os}', 'macOS') }}</span>
+    <span class="badge-soon">{{ _('home.hw.badge') }}</span>
+  </div>
+
+  <h2>Block chips</h2>
+  <div class="design-lab__row">
+    {% for kind in ['describe', 'simulate', 'instantiate'] %}
+    {% with kind=kind %}{% include 'partials/block_chip.html' %}{% endwith %}
+    {% endfor %}
+  </div>
+
+  <h2>Tabs</h2>
+  <div class="site-tabs" data-tabs>
+    <div class="site-tabs__list" role="tablist" aria-label="{{ _('home.demo.title') }}">
+      <button type="button" class="site-tabs__tab" role="tab" id="tab-data" aria-controls="panel-data" aria-selected="true" tabindex="0">{% with kind='describe' %}{% include 'partials/block_chip.html' %}{% endwith %}</button>
+      <button type="button" class="site-tabs__tab" role="tab" id="tab-ui" aria-controls="panel-ui" aria-selected="false" tabindex="-1">{% with kind='simulate' %}{% include 'partials/block_chip.html' %}{% endwith %}</button>
+      <button type="button" class="site-tabs__tab" role="tab" id="tab-logic" aria-controls="panel-logic" aria-selected="false" tabindex="-1">{% with kind='instantiate' %}{% include 'partials/block_chip.html' %}{% endwith %}</button>
+    </div>
+    <div class="site-tabs__panel" role="tabpanel" id="panel-data" aria-labelledby="tab-data">{{ _('home.demo.describe') }}</div>
+    <div class="site-tabs__panel" role="tabpanel" id="panel-ui" aria-labelledby="tab-ui" hidden>{{ _('home.demo.simulate') }}</div>
+    <div class="site-tabs__panel" role="tabpanel" id="panel-logic" aria-labelledby="tab-logic" hidden>{{ _('home.demo.instantiate') }}</div>
+  </div>
+
+  <h2>FAQ</h2>
+  <div class="site-faq">
+    <details>
+      <summary>{{ _('pricing.compare_title') }}</summary>
+      <p>{{ _('pricing.trial_note') }}</p>
+    </details>
+    <details>
+      <summary>{{ _('pricing.enterprise_band') }}</summary>
+      <p>{{ _('pricing.not_yet') }}</p>
+    </details>
+  </div>
+
+  <h2>Form</h2>
+  <form class="site-card design-lab__form" onsubmit="return false;">
+    <div class="field">
+      <label for="design-email">{{ _('form.your_email') }}</label>
+      <p class="field__hint" id="design-email-hint">{{ _('hw.wait.marketing') }}</p>
+      <input class="field-input" id="design-email" type="email" autocomplete="email" aria-describedby="design-email-hint">
+    </div>
+    <label><input type="checkbox"> {{ _('hw.wait.marketing') }}</label>
+  </form>
+</article>
+{% endblock %}

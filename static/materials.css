@@ -5,6 +5,7 @@
 .os-body {
   background: var(--canvas-bg);
   color: var(--color-text-primary);
+  font-family: var(--font-family);
 }
 
 .material-sheet--raised {

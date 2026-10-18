@@ -61,7 +61,7 @@ def main() -> int:
     assert status["status_line"]
 
     url = maps_directions_url(store["address"])
-    assert url and "google.com/maps" in url
+    assert url and "openstreetmap.org" in url
 
     profile = build_store_profile(conn, store)
     assert profile["maps_url"]

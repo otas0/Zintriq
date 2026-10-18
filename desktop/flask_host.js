@@ -15,6 +15,18 @@ const MAX_LOG_FILES = 3;
 const READY_LINE = /^ZINTRIQ_READY pid=(\d+) port=(\d+)\s*$/;
 
 let currentChild = null;
+let currentDaemon = null;
+let shuttingDown = false;
+let flaskHook = null;
+let lastLaunch = { exitCode: null, portInUse: false, tokenOk: true, logTail: "", reason: "" };
+
+function lastFlaskLaunch() {
+  return lastLaunch;
+}
+
+function onFlaskReady(fn) {
+  flaskHook = typeof fn === "function" ? fn : null;
+}
 
 function repoRoot() {
   return path.resolve(__dirname, "..");
@@ -247,8 +259,82 @@ async function waitForHealth(port, token, child, timeoutMs) {
   throw new Error("healthz 未就绪");
 }
 
-function spawnFlask({ pythonPath, userData, token, port, appVersion }) {
+function stopDaemon() {
+  if (!currentDaemon) return;
+  forceKill(currentDaemon);
+  currentDaemon = null;
+}
+
+function spawnCollabDaemon({ pythonPath, userData }) {
+  stopDaemon();
+  if (process.env.ZINTRIQ_SMOKE === "1" || process.env.ZINTRIQ_COLLAB_DAEMON === "0") return null;
+  if (/zintriq-server(\.exe)?$/i.test(pythonPath)) return null;
   const env = { ...process.env };
+  env.PYTHONUNBUFFERED = "1";
+  env.ZINTRIQ_DATA_DIR = userData;
+  env.ZINTRIQ_COLLAB_INTERVAL = env.ZINTRIQ_COLLAB_INTERVAL || "0.5";
+  const child = spawn(pythonPath, ["-m", "meta.collab.daemon", userData], {
+    cwd: repoRoot(),
+    env,
+    detached: process.platform !== "win32",
+    windowsHide: true,
+    stdio: "ignore",
+  });
+  currentDaemon = child;
+  if (typeof child.unref === "function") child.unref();
+  return child;
+}
+
+function launchRecipePath(userData) {
+  const slug = String(process.env.ZINTRIQ_HOST_SLUG || "zintriq").replace(/[^a-z0-9_-]/gi, "") || "zintriq";
+  return path.join(userData, "desktop", slug, "launch.json");
+}
+
+function loadLaunchRecipe(userData) {
+  const file = launchRecipePath(userData);
+  if (!fs.existsSync(file)) return null;
+  let raw;
+  try {
+    raw = JSON.parse(fs.readFileSync(file, "utf8"));
+  } catch {
+    return null;
+  }
+  if (!raw || typeof raw !== "object") return null;
+  const bind = String(raw.bind || "127.0.0.1");
+  if (bind !== "127.0.0.1") return null;
+  const studioRaw = String(raw.studio || "/studio");
+  const studio = studioRaw === "/studio" || studioRaw.startsWith("/studio/") ? studioRaw : "/studio";
+  const editors = Array.isArray(raw.editors) ? raw.editors.map((id) => String(id)) : [];
+  return {
+    bind: "127.0.0.1",
+    dataDir: String(raw.data_dir || userData),
+    editors,
+    env: raw.env && typeof raw.env === "object" ? raw.env : {},
+    file,
+    loopback: true,
+    studio,
+    wan: false,
+  };
+}
+
+function mergeLaunchEnv(env, recipe) {
+  if (!recipe) return env;
+  env.ZINTRIQ_DESKTOP = "1";
+  env.ZINTRIQ_HOST = "127.0.0.1";
+  const skip = { ZINTRIQ_DESKTOP_TOKEN: true, PORT: true, HOST: true };
+  Object.keys(recipe.env || {}).forEach((key) => {
+    if (skip[key]) return;
+    if (key === "ZINTRIQ_HOST") {
+      env.ZINTRIQ_HOST = "127.0.0.1";
+      return;
+    }
+    env[key] = String(recipe.env[key]);
+  });
+  return env;
+}
+
+function spawnFlask({ pythonPath, userData, token, port, appVersion }) {
+  const env = mergeLaunchEnv({ ...process.env }, loadLaunchRecipe(userData));
   env.PYTHONUNBUFFERED = "1";
   env.PYTHONDONTWRITEBYTECODE = "1";
   env.ZINTRIQ_DESKTOP = "1";
@@ -271,27 +357,52 @@ function spawnFlask({ pythonPath, userData, token, port, appVersion }) {
   });
 }
 
-async function startFlask({ userData, pythonPath, appVersion }) {
-  const token = crypto.randomBytes(32).toString("hex");
+async function startFlask({ userData, pythonPath, appVersion, token, port }) {
+  shuttingDown = false;
+  const reusePort = port != null && Number(port) > 0;
+  token = token || crypto.randomBytes(32).toString("hex");
   const log = new RotatingLog(path.join(userData, "logs", "flask.log"), token);
   let lastError = "Flask 启动失败";
   for (let attempt = 1; attempt <= 3; attempt += 1) {
-    const port = await pickFreePort();
-    const child = spawnFlask({ pythonPath, userData, token, port, appVersion });
+    const usePort = reusePort ? Number(port) : await pickFreePort();
+    const child = spawnFlask({ pythonPath, userData, token, port: usePort, appVersion });
     currentChild = child;
     bindOutput(child, log, (line) => {
       if (typeof child._zintriqOnLine === "function") child._zintriqOnLine(line);
     });
     try {
-      const ready = await waitForReady(child, port, 30000);
-      await waitForHealth(port, token, child, 15000);
-      return { port, token, pid: ready.pid, logPath: log.filePath };
+      const ready = await waitForReady(child, usePort, 30000);
+      await waitForHealth(usePort, token, child, 15000);
+      const info = { port: usePort, token, pid: ready.pid, logPath: log.filePath };
+      if (pythonPath) spawnCollabDaemon({ pythonPath, userData });
+      child.once("exit", (code) => {
+        lastLaunch.exitCode = code;
+        lastLaunch.reason = code ? "flask_exit" : "";
+        if (shuttingDown || currentChild !== child) return;
+        if (process.env.ZINTRIQ_SMOKE === "1") return;
+        log.write(`\n[zintriq] flask exited ${code}, restarting\n`);
+        startFlask({ userData, pythonPath, appVersion, token, port: usePort }).catch((err) => {
+          log.write(`\n[zintriq] flask restart failed: ${scrub(err && err.message ? err.message : String(err), token)}\n`);
+        });
+      });
+      if (flaskHook) flaskHook(info);
+      return info;
     } catch (err) {
       lastError = scrub(err && err.message ? err.message : String(err), token);
+      lastLaunch.exitCode = child.exitCode;
+      lastLaunch.portInUse = /eaddrinuse|address already in use|port/i.test(lastError);
+      lastLaunch.tokenOk = !/token|401|403/i.test(lastError);
+      lastLaunch.reason = lastLaunch.portInUse ? "port_in_use" : lastLaunch.tokenOk ? "flask_down" : "token";
+      try {
+        lastLaunch.logTail = fs.readFileSync(log.filePath, "utf8").slice(-4000);
+      } catch {
+        lastLaunch.logTail = "";
+      }
       log.write(`\n[zintriq] attempt ${attempt} failed: ${lastError}\n`);
       await stopChild(child, 2000);
       if (child.exitCode === null) forceKill(child);
       if (currentChild === child) currentChild = null;
+      if (reusePort) break;
     }
   }
   const error = new Error(lastError);
@@ -300,12 +411,16 @@ async function startFlask({ userData, pythonPath, appVersion }) {
 }
 
 function stopFlask() {
+  shuttingDown = true;
+  stopDaemon();
   const child = currentChild;
   currentChild = null;
   return stopChild(child, 3000);
 }
 
 function stopFlaskSync() {
+  shuttingDown = true;
+  stopDaemon();
   const child = currentChild;
   if (!child || child.exitCode !== null) return;
   forceKill(child);
@@ -321,4 +436,9 @@ module.exports = {
   stopFlaskSync,
   forceKill,
   scrub,
+  onFlaskReady,
+  loadLaunchRecipe,
+  launchRecipePath,
+  mergeLaunchEnv,
+  lastFlaskLaunch,
 };

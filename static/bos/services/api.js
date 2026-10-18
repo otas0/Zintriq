@@ -15,8 +15,11 @@ export function showToast(message, opts = {}) {
   el.classList.add(`bos-toast--${type}`);
 
   const msgEl = el.querySelector(".bos-toast__msg");
-  if (msgEl) msgEl.textContent = message;
-  else el.insertAdjacentHTML("afterbegin", `<span class="bos-toast__msg">${message}</span>`);
+  const localize = (typeof globalThis.t === "function") ? globalThis.t : (s) => s;
+  const text = localize(String(message || ""));
+  if (msgEl) msgEl.textContent = text;
+  else el.insertAdjacentHTML("afterbegin", `<span class="bos-toast__msg"></span>`);
+  if (!msgEl) el.querySelector(".bos-toast__msg").textContent = text;
 
   const undo = peekUndo();
   if (undoBtn) {

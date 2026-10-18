@@ -1821,5 +1821,17 @@
   "owner.add_shop_qr": "Winkel-QR toevoegen",
   "studio.editor.publish": "Publish",
   "owner.builder": "Builder",
-  "studio.dash.eyebrow": "Studio"
+  "studio.dash.eyebrow": "Studio",
+  "home.hero.kicker": "Werkbank · op deze computer",
+  "product.kicker": "Alles bouwen in één ruimte",
+  "hw.kicker": "Eén doel · dezelfde ruimte",
+  "dl.kicker": "Installeren · dan maken",
+  "pricing.kicker": "De hele ruimte · elk plan",
+  "docs.kicker": "Korte notities · voor de app",
+  "about.kicker": "Metaruimte · geen muren",
+  "contact.kicker": "Schrijf · we antwoorden",
+  "sec.kicker": "Eerst lokaal · deze computer",
+  "changelog.kicker": "Notities · na elke release",
+  "compare.kicker": "Zelfde ruimte · andere tools",
+  "translate.kicker": "Talen · jij brengt ze mee"
 }

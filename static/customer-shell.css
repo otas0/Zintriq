@@ -32,6 +32,15 @@
   background: var(--canvas-bg);
 }
 
+.mq-customer-hub .mq-shell-main {
+  flex: 1;
+  width: 100%;
+  max-width: none;
+  margin: 0;
+  padding: var(--space-2) var(--customer-hub-col-pad-x)
+    calc(var(--customer-hub-tabbar-h) + 24px + env(safe-area-inset-bottom, 0px));
+}
+
 /* Header */
 
 .mq-public-header--hub {
@@ -39,7 +48,6 @@
   top: 0;
   z-index: 90;
   border-bottom: 1px solid var(--color-border);
-  background: var(--module-bg);
   transition: box-shadow var(--motion-hover);
 }
 
@@ -59,8 +67,15 @@
   gap: var(--space-2);
 }
 
-.mq-public-header--hub .mq-shell-brand span:not(.mq-shell-brand-mark) {
+/* Keep SVG theme wraps visible; hide any legacy text wordmark spans */
+.mq-public-header--hub .mq-shell-brand > span:not(.mq-shell-brand-mark):not(.zintriq-logo-theme) {
   display: none;
+}
+
+.mq-public-header--hub .mq-shell-brand .zintriq-logo-theme {
+  display: inline-flex;
+  align-items: center;
+  line-height: 0;
 }
 
 .mq-public-header--hub .mq-public-header__actions {
@@ -75,17 +90,6 @@
   font-weight: var(--weight-semibold);
   color: var(--color-text-primary);
   text-decoration: none;
-}
-
-/* Main */
-
-.mq-customer-hub .mq-shell-main {
-  flex: 1;
-  width: 100%;
-  max-width: none;
-  margin: 0;
-  padding: var(--space-2) var(--customer-hub-col-pad-x)
-    calc(var(--customer-hub-tabbar-h) + 20px + env(safe-area-inset-bottom, 0px));
 }
 
 /* Shared hub content column — header + pages align to the same left edge */
@@ -113,7 +117,7 @@
   grid-template-columns: 1fr;
 }
 
-@media (min-width: 560px) {
+@media (min-width: 640px) {
   .ch-venue-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
@@ -203,7 +207,7 @@ body.mq-onboard-open {
   font-weight: var(--weight-semibold);
   text-transform: uppercase;
   letter-spacing: 0.06em;
-  color: var(--color-brand, #fc7251);
+  color: var(--color-brand-ink);
 }
 
 .mq-onboard__title {
@@ -381,7 +385,7 @@ body.mq-onboard-open {
   font-weight: var(--weight-semibold);
   text-transform: uppercase;
   letter-spacing: 0.04em;
-  color: var(--color-brand, #fc7251);
+  color: var(--color-brand-ink);
 }
 
 .ch-resume-shop__name {
@@ -394,8 +398,8 @@ body.mq-onboard-open {
   font-weight: var(--weight-semibold);
 }
 
-.ch-resume-shop__status--open { color: #15803d; }
-.ch-resume-shop__status--closed { color: #b45309; }
+.ch-resume-shop__status--open { color: var(--color-success); }
+.ch-resume-shop__status--closed { color: var(--color-warning-ink, var(--color-brand-ink)); }
 
 .ch-resume-shop__action {
   pointer-events: none;
@@ -408,7 +412,7 @@ body.mq-onboard-open {
   padding: var(--customer-hub-card-pad);
 }
 
-@media (min-width: 560px) {
+@media (min-width: 640px) {
   .places-toolbar {
     grid-template-columns: 1fr auto;
     align-items: end;
@@ -482,7 +486,7 @@ body.mq-onboard-open {
 }
 
 .places-stats__pill--open {
-  color: #15803d;
+  color: var(--color-open, var(--color-success));
   border-color: rgba(21, 128, 61, 0.25);
   background: rgba(21, 128, 61, 0.08);
 }
@@ -1065,7 +1069,7 @@ body.mq-onboard-open {
 
 .ue-acct-list__row {
   display: grid;
-  grid-template-columns: 24px 1fr auto;
+  grid-template-columns: minmax(0, 1fr) auto;
   align-items: center;
   gap: 14px;
   padding: 16px 18px;
@@ -1211,7 +1215,7 @@ body.mq-onboard-open {
   }
 
   .guest-places__list--stack {
-    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    grid-template-columns: 1fr !important;
   }
 
   .mq-customer-hub .mq-shell-main > .acct-page:not(.acct-page--guest),
@@ -1275,7 +1279,7 @@ body.mq-onboard-open {
   }
 
   .guest-places__list--stack {
-    grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+    grid-template-columns: 1fr !important;
   }
 
   .mq-customer-hub .ch-home__grid {
@@ -1301,7 +1305,7 @@ body.mq-onboard-open {
   }
 }
 
-@media (min-width: 1536px) {
+@media (min-width: 1280px) {
   :root {
     --customer-hub-content-max: 1400px;
   }
@@ -1315,20 +1319,43 @@ body.mq-onboard-open {
   z-index: 90;
   border-bottom: 1px solid transparent;
   background: var(--canvas-bg);
-  transition: box-shadow var(--motion-hover), background var(--motion-hover), border-color var(--motion-hover);
+  transition: box-shadow var(--motion-hover), border-color var(--motion-hover);
 }
 
 .ch-hub-header.is-scrolled {
   border-bottom-color: var(--color-border);
-  background: var(--module-bg);
   box-shadow: var(--elevation-module);
 }
 
 .ch-hub-header__inner {
-  padding: 14px var(--customer-hub-col-pad-x) 12px;
+  padding: 14px var(--customer-hub-col-pad-x) 6px;
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: 6px;
+}
+
+.ch-hub-header__brand {
+  display: inline-flex;
+  align-items: center;
+  text-decoration: none;
+  width: fit-content;
+}
+
+.ch-hub-header__logo,
+.ch-hub-header__brand .zintriq-logo {
+  height: 28px;
+  width: auto;
+  max-width: 200px;
+}
+
+.ch-hub-header__brand--hero {
+  margin-bottom: 4px;
+}
+
+.ch-hub-header__brand--hero .ch-hub-header__logo,
+.ch-hub-header__brand--hero .zintriq-logo-theme img {
+  height: 52px;
+  max-width: 240px;
 }
 
 .ch-hub-header__page {
@@ -1339,26 +1366,110 @@ body.mq-onboard-open {
 
 .ch-hub-header__title {
   margin: 0;
-  font-size: clamp(22px, 3vw, 28px);
+  font-size: clamp(24px, 3.5vw, 30px);
   font-weight: var(--weight-bold);
   letter-spacing: -0.03em;
   line-height: 1.15;
 }
 
-.ch-hub-header__brand {
-  text-decoration: none;
-  gap: 8px;
-}
-
-.ch-hub-header__brand-text {
-  font-size: 15px;
-  font-weight: var(--weight-semibold);
-}
-
 .ch-hub-header__hint {
   margin: 0;
-  font-size: 12px;
+  font-size: 14px;
+  line-height: 1.4;
+  color: var(--color-text-muted);
+  max-width: 36em;
+}
+
+/* Home hero — brand stays in header; this is the QR Connection cue */
+.ch-home__hero {
+  position: relative;
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: var(--space-2);
+  align-items: center;
+  margin: 4px 0 var(--space-2);
+  padding: var(--space-2);
+  border-radius: var(--radius-lg);
+  background:
+    radial-gradient(120% 140% at 0% 0%, var(--color-brand-soft) 0%, transparent 55%),
+    var(--canvas-bg);
+  border: 1px solid var(--color-border);
+  overflow: hidden;
+}
+
+.ch-home__hero::after {
+  content: "";
+  position: absolute;
+  inset: auto -20% -40% auto;
+  width: 140px;
+  height: 140px;
+  border-radius: 50%;
+  background: var(--color-brand);
+  opacity: 0.1;
+  pointer-events: none;
+}
+
+.ch-home__hero-mark {
+  position: relative;
+  z-index: 1;
+  width: 72px;
+  height: 72px;
+  display: grid;
+  place-items: center;
+  border-radius: var(--radius-md);
+  background: var(--color-brand);
+  color: var(--color-on-brand);
+  flex-shrink: 0;
+}
+
+.ch-home__qr {
+  width: 40px;
+  height: 40px;
+}
+
+.ch-home__hero-copy {
+  position: relative;
+  z-index: 1;
+  min-width: 0;
+}
+
+.ch-home__hero-title {
+  margin: 0 0 8px;
+  font-size: clamp(20px, 3.2vw, 26px);
+  font-weight: var(--weight-bold);
+  letter-spacing: -0.03em;
+  line-height: 1.2;
+  color: var(--color-text-primary);
+}
+
+.ch-home__hero-lead {
+  margin: 0;
+  font-size: var(--font-small);
+  line-height: 1.45;
   color: var(--color-text-secondary);
+  max-width: 34em;
+}
+
+.ch-home__empty {
+  padding: var(--space-4) var(--space-2);
+  text-align: center;
+  border: 1px dashed var(--color-border-strong);
+  border-radius: var(--radius-lg);
+  background: var(--canvas-bg);
+}
+
+.ch-home__empty-title {
+  margin: 0 0 8px;
+  font-size: var(--font-h4);
+  font-weight: var(--weight-bold);
+  letter-spacing: -0.02em;
+}
+
+.ch-home__empty-copy {
+  margin: 0;
+  font-size: var(--font-small);
+  color: var(--color-text-secondary);
+  line-height: 1.45;
 }
 
 .ch-home__places-link {
@@ -1369,7 +1480,7 @@ body.mq-onboard-open {
   margin-top: 4px;
   text-decoration: none;
   color: inherit;
-  border-radius: var(--mq-radius-md);
+  border-radius: var(--radius-md);
   transition: box-shadow var(--motion-hover), transform var(--motion-hover);
 }
 
@@ -1432,32 +1543,50 @@ body.mq-onboard-open {
 }
 
 .ch-home__scan-banner {
-  margin-bottom: 20px;
-  padding: 20px;
-  border-radius: var(--mq-radius-md);
-}
-
-.ch-home__scan-eyebrow {
-  margin: 0 0 6px;
-  font-size: 12px;
-  font-weight: var(--weight-semibold);
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
-  color: var(--color-brand, #fc7251);
+  margin: 4px 0 8px;
+  padding: 0;
+  border: 0;
+  background: none;
+  box-shadow: none;
 }
 
 .ch-home__scan-title {
   margin: 0 0 8px;
-  font-size: 22px;
+  font-size: clamp(20px, 3.2vw, 26px);
   font-weight: var(--weight-bold);
-  line-height: 1.25;
+  letter-spacing: -0.03em;
+  line-height: 1.2;
 }
 
 .ch-home__scan-copy {
   margin: 0;
-  font-size: 14px;
-  line-height: 1.5;
+  font-size: 15px;
+  line-height: 1.45;
   color: var(--color-text-secondary);
+  max-width: 34em;
+}
+
+@media (max-width: 639px) {
+  .ch-home__hero {
+    grid-template-columns: 1fr;
+    gap: var(--space-2);
+    padding: var(--space-2);
+  }
+
+  .ch-home__hero-mark {
+    width: 56px;
+    height: 56px;
+  }
+
+  .ch-home__qr {
+    width: 32px;
+    height: 32px;
+  }
+
+  .ch-hub-header__brand--hero .ch-hub-header__logo,
+  .ch-hub-header__brand--hero .zintriq-logo-theme img {
+    height: 44px;
+  }
 }
 
 /* ── Uber Eats-style hub topbar (legacy — unused) ── */
@@ -1565,7 +1694,7 @@ body.mq-onboard-open {
   height: 18px;
   padding: 0 5px;
   border-radius: 999px;
-  background: #06c167;
+  background: var(--color-success);
   color: #fff;
   font-size: 11px;
   font-weight: 700;
@@ -1921,11 +2050,11 @@ body.mq-onboard-open {
   height: 140px;
   background-size: cover;
   background-position: center;
-  background-color: #e8e8e8;
+  background-color: var(--color-border);
 }
 
 .ch-ue-store__hero--empty {
-  background: linear-gradient(135deg, #dfe6ee, #c8d4e0);
+  background: linear-gradient(135deg, var(--color-brand-soft), var(--color-border));
 }
 
 .ch-ue-store__badge {
@@ -1941,11 +2070,11 @@ body.mq-onboard-open {
 }
 
 .ch-ue-store__badge--open {
-  color: #15803d;
+  color: var(--color-open, var(--color-success));
 }
 
 .ch-ue-store__badge--closed {
-  color: #b45309;
+  color: var(--color-closed, #9A6700);
 }
 
 .ch-ue-store__logo {

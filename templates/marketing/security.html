@@ -1,0 +1,78 @@
+{% extends 'marketing_base.html' %}
+{% block title %}{{ _('sec.title') }} — Zintriq{% endblock %}
+{% block content %}
+<article class="page site-page">
+  <section class="page-hero">
+    <div>
+      <p class="page-kicker">{{ _('sec.kicker') }}</p>
+      <h1>{{ _('sec.title') }}</h1>
+      <p class="page-lead">{{ _('sec.lead') }}</p>
+    </div>
+  </section>
+
+  <section class="page-section" data-reveal>
+    <h2>{{ _('sec.now') }}</h2>
+    <ul class="include-grid paper-list">
+      <li>
+        <span class="inst-lamp inst-lamp--brand" aria-hidden="true"></span>
+        <div class="paper-list__body"><p>{{ rich(_('sec.local')) }}</p></div>
+      </li>
+      <li>
+        <span class="inst-lamp" aria-hidden="true"></span>
+        <div class="paper-list__body"><p>{{ rich(_('sec.loopback')) }}</p></div>
+      </li>
+      <li>
+        <span class="inst-lamp" aria-hidden="true"></span>
+        <div class="paper-list__body"><p>{{ rich(_('sec.workspace')) }}</p></div>
+      </li>
+      <li>
+        <span class="inst-lamp" aria-hidden="true"></span>
+        <div class="paper-list__body"><p>{{ rich(_('sec.ids')) }}</p></div>
+      </li>
+      <li>
+        <span class="inst-lamp" aria-hidden="true"></span>
+        <div class="paper-list__body"><p>{{ rich(_('sec.tracking')) }}</p></div>
+      </li>
+      <li>
+        <span class="inst-lamp" aria-hidden="true"></span>
+        <div class="paper-list__body"><p>{{ rich(_('sec.stripe')) }}</p></div>
+      </li>
+      <li>
+        <span class="inst-lamp" aria-hidden="true"></span>
+        <div class="paper-list__body"><p>{{ rich(_('sec.residency')) }}</p></div>
+      </li>
+    </ul>
+  </section>
+
+  <section class="page-section" data-reveal>
+    <h2>{{ _('sec.later') }}</h2>
+    <ul class="include-grid include-grid--soon paper-list">
+      <li>
+        <span class="inst-lamp" aria-hidden="true"></span>
+        <div class="paper-list__body"><p>{{ rich(_('sec.signin')) }}</p></div>
+      </li>
+      <li>
+        <span class="inst-lamp" aria-hidden="true"></span>
+        <div class="paper-list__body"><p>{{ rich(_('sec.offline')) }}</p></div>
+      </li>
+      <li>
+        <span class="inst-lamp" aria-hidden="true"></span>
+        <div class="paper-list__body"><p>{{ rich(_('sec.drafts')) }}</p></div>
+      </li>
+      <li>
+        <span class="inst-lamp" aria-hidden="true"></span>
+        <div class="paper-list__body"><p>{{ rich(_('sec.packages')) }}</p></div>
+      </li>
+    </ul>
+  </section>
+
+  <p class="page-note">{{ _('sec.china') }}</p>
+  <section class="page-end page-end--paper site-end" data-reveal>
+    <p class="page-actions">
+      <a class="btn-secondary" href="{{ url_for('legal_page', page='privacy') }}">{{ _('legal.privacy') }}</a>
+      <a class="btn-secondary" href="{{ url_for('legal_page', page='terms') }}">{{ _('legal.terms') }}</a>
+      <a class="btn-primary" href="{{ murl('/contact') }}">{{ _('sec.report') }}</a>
+    </p>
+  </section>
+</article>
+{% endblock %}

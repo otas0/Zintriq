@@ -1,0 +1,32 @@
+{% extends 'marketing_base.html' %}
+{% block title %}
+  {% if status == 'ok' %}{{ _('desk.ok.title') }}
+  {% elif status == 'denied' %}{{ _('desk.denied.title') }}
+  {% else %}{{ _('desk.err.invalid.title') }}{% endif %}
+  — Zintriq
+{% endblock %}
+{% block public_head %}
+    {% if callback %}
+    <meta http-equiv="refresh" content="0;url={{ callback }}">
+    {% endif %}
+{% endblock %}
+{% block content %}
+<section class="mq-auth-page">
+  <div class="mq-desk-auth">
+    <p class="page-kicker">{{ _('desk.auth.kicker') }}</p>
+    {% if status == 'ok' %}
+    <h1>{{ _('desk.ok.title') }}</h1>
+    <p class="page-lead mq-auth-lead">{{ _('desk.ok.body') }}</p>
+    {% if callback %}
+    <p class="page-actions mq-desk-auth__form"><a class="btn-primary mq-btn mq-btn-primary mq-desk-auth__submit" href="{{ callback }}">{{ _('desk.ok.open') }}</a></p>
+    {% endif %}
+    {% elif status == 'denied' %}
+    <h1>{{ _('desk.denied.title') }}</h1>
+    <p class="page-lead mq-auth-lead">{{ _('desk.denied.body') }}</p>
+    {% else %}
+    <h1>{{ _('desk.err.invalid.title') }}</h1>
+    <p class="page-lead mq-auth-lead">{{ _('desk.err.invalid.body') }}</p>
+    {% endif %}
+  </div>
+</section>
+{% endblock %}

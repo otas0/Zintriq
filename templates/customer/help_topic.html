@@ -1,22 +1,22 @@
 {% extends 'customer_base.html' %}
-{% block title %}{{ topic.title }} — Help{% endblock %}
+{% block title %}{{ topic.title }} — {{ _('help.title') }}{% endblock %}
 {% block customer_head %}
 <link rel="stylesheet" href="{{ url_for('static', filename='customer-help.css') }}">
 {% endblock %}
 {% block content %}
 <article class="help-article ch-hub-page">
   <p class="help-article__back">
-    <a href="{{ url_for('customer_help_home') }}">← Help</a>
+    <a href="{{ url_for('customer_help_home') }}">{{ _('help.back') }}</a>
   </p>
   <header class="help-article__head">
-    <p class="help-article__cat">{{ topic.category|capitalize }}</p>
+    <p class="help-article__cat">{{ _('help.cat.' ~ topic.category) if topic.category in ('shopping','places','account') else topic.category|capitalize }}</p>
     <h1 class="help-article__title">{{ topic.title }}</h1>
     <p class="help-article__summary">{{ topic.summary }}</p>
   </header>
 
   {% if topic.steps %}
   <section class="help-article__steps material-module">
-    <h2 class="help-article__steps-title">Steps</h2>
+    <h2 class="help-article__steps-title">{{ _('help.steps') }}</h2>
     {% set how_it_works_steps = topic.steps %}
     {% include 'customer/_how_it_works_steps.html' %}
   </section>
@@ -30,9 +30,9 @@
   </div>
   {% endif %}
 
-  <nav class="help-article__related" aria-label="Related topics">
+  <nav class="help-article__related" aria-label="{{ _('help.related_topics') }}">
     {% if related_topics %}
-    <h2 class="help-section__title">Related</h2>
+    <h2 class="help-section__title">{{ _('help.related') }}</h2>
     <ul class="help-topics">
       {% for other in related_topics %}
       <li>

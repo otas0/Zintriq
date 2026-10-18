@@ -1,43 +1,43 @@
 {% extends 'customer_base.html' %}
-{% block title %}Checkout — {{ store.name }}{% endblock %}
+{% block title %}{{ _('checkout.title') }} — {{ store.name }}{% endblock %}
 {% block customer_head %}
 <link rel="stylesheet" href="{{ url_for('static', filename='storefront.css') }}">
 {% endblock %}
 {% block customer_header_actions %}
-<a class="mq-btn mq-btn-ghost mq-btn-sm" href="{{ url_for('storefront', slug=store.slug) }}">← Menu</a>
+<a class="mq-btn mq-btn-ghost mq-btn-sm" href="{{ url_for('storefront', slug=store.slug) }}">{{ _('checkout.menu') }}</a>
 {% endblock %}
 {% block content %}
 <section class="mq-section sf-checkout">
   <div class="material-module mq-card mq-card-padded">
-    <p class="mq-hero__eyebrow"><a href="{{ url_for('storefront', slug=store.slug) }}">← {{ store.name }}</a></p>
-    <h1 class="mq-hero__title">Checkout</h1>
+    <p class="mq-hero__eyebrow"><a href="{{ url_for('storefront', slug=store.slug) }}">{{ _('checkout.back_store_name', name=store.name) }}</a></p>
+    <h1 class="mq-hero__title">{{ _('checkout.title') }}</h1>
     <div id="checkout-empty" class="sf-checkout-empty" hidden>
-      <p>Your cart is empty.</p>
-      <a class="mq-btn mq-btn-primary" href="{{ url_for('storefront', slug=store.slug) }}">Browse menu</a>
+      <p>{{ _('checkout.empty') }}</p>
+      <a class="mq-btn mq-btn-primary" href="{{ url_for('storefront', slug=store.slug) }}">{{ _('checkout.browse') }}</a>
     </div>
     <div id="checkout-main" hidden>
       <ul class="sf-checkout-lines" id="checkout-lines"></ul>
       <dl class="sf-checkout-totals">
-        <div><dt>Subtotal</dt><dd id="checkout-subtotal">$0.00</dd></div>
-        <div class="sf-checkout-totals__total"><dt>Total</dt><dd id="checkout-total">$0.00</dd></div>
+        <div><dt>{{ _('checkout.subtotal') }}</dt><dd id="checkout-subtotal">$0.00</dd></div>
+        <div class="sf-checkout-totals__total"><dt>{{ _('checkout.total') }}</dt><dd id="checkout-total">$0.00</dd></div>
       </dl>
       <div class="bos-field">
-        <label class="bos-label">Name</label>
+        <label class="bos-label">{{ _('checkout.name') }}</label>
         <input class="bos-input mq-input" id="checkout-name" autocomplete="name">
       </div>
       <div class="bos-field">
-        <label class="bos-label">Email</label>
+        <label class="bos-label">{{ _('checkout.email') }}</label>
         <input class="bos-input mq-input" id="checkout-email" type="email" autocomplete="email">
       </div>
       <div class="bos-field">
-        <label class="bos-label">Pay with</label>
+        <label class="bos-label">{{ _('checkout.pay_with') }}</label>
         <select class="bos-input mq-input" id="checkout-provider">
           {% for p in checkout_providers %}
-          <option value="{{ p.slug }}">{{ p.name }}{% if p.demo %} (demo){% endif %}</option>
+          <option value="{{ p.slug }}">{{ p.name }}{% if p.demo %} {{ _('checkout.demo') }}{% endif %}</option>
           {% endfor %}
         </select>
       </div>
-      <button type="button" class="mq-btn mq-btn-primary mq-btn-block" id="checkout-pay">Pay now</button>
+      <button type="button" class="mq-btn mq-btn-primary mq-btn-block" id="checkout-pay">{{ _('checkout.pay_now') }}</button>
       <p class="cp-muted sf-checkout-note" id="checkout-error" role="alert" hidden></p>
     </div>
   </div>

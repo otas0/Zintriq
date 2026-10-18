@@ -1,95 +1,95 @@
 {% extends 'owner_base.html' %}
 {% set active_tab = 'qr' %}
-{% block title %}{{ event.name }} — Event Pass{% endblock %}
+{% block title %}{{ event.name }} — {{ _('owner.event_pass') }}{% endblock %}
 {% block os_header %}
 <h1 class="os-page-title">{{ event.name }}</h1>
-<p class="os-page-subtitle">Manage passes, attendees, and check-in for this event.</p>
+<p class="os-page-subtitle">{{ _('owner.event_detail_subtitle') }}</p>
 {% endblock %}
 {% block os_actions %}
-<a class="os-btn os-btn-ghost" href="{{ url_for('event_pass_scanner', slug=store.slug, event_id=event.id) }}">Open scanner</a>
-<a class="os-btn os-btn-ghost" href="{{ url_for('event_pass_preview', slug=store.slug, event_id=event.id) }}" target="_blank" rel="noopener">Customer preview ↗</a>
+<a class="os-btn os-btn-ghost" href="{{ url_for('event_pass_scanner', slug=store.slug, event_id=event.id) }}">{{ _('owner.open_scanner') }}</a>
+<a class="os-btn os-btn-ghost" href="{{ url_for('event_pass_preview', slug=store.slug, event_id=event.id) }}" target="_blank" rel="noopener">{{ _('owner.customer_preview_label') }}</a>
 {% endblock %}
 {% block owner_content %}
 <section class="ep-dash-grid">
-  <div class="ep-stat-card os-card"><span class="ep-stat-val">{{ stats.capacity }}</span><span class="ep-stat-lbl">Capacity</span></div>
-  <div class="ep-stat-card os-card"><span class="ep-stat-val">{{ stats.registered }}</span><span class="ep-stat-lbl">Registered</span></div>
-  <div class="ep-stat-card os-card"><span class="ep-stat-val">{{ stats.checked_in }}</span><span class="ep-stat-lbl">Checked in</span></div>
-  <div class="ep-stat-card os-card"><span class="ep-stat-val">{{ stats.remaining }}</span><span class="ep-stat-lbl">Remaining</span></div>
-  <div class="ep-stat-card os-card"><span class="ep-stat-val">{{ stats.rate }}%</span><span class="ep-stat-lbl">Attendance rate</span></div>
+  <div class="ep-stat-card os-card"><span class="ep-stat-val">{{ stats.capacity }}</span><span class="ep-stat-lbl">{{ _('owner.capacity') }}</span></div>
+  <div class="ep-stat-card os-card"><span class="ep-stat-val">{{ stats.registered }}</span><span class="ep-stat-lbl">{{ _('owner.registered_stat') }}</span></div>
+  <div class="ep-stat-card os-card"><span class="ep-stat-val">{{ stats.checked_in }}</span><span class="ep-stat-lbl">{{ _('owner.checked_in_stat') }}</span></div>
+  <div class="ep-stat-card os-card"><span class="ep-stat-val">{{ stats.remaining }}</span><span class="ep-stat-lbl">{{ _('owner.remaining_stat') }}</span></div>
+  <div class="ep-stat-card os-card"><span class="ep-stat-val">{{ stats.rate }}%</span><span class="ep-stat-lbl">{{ _('owner.attendance_rate') }}</span></div>
 </section>
 
 <section class="os-card os-card-padded">
-  <h2 class="os-card-title">Event details</h2>
+  <h2 class="os-card-title">{{ _('owner.event_details') }}</h2>
   <form method="post" enctype="multipart/form-data" class="os-form">
     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
     <input type="hidden" name="action" value="update">
     <div class="os-grid-2">
-      <div class="os-field"><label class="os-label">Event name</label><input class="os-input" name="name" value="{{ event.name }}" required></div>
-      <div class="os-field"><label class="os-label">Status</label>
+      <div class="os-field"><label class="os-label">{{ _('owner.event_name') }}</label><input class="os-input" name="name" value="{{ event.name }}" required></div>
+      <div class="os-field"><label class="os-label">{{ _('bos.status') }}</label>
         <select class="os-select" name="status">
           {% for s in event_statuses %}<option value="{{ s }}"{% if event.status == s %} selected{% endif %}>{{ s }}</option>{% endfor %}
         </select>
       </div>
     </div>
     <div class="os-grid-2">
-      <div class="os-field"><label class="os-label">Date</label><input class="os-input" name="event_date" type="date" value="{{ event.event_date or '' }}"></div>
-      <div class="os-field"><label class="os-label">Time zone</label><input class="os-input" name="timezone" value="{{ event.timezone or 'Asia/Singapore' }}"></div>
+      <div class="os-field"><label class="os-label">{{ _('owner.date') }}</label><input class="os-input" name="event_date" type="date" value="{{ event.event_date or '' }}"></div>
+      <div class="os-field"><label class="os-label">{{ _('owner.time_zone') }}</label><input class="os-input" name="timezone" value="{{ event.timezone or 'Asia/Singapore' }}"></div>
     </div>
     <div class="os-grid-2">
-      <div class="os-field"><label class="os-label">Start</label><input class="os-input" name="start_time" type="time" value="{{ event.start_time or '' }}"></div>
-      <div class="os-field"><label class="os-label">End</label><input class="os-input" name="end_time" type="time" value="{{ event.end_time or '' }}"></div>
+      <div class="os-field"><label class="os-label">{{ _('owner.start') }}</label><input class="os-input" name="start_time" type="time" value="{{ event.start_time or '' }}"></div>
+      <div class="os-field"><label class="os-label">{{ _('owner.end') }}</label><input class="os-input" name="end_time" type="time" value="{{ event.end_time or '' }}"></div>
     </div>
     <div class="os-grid-2">
-      <div class="os-field"><label class="os-label">Venue</label><input class="os-input" name="venue" value="{{ event.venue or '' }}"></div>
-      <div class="os-field"><label class="os-label">Capacity</label><input class="os-input" name="capacity" type="number" min="1" value="{{ event.capacity or 100 }}"></div>
+      <div class="os-field"><label class="os-label">{{ _('owner.venue') }}</label><input class="os-input" name="venue" value="{{ event.venue or '' }}"></div>
+      <div class="os-field"><label class="os-label">{{ _('owner.capacity') }}</label><input class="os-input" name="capacity" type="number" min="1" value="{{ event.capacity or 100 }}"></div>
     </div>
-    <div class="os-field"><label class="os-label">Description</label><textarea class="os-textarea" name="description" rows="2">{{ event.description or '' }}</textarea></div>
-    <div class="os-field"><label class="os-label">Cover image URL</label><input class="os-input" name="cover_image" value="{{ event.cover_image or '' }}" placeholder="https://..."></div>
-    <div class="os-field"><label class="os-label">Or upload cover</label><input type="file" name="cover_file" accept="image/*"></div>
-    <div class="os-field"><label class="os-label">Internal notes <span class="os-label-hint">(owner only)</span></label><textarea class="os-textarea" name="internal_notes" rows="2">{{ event.internal_notes or '' }}</textarea></div>
-    <button class="os-btn os-btn-primary" type="submit">Save event</button>
+    <div class="os-field"><label class="os-label">{{ _('bos.description') }}</label><textarea class="os-textarea" name="description" rows="2">{{ event.description or '' }}</textarea></div>
+    <div class="os-field"><label class="os-label">{{ _('owner.cover_image_url') }}</label><input class="os-input" name="cover_image" value="{{ event.cover_image or '' }}" placeholder="https://..."></div>
+    <div class="os-field"><label class="os-label">{{ _('owner.or_upload_cover') }}</label><input type="file" name="cover_file" accept="image/*"></div>
+    <div class="os-field"><label class="os-label">{{ _('owner.internal_notes') }} <span class="os-label-hint">{{ _('owner.owner_only') }}</span></label><textarea class="os-textarea" name="internal_notes" rows="2">{{ event.internal_notes or '' }}</textarea></div>
+    <button class="os-btn os-btn-primary" type="submit">{{ _('owner.save_event') }}</button>
   </form>
 </section>
 
 <section class="os-card os-card-padded">
-  <h2 class="os-card-title">Add attendees</h2>
+  <h2 class="os-card-title">{{ _('owner.add_attendees') }}</h2>
   <form method="post" class="os-actions-row ep-attendee-forms">
     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
     <input type="hidden" name="action" value="add_attendee">
-    <input class="os-input" name="name" placeholder="Attendee name" required style="flex:1;max-width:200px">
-    <input class="os-input" name="email" placeholder="Email (optional)" style="flex:1;max-width:200px">
-    <button class="os-btn os-btn-primary os-btn-sm" type="submit">Add pass</button>
+    <input class="os-input" name="name" placeholder="{{ _('owner.attendee_name') }}" required style="flex:1;max-width:200px">
+    <input class="os-input" name="email" placeholder="{{ _('owner.email_optional') }}" style="flex:1;max-width:200px">
+    <button class="os-btn os-btn-primary os-btn-sm" type="submit">{{ _('owner.add_pass') }}</button>
   </form>
   <form method="post" class="os-actions-row ep-attendee-forms" style="margin-top:12px">
     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
     <input type="hidden" name="action" value="bulk_generate">
-    <input class="os-input" name="name_prefix" value="Guest" style="width:120px">
+    <input class="os-input" name="name_prefix" value="{{ _('owner.guest') }}" style="width:120px">
     <input class="os-input" name="count" type="number" min="1" max="500" value="10" style="width:80px">
-    <button class="os-btn os-btn-ghost os-btn-sm" type="submit">Bulk generate</button>
+    <button class="os-btn os-btn-ghost os-btn-sm" type="submit">{{ _('owner.bulk_generate') }}</button>
   </form>
 </section>
 
 <section class="items" id="ep-attendees">
   <div class="section-title">
-    <h2>Attendees</h2>
-    <span class="os-tag">{{ attendees|length }} passes</span>
+    <h2>{{ _('owner.attendees') }}</h2>
+    <span class="os-tag">{{ _('owner.n_passes', n=attendees|length) }}</span>
   </div>
   <div class="ep-toolbar">
-    <input type="search" class="os-input ep-search" id="ep-attendee-search" placeholder="Search attendees…">
+    <input type="search" class="os-input ep-search" id="ep-attendee-search" placeholder="{{ _('owner.search_attendees') }}">
     <select class="os-select ep-filter" id="ep-attendee-filter">
-      <option value="">All statuses</option>
-      <option value="valid">Valid</option>
-      <option value="used">Used</option>
-      <option value="cancelled">Cancelled</option>
+      <option value="">{{ _('owner.all_statuses') }}</option>
+      <option value="valid">{{ _('owner.valid') }}</option>
+      <option value="used">{{ _('owner.used') }}</option>
+      <option value="cancelled">{{ _('owner.cancelled') }}</option>
     </select>
-    <a class="os-btn os-btn-ghost os-btn-sm" href="{{ url_for('export_event_attendees', slug=store.slug, event_id=event.id) }}">Export CSV</a>
+    <a class="os-btn os-btn-ghost os-btn-sm" href="{{ url_for('export_event_attendees', slug=store.slug, event_id=event.id) }}">{{ _('owner.export_csv') }}</a>
   </div>
   <form method="post" id="ep-batch-form">
     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
     <input type="hidden" name="action" value="remove_attendees">
     <div class="ep-action-bar hidden" id="ep-action-bar">
-      <span id="ep-selected-count">0 selected</span>
-      <button class="os-btn os-btn-danger os-btn-sm" type="submit">Remove selected</button>
+      <span id="ep-selected-count">{{ _('bos.selected_n', n=0) }}</span>
+      <button class="os-btn os-btn-danger os-btn-sm" type="submit">{{ _('owner.remove_selected') }}</button>
     </div>
     <div class="ep-table-wrap">
       <table class="ep-table">
@@ -101,10 +101,10 @@
         </colgroup>
         <thead>
           <tr>
-            <th><input type="checkbox" id="ep-select-all" aria-label="Select all"></th>
-            <th>Name</th>
-            <th>Status</th>
-            <th>Pass &amp; actions</th>
+            <th><input type="checkbox" id="ep-select-all" aria-label="{{ _('owner.select_all') }}"></th>
+            <th>{{ _('bos.name') }}</th>
+            <th>{{ _('bos.status') }}</th>
+            <th>{{ _('owner.pass_and_actions') }}</th>
           </tr>
         </thead>
         <tbody>
@@ -121,15 +121,15 @@
                   <code class="ep-code">{{ r.pass_code }}</code>
                 </div>
                 <div class="ep-row-actions">
-                  <a class="os-btn os-btn-ghost os-btn-sm" href="{{ att.image }}" download="{{ r.name }}-pass.png">Download</a>
-                  <a class="os-btn os-btn-ghost os-btn-sm" href="{{ url_for('event_pass_owner_preview', slug=store.slug, code=r.pass_code) }}" target="_blank">Preview</a>
-                  <button type="button" class="os-btn os-btn-ghost os-btn-sm ep-share" data-url="{{ att.url }}">Share</button>
+                  <a class="os-btn os-btn-ghost os-btn-sm" href="{{ att.image }}" download="{{ r.name }}-pass.png">{{ _('owner.download') }}</a>
+                  <a class="os-btn os-btn-ghost os-btn-sm" href="{{ url_for('event_pass_owner_preview', slug=store.slug, code=r.pass_code) }}" target="_blank">{{ _('bos.preview') }}</a>
+                  <button type="button" class="os-btn os-btn-ghost os-btn-sm ep-share" data-url="{{ att.url }}">{{ _('owner.share') }}</button>
                 </div>
               </div>
             </td>
           </tr>
           {% else %}
-          <tr><td colspan="4" class="ep-empty">No attendees yet. Add or bulk-generate passes above.</td></tr>
+          <tr><td colspan="4" class="ep-empty">{{ _('owner.no_attendees_yet') }}</td></tr>
           {% endfor %}
         </tbody>
       </table>
@@ -139,7 +139,7 @@
 
 {% if scan_log %}
 <section class="os-card os-card-padded">
-  <h2 class="os-card-title">Validation history</h2>
+  <h2 class="os-card-title">{{ _('owner.validation_history') }}</h2>
   <ul class="ep-scan-log">
     {% for log in scan_log %}
     <li><span class="os-tag os-tag-{{ log.result }}">{{ log.result }}</span> {{ log.attendee_name }} · {{ log.scanned_at }}</li>

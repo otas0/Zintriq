@@ -24,6 +24,13 @@ def send_transactional_email(
     host = os.environ.get("SMTP_HOST", "").strip()
     if not host or not to.strip():
         return False
+    if host.lower() in {"console", "log", "-"}:
+        import logging
+
+        logging.getLogger("app.mail").info(
+            "smtp.console to=%s subject=%s\n%s", to.strip(), subject, text_body
+        )
+        return True
 
     port = int(os.environ.get("SMTP_PORT", "587"))
     user = os.environ.get("SMTP_USER", "").strip()

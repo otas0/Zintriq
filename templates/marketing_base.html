@@ -1,0 +1,9 @@
+{% extends 'base.html' %}
+{# Lean public marketing CSS. Inter Latin via unicode-range; no font preload (CJK LCP). #}
+{% block font_preload %}{% endblock %}
+{% block site_css %}
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/tokens-marketing.css') }}?v=38">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/public.css') }}?v=44">
+{% endblock %}
+{% block public_head %}{% endblock %}
+{% block public_boot_scripts %}{% endblock %}

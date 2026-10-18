@@ -1,26 +1,43 @@
-{% extends 'base.html' %}
-{% block title %}Sign in — Zintriq{% endblock %}
+{% extends 'marketing_base.html' %}
+{% block title %}{{ _('auth.login.title') }} — Zintriq{% endblock %}
 {% block content %}
 <section class="mq-auth-page">
   <div class="mq-auth-card">
-    <p class="mq-section-label">Welcome back</p>
-    <h1>Sign in</h1>
-    <p class="mq-auth-lead">Manage your storefronts, items, and QR codes.</p>
-    <form class="mq-auth-form" method="post">
+    <p class="page-kicker">{{ _('nav.login') }}</p>
+    {% if request.args.get('from') == 'desktop' %}
+    <p class="mq-auth-lead">{{ _('auth.from_app') }}</p>
+    {% endif %}
+    <h1>{{ _('auth.login.title') }}</h1>
+    {% if device_step %}
+    <p class="mq-auth-lead">{{ _('auth.login.new_device') }}</p>
+    <form class="mq-auth-form" method="post" action="{{ url_for('login_device') }}">
       <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
       <div class="mq-field">
-        <label class="mq-label">Email address</label>
-        <input class="mq-input" name="email" type="email" autocomplete="email" required>
+        <label class="mq-label" for="device_code">{{ _('auth.phone.code_label') }}</label>
+        <input class="mq-input" id="device_code" name="device_code" type="text" inputmode="numeric" autocomplete="one-time-code" autocapitalize="off" autocorrect="off" spellcheck="false" pattern="[0-9]*" maxlength="6" dir="ltr" required>
+      </div>
+      <button class="mq-btn mq-btn-primary" type="submit">{{ _('auth.login.title') }}</button>
+    </form>
+    {% else %}
+    <form class="mq-auth-form" method="post" action="{{ url_for('login', next=auth_next, package=pending_package or None) }}">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      {% if auth_next %}<input type="hidden" name="next" value="{{ auth_next }}">{% endif %}
+      {% if pending_package %}<input type="hidden" name="package" value="{{ pending_package }}">{% endif %}
+      <div class="mq-field">
+        <label class="mq-label" for="login-email">{{ _('auth.login.phone_password') }}</label>
+        <input class="mq-input" id="login-email" name="email" type="text" autocomplete="username" autocapitalize="off" spellcheck="false" dir="ltr" required>
       </div>
       <div class="mq-field">
-        <label class="mq-label">Password</label>
-        <input class="mq-input" name="password" type="password" autocomplete="current-password" required>
+        <label class="mq-label" for="login-password">{{ _('auth.password.label') }}</label>
+        <input class="mq-input" id="login-password" name="password" type="password" autocomplete="current-password" required>
       </div>
       {% include 'customer/_remember_device.html' %}
-      <button class="mq-btn mq-btn-primary" type="submit">Sign in</button>
+      {% include 'partials/turnstile.html' %}
+      <button class="mq-btn mq-btn-primary" type="submit">{{ _('auth.login.title') }}</button>
     </form>
-    <p class="mq-auth-links"><a href="{{ url_for('forgot_password') }}">Forgot password?</a> · <a href="{{ url_for('magic_link') }}">Email sign-in link</a></p>
-    <p class="mq-auth-links">New to Zintriq? <a href="{{ url_for('register') }}">Create a free account</a></p>
+    <p class="mq-auth-links"><a href="{{ url_for('forgot_password') }}">{{ _('auth.login.forgot') }}</a> · <a href="{{ url_for('magic_link') }}">{{ _('auth.magic') }}</a></p>
+    <p class="mq-auth-links"><a href="{{ url_for('register', next=auth_next, package=pending_package or None) }}">{{ _('auth.login.no_account') }}</a></p>
+    {% endif %}
   </div>
 </section>
 {% endblock %}

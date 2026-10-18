@@ -82,6 +82,18 @@ class ClientSideFirebaseRemovalTest(unittest.TestCase):
         cls.db_path = cls._tmp.name
         _create_test_db(cls.db_path)
 
+        # Isolate from developer .env.local Auth0 / Postgres settings
+        for key in (
+            "AUTH_PROVIDER",
+            "AUTH0_DOMAIN",
+            "AUTH0_CLIENT_ID",
+            "AUTH0_CLIENT_SECRET",
+            "AUTH0_CALLBACK_URL",
+            "DATABASE_URL",
+            "SQLITE_PATH",
+        ):
+            os.environ.pop(key, None)
+
         import app as app_module
         cls.app_module = app_module
         cls._orig_database = app_module.DATABASE
@@ -113,19 +125,18 @@ class ClientSideFirebaseRemovalTest(unittest.TestCase):
         self.assertNotIn("google", html, "Register page should not contain 'google'")
 
     def test_t3_customer_login_no_google(self):
-        """GET /account/login renders template with no 'google'."""
+        """GET /login (creator) has no 'google'."""
         client = self.flask_app.test_client()
-        resp = client.get("/account/login")
+        resp = client.get("/login")
         html = resp.data.decode("utf-8").lower()
-        self.assertNotIn("google", html, "Customer login should not contain 'google'")
+        self.assertNotIn("google", html, "Login should not contain 'google'")
 
-    def test_t4_customer_register_redirects(self):
-        """GET /account/register redirects (no 'google' in flow)."""
+    def test_t4_register_redirects_when_needed(self):
+        """GET /register has no 'google'."""
         client = self.flask_app.test_client()
-        resp = client.get("/account/register")
-        self.assertIn(resp.status_code, [302, 303, 307], "Should redirect")
-        location = resp.headers.get("Location", "")
-        self.assertNotIn("google", location.lower(), "Redirect should not reference 'google'")
+        resp = client.get("/register")
+        html = (resp.data.decode("utf-8") + (resp.headers.get("Location") or "")).lower()
+        self.assertNotIn("google", html, "Register should not reference 'google'")
 
     def test_t5_login_no_gstatic(self):
         """GET /login HTML does NOT reference gstatic.com."""
@@ -149,12 +160,12 @@ class ClientSideFirebaseRemovalTest(unittest.TestCase):
         with client.session_transaction() as sess:
             self.assertIn("user_id", sess, "Session should contain user_id after login")
 
-    def test_t7_register_has_email_input(self):
-        """GET /register HTML contains email input."""
+    def test_t7_register_has_phone_input(self):
+        """GET /register HTML contains phone input."""
         client = self.flask_app.test_client()
         resp = client.get("/register")
         html = resp.data.decode("utf-8").lower()
-        self.assertIn('name="email"', html, "Register page should have email input")
+        self.assertIn('name="phone"', html, "Register page should have phone input")
 
     def test_t8_login_has_password_input(self):
         """GET /login HTML contains password input."""
@@ -164,11 +175,11 @@ class ClientSideFirebaseRemovalTest(unittest.TestCase):
         self.assertIn('name="password"', html, "Login page should have password input")
 
     def test_t9_login_has_style_css(self):
-        """GET /login HTML still references /static/marketing.css."""
+        """GET /login HTML references the public marketing stylesheet."""
         client = self.flask_app.test_client()
         resp = client.get("/login")
         html = resp.data.decode("utf-8")
-        self.assertIn("/static/marketing.css", html, "Login page should reference /static/marketing.css")
+        self.assertIn("/static/css/public.css", html, "Login page should reference /static/css/public.css")
 
 
 if __name__ == "__main__":

@@ -42,6 +42,8 @@ jobs:
       ZINTRIQ_SMOKE_LOG_DIR: ${{ github.workspace }}/ci-logs
       ZINTRIQ_SMOKE_TOKEN_FILE: ${{ github.workspace }}/.ci-desktop-token
       ZINTRIQ_SMOKE_TIMEOUT_MS: "300000"
+      # Shared runners are slower; product gate locally remains 3000ms.
+      ZINTRIQ_SMOKE_COLD_MS: "12000"
       SMOKE_LOG: ${{ github.workspace }}/smoke.txt
 
     steps:
@@ -75,6 +77,24 @@ jobs:
         if: runner.os != 'Windows'
         timeout-minutes: 10
         run: .venv/bin/python -m pip install -r requirements.txt
+
+      - name: Acceptance pack check
+        if: matrix.python == '3.11'
+        shell: bash
+        run: |
+          PY=.venv/bin/python
+          if [ "$RUNNER_OS" = "Windows" ]; then PY=.venv/Scripts/python.exe; fi
+          "$PY" scripts/acceptance_pack_check.py
+
+      - name: Acceptance lint
+        if: matrix.python == '3.11' && runner.os != 'Windows'
+        run: |
+          .venv/bin/python -m pip install -q ruff
+          .venv/bin/python scripts/acceptance_lint.py
+
+      - name: Acceptance coverage (meta ≥80%)
+        if: matrix.python == '3.11' && runner.os != 'Windows'
+        run: .venv/bin/python scripts/acceptance_coverage.py
 
       - name: Unit tests
         id: tests-win

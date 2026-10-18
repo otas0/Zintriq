@@ -1,31 +1,31 @@
 {% extends 'owner_base.html' %}
 {% from 'owner/_storefront_nav.html' import storefront_nav %}
 {% set active_tab = 'storefront' %}
-{% block title %}Deals — {{ store.name }}{% endblock %}
+{% block title %}{{ _('owner.deals') }} — {{ store.name }}{% endblock %}
 {% block os_head %}
 <link rel="stylesheet" href="{{ url_for('static', filename='storefront.css') }}">
 {% endblock %}
 {% block os_header %}
-<h1 class="os-page-title">Deals &amp; promotions</h1>
-<p class="os-page-subtitle">Set discounts and schedules — customers see a deals bar and sale badges.</p>
+<h1 class="os-page-title">{{ _('owner.deals_promotions') }}</h1>
+<p class="os-page-subtitle">{{ _('owner.deals_subtitle') }}</p>
 {% endblock %}
 {% block os_actions %}
-<span class="os-tag">{{ items|length }} product{% if items|length != 1 %}s{% endif %}</span>
+<span class="os-tag">{{ _('owner.n_products', n=items|length) }}</span>
 {% endblock %}
 {% block owner_content %}
 <div class="sf-overview">
   {{ storefront_nav(store, 'deals') }}
   <div class="sf-overview-toolbar sf-overview-toolbar--compact">
     <div class="sf-overview-toolbar__right">
-      <button type="button" class="os-btn os-btn-ghost os-btn-sm" id="sf-preview-toggle" aria-expanded="false" aria-controls="sf-preview-dock">Preview</button>
+      <button type="button" class="os-btn os-btn-ghost os-btn-sm" id="sf-preview-toggle" aria-expanded="false" aria-controls="sf-preview-dock">{{ _('bos.preview') }}</button>
     </div>
   </div>
 
   <form class="panel os-card os-form sf-deals-page" method="post">
     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
     {% if not items %}
-    <p class="cp-muted">Add published products first, then set deals here.</p>
-    <a class="os-btn os-btn-primary" href="{{ url_for('manage_store', slug=store.slug) }}">Go to products</a>
+    <p class="cp-muted">{{ _('owner.deals_empty') }}</p>
+    <a class="os-btn os-btn-primary" href="{{ url_for('manage_store', slug=store.slug) }}">{{ _('owner.go_to_products') }}</a>
     {% else %}
     <div class="sf-deals-editor">
       {% for item in items %}
@@ -39,29 +39,29 @@
           {% if schedule %}<span class="sf-deals-status sf-deals-status--{{ schedule }}">{{ schedule }}</span>{% endif %}
         </div>
         <label class="checkbox-label">
-          <input type="checkbox" name="deal_enabled_{{ item.id }}" value="1"{% if deal %} checked{% endif %} data-deal-toggle="{{ item.id }}"> On sale
+          <input type="checkbox" name="deal_enabled_{{ item.id }}" value="1"{% if deal %} checked{% endif %} data-deal-toggle="{{ item.id }}"> {{ _('owner.on_sale') }}
         </label>
         <div class="sf-deals-row__fields" data-deal-fields="{{ item.id }}">
           <select class="os-select os-select-sm" name="deal_type_{{ item.id }}">
-            <option value="percent"{% if not row or row.discount_type == 'percent' %} selected{% endif %}>% off</option>
-            <option value="fixed"{% if row and row.discount_type == 'fixed' %} selected{% endif %}>$ off</option>
+            <option value="percent"{% if not row or row.discount_type == 'percent' %} selected{% endif %}>{{ _('owner.percent_off') }}</option>
+            <option value="fixed"{% if row and row.discount_type == 'fixed' %} selected{% endif %}>{{ _('owner.fixed_off') }}</option>
           </select>
           <input class="os-input os-input-sm" type="number" step="0.01" min="0" name="deal_value_{{ item.id }}"
                  value="{{ row.discount_value if row else '20' }}" placeholder="20">
           <input class="os-input os-input-sm" type="text" name="deal_label_{{ item.id }}"
-                 value="{{ row.label if row else '' }}" placeholder="Label (optional)">
+                 value="{{ row.label if row else '' }}" placeholder="{{ _('owner.label_optional') }}">
           <label class="sf-deals-schedule">
-            <span class="os-label">Starts</span>
+            <span class="os-label">{{ _('owner.starts') }}</span>
             <input class="os-input os-input-sm" type="datetime-local" name="deal_starts_{{ item.id }}"
                    value="{{ row.starts_at[:16] if row and row.starts_at else '' }}">
           </label>
           <label class="sf-deals-schedule">
-            <span class="os-label">Ends</span>
+            <span class="os-label">{{ _('owner.ends') }}</span>
             <input class="os-input os-input-sm" type="datetime-local" name="deal_ends_{{ item.id }}"
                    value="{{ row.ends_at[:16] if row and row.ends_at else '' }}">
           </label>
           <label class="checkbox-label">
-            <input type="checkbox" name="deal_featured_{{ item.id }}" value="1"{% if row and row.featured %} checked{% endif %}> Featured in deals bar
+            <input type="checkbox" name="deal_featured_{{ item.id }}" value="1"{% if row and row.featured %} checked{% endif %}> {{ _('owner.featured_deals_bar') }}
           </label>
           {% if deal %}
           <span class="sf-deals-preview">${{ '%.2f'|format(deal.sale_price) }} <s>${{ '%.2f'|format(deal.compare_at_price) }}</s></span>
@@ -70,7 +70,7 @@
       </article>
       {% endfor %}
     </div>
-    <button class="os-btn os-btn-primary" type="submit" style="margin-top:16px">Save deals</button>
+    <button class="os-btn os-btn-primary" type="submit" style="margin-top:16px">{{ _('owner.save_deals') }}</button>
     {% endif %}
   </form>
 </div>

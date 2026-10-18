@@ -15,7 +15,29 @@ Copy [`.env.example`](../.env.example) and set values on the host (or use `.env.
 | `SMTP_PORT` | Recommended | Usually `587` (STARTTLS) or `465` (SSL — set `SMTP_USE_SSL=1`) |
 | `SMTP_USER` / `SMTP_PASSWORD` | Recommended | Provider credentials |
 | `SMTP_FROM` | Recommended | From address, e.g. `Zintriq <noreply@your-domain.com>` |
-| `FIREBASE_SERVICE_ACCOUNT` | If using Google login | Path or JSON for Firebase Admin |
+| `AUTH_PROVIDER` | Production | `auth0` for Auth0 Universal Login; omit/`local` for SQLite password auth |
+| `AUTH0_DOMAIN` / `AUTH0_CLIENT_ID` / `AUTH0_CLIENT_SECRET` | With Auth0 | Auth0 application credentials (EU tenant preferred) |
+| `AUTH0_CALLBACK_URL` | With Auth0 | Must match Auth0 app callback, e.g. `https://app.example.com/auth/callback` |
+| `DATABASE_URL` | Production | AWS RDS Postgres URL with `sslmode=require` |
+| `TURNSTILE_SITE_KEY` / `TURNSTILE_SECRET_KEY` | Production auth forms | Cloudflare Turnstile widget + server verify (login/register) |
+| `TURNSTILE_REQUIRED` | Optional | `1` to fail closed if keys are missing |
+
+## 1b. Auth0 + RDS (recommended production)
+
+1. Create an Auth0 application (Regular Web App), enable Database connection, enforce MFA in the Auth0 dashboard.
+2. Allowed Callback URLs: `https://your-domain.com/auth/callback`. Logout URL: `https://your-domain.com/`.
+3. **Auth0 Bot Detection:** Security → Attack Protection → Bot Detection → enable CAPTCHA on signup/login; prefer Cloudflare Turnstile as the provider when offered (covers Universal Login).
+4. Provision RDS PostgreSQL (Multi-AZ, encryption at rest, `eu-central-1` if matching Frankfurt residency).
+5. Set `DATABASE_URL` and Auth0 env vars; install `psycopg[binary]`.
+6. Run app once so `init_db()` creates/migrates schema, or copy from SQLite:
+   `DATABASE_URL=… python3 scripts/migrate_sqlite_to_postgres.py`
+7. Emergency local form: `/login?local=1` (only while Auth0 is configured) — protected by Turnstile when keys are set.
+
+## 1c. Cloudflare (edge + Turnstile)
+
+1. Add the domain to Cloudflare (DNS proxy orange-cloud).
+2. Turnstile → Add widget (Managed mode) for your domain → set `TURNSTILE_SITE_KEY` / `TURNSTILE_SECRET_KEY`.
+3. Optional: WAF managed rules + rate limiting on `/login`, `/register`, `/account/login`, `/account/verify/send`.
 
 ## 2. SMTP — what gets emailed
 
@@ -126,9 +148,9 @@ Manual smoke test in browser:
 
 | Feature | Extra config |
 |---------|----------------|
-| Google sign-in | `FIREBASE_SERVICE_ACCOUNT` |
-| Google Calendar sync | `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, `PUBLIC_BASE_URL` must be HTTPS |
-| Cloudflare tunnel (local dev) | `scripts/start_google_webhook_tunnel.sh` updates `PUBLIC_BASE_URL` |
+| Cloudflare tunnel (local dev) | `scripts/start_public_tunnel.sh` (or equivalent) updates `PUBLIC_BASE_URL` |
+
+Google sign-in, Calendar, Reviews, Merchant, and Pay integrations are not offered.
 
 ## 6. Security checklist
 

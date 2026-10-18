@@ -1,33 +1,186 @@
-{% extends 'base.html' %}
-{% block title %}Create your free account — Zintriq{% endblock %}
+{% extends 'marketing_base.html' %}
+{% block title %}{{ _('auth.signup.title') }} — Zintriq{% endblock %}
 {% block content %}
 <section class="mq-auth-page">
-  <div class="mq-auth-card">
-    <p class="mq-section-label">Free forever</p>
-    <h1>Create your account</h1>
-    <p class="mq-auth-lead">Your account keeps your storefront private to you. No payment card required.</p>
-    <form class="mq-auth-form" method="post">
+  <div class="mq-auth-card" id="register-root" data-sms-domain="{{ sms_webotp_domain|default('') }}">
+    <p class="page-kicker">{{ _('nav.signup') }}</p>
+    {% if request.args.get('from') == 'desktop' %}
+    <p class="mq-auth-lead">{{ _('auth.from_app') }}</p>
+    {% endif %}
+    <h1>{{ _('auth.signup.title') }}</h1>
+    <p class="mq-auth-lead">{{ _('auth.signup.lead') }}</p>
+    <p class="mq-auth-error" id="register-error" hidden role="alert" aria-live="polite"></p>
+
+    <form class="mq-auth-form" id="register-step-phone" data-step="1">
       <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
       <div class="mq-field">
-        <label class="mq-label">Email address *</label>
-        <input class="mq-input" name="email" type="email" autocomplete="email" required>
+        <label class="mq-label" for="country-code">{{ _('auth.country_code') }}</label>
+        <select class="mq-input" id="country-code" name="country_code" autocomplete="tel-country-code">
+          <option value="+86">+86</option>
+          <option value="+1">+1</option>
+          <option value="+44">+44</option>
+          <option value="+81">+81</option>
+          <option value="+82">+82</option>
+          <option value="+61">+61</option>
+          <option value="+65">+65</option>
+          <option value="+60" selected>+60</option>
+        </select>
       </div>
       <div class="mq-field">
-        <label class="mq-label">Password *</label>
-        <input class="mq-input" name="password" type="password" autocomplete="new-password" minlength="12" required>
-        <small style="font-size:12px;color:var(--mq-text-muted)">Use at least 12 characters.</small>
+        <label class="mq-label" for="register-phone">{{ _('auth.phone') }}</label>
+        <input class="mq-input" id="register-phone" name="phone" type="tel" inputmode="tel" autocomplete="tel-national" dir="ltr" required>
       </div>
-      <div class="mq-field">
-        <label class="mq-label">Confirm password *</label>
-        <input class="mq-input" name="confirm_password" type="password" autocomplete="new-password" minlength="12" required>
-      </div>
-      {% with consent_id='legal_consent' %}
+      {% with consent_id='legal_consent', consent_tail_key='auth.register.consent' %}
       {% include 'partials/legal_consent.html' %}
       {% endwith %}
-      {% include 'customer/_remember_device.html' %}
-      <button class="mq-btn mq-btn-primary" type="submit">Create free account</button>
+      {% include 'partials/turnstile.html' %}
+      <button class="mq-btn mq-btn-primary" type="submit">{{ _('auth.signup.title') }}</button>
     </form>
-    <p class="mq-auth-links">Already have an account? <a href="{{ url_for('login') }}">Sign in</a></p>
+
+    <form class="mq-auth-form" id="register-step-code" data-step="2" hidden>
+      <p class="mq-auth-lead" id="register-code-lead"></p>
+      <div class="mq-field">
+        <label class="mq-label" for="register-otp">{{ _('auth.sms_code') }}</label>
+        <input class="mq-input" id="register-otp" name="code" type="text" inputmode="numeric" autocomplete="one-time-code" autocapitalize="off" autocorrect="off" spellcheck="false" pattern="[0-9]*" maxlength="8" dir="ltr" required>
+      </div>
+      <button class="mq-btn mq-btn-primary" type="submit">{{ _('auth.sms_code') }}</button>
+      <p class="mq-auth-links">
+        <button type="button" class="mq-link" id="register-resend" disabled>{{ _('auth.resend_code') }}</button>
+        · <button type="button" class="mq-link" id="register-change-number">{{ _('auth.change_number') }}</button>
+      </p>
+    </form>
+
+    <form class="mq-auth-form" id="register-step-profile" data-step="3" hidden>
+      <div class="mq-field">
+        <label class="mq-label" for="register-name">{{ _('auth.display_name') }}</label>
+        <input class="mq-input" id="register-name" name="display_name" autocomplete="name">
+      </div>
+      <div class="mq-field">
+        <label class="mq-label" for="register-password">{{ _('auth.password') }}</label>
+        <input class="mq-input" id="register-password" name="password" type="password" autocomplete="new-password" minlength="10" maxlength="128" required data-password-input>
+        <button type="button" class="mq-link" id="toggle-password">{{ _('auth.password.show') }}</button>
+        <p class="mq-auth-lead" id="password-hint" data-password-hint aria-live="polite"></p>
+      </div>
+      <div class="mq-field">
+        <label class="mq-label" for="register-confirm">{{ _('auth.page.confirm_password') }}</label>
+        <input class="mq-input" id="register-confirm" name="confirm_password" type="password" autocomplete="new-password" minlength="10" maxlength="128" required>
+      </div>
+      {% include 'customer/_remember_device.html' %}
+      <button class="mq-btn mq-btn-primary" type="submit">{{ _('auth.signup.title') }}</button>
+    </form>
+    <p class="mq-auth-links"><a href="{{ url_for('login', next=auth_next, package=pending_package or None) }}">{{ _('auth.has_account') }}</a></p>
   </div>
 </section>
+<script>
+(function () {
+  const csrf = document.querySelector('meta[name="csrf-token"]')?.content || document.querySelector('[name="csrf_token"]')?.value || "";
+  const root = document.getElementById("register-root");
+  const err = document.getElementById("register-error");
+  const step1 = document.getElementById("register-step-phone");
+  const step2 = document.getElementById("register-step-code");
+  const step3 = document.getElementById("register-step-profile");
+  const resend = document.getElementById("register-resend");
+  let phone = "";
+  let resendAt = 0;
+
+  function showError(msg) {
+    err.hidden = true;
+    err.textContent = msg || "";
+    if (msg) {
+      void err.offsetWidth;
+      err.hidden = false;
+    }
+  }
+  function show(step) {
+    step1.hidden = step !== 1;
+    step2.hidden = step !== 2;
+    step3.hidden = step !== 3;
+  }
+  function e164() {
+    const cc = document.getElementById("country-code").value;
+    const local = document.getElementById("register-phone").value.replace(/[^\d]/g, "");
+    return cc + local;
+  }
+  const turnstileField = "cf-" + "turnstile-response";
+    function turnstileToken() {
+      const input = document.querySelector('textarea[name="' + turnstileField + '"], input[name="' + turnstileField + '"]');
+      return (input && input.value) || "";
+    }
+  async function postJson(url, body) {
+    const res = await fetch(url, {
+      method: "POST",
+      credentials: "same-origin",
+      headers: { "Content-Type": "application/json", "X-CSRF-Token": csrf },
+      body: JSON.stringify({ ...body, [turnstileField]: turnstileToken(), csrf_token: csrf }),
+    });
+    const data = await res.json().catch(() => ({}));
+    return { res, data };
+  }
+  function startResendTimer() {
+    resendAt = Date.now() + 60000;
+    resend.disabled = true;
+    const tick = () => {
+      const left = Math.ceil((resendAt - Date.now()) / 1000);
+      if (left <= 0) { resend.disabled = false; resend.textContent = {{ _('auth.resend_code')|tojson }}; return; }
+      resend.textContent = {{ _('auth.resend_code')|tojson }} + " (" + left + "s)";
+      setTimeout(tick, 1000);
+    };
+    tick();
+  }
+  step1.addEventListener("submit", async (e) => {
+    e.preventDefault();
+    showError("");
+    if (!document.getElementById("legal_consent")?.checked) {
+      showError({{ _('auth.register.consent')|tojson }});
+      return;
+    }
+    phone = e164();
+    const { res, data } = await postJson("/auth/phone/send", { phone, purpose: "signup", legal_consent: "1" });
+    if (!res.ok || !data.ok) { showError(data.error || {{ _('auth.phone_taken')|tojson }}); return; }
+    document.getElementById("register-code-lead").textContent = data.masked || phone;
+    show(2);
+    startResendTimer();
+    document.getElementById("register-otp").focus();
+  });
+  document.getElementById("register-otp").addEventListener("input", (e) => {
+    e.target.value = e.target.value.replace(/[\s-]/g, "");
+    if (e.target.value.replace(/\D/g, "").length === 6) step2.requestSubmit();
+  });
+  step2.addEventListener("submit", async (e) => {
+    e.preventDefault();
+    showError("");
+    const code = document.getElementById("register-otp").value.replace(/[\s-]/g, "");
+    const { res, data } = await postJson("/auth/phone/check", { phone, code, purpose: "signup" });
+    if (!res.ok || !data.ok) { showError(data.error || "Invalid code"); return; }
+    show(3);
+  });
+  resend.addEventListener("click", async () => {
+    if (resend.disabled) return;
+    await postJson("/auth/phone/send", { phone, purpose: "signup", legal_consent: "1" });
+    startResendTimer();
+  });
+  document.getElementById("register-change-number").addEventListener("click", () => show(1));
+  document.getElementById("toggle-password").addEventListener("click", () => {
+    const input = document.getElementById("register-password");
+    const hide = input.type === "text";
+    input.type = hide ? "password" : "text";
+    document.getElementById("toggle-password").textContent = hide ? {{ _('auth.show_password')|tojson }} : {{ _('auth.hide_password')|tojson }};
+  });
+  step3.addEventListener("submit", async (e) => {
+    e.preventDefault();
+    showError("");
+    const password = document.getElementById("register-password").value;
+    const confirm = document.getElementById("register-confirm").value;
+    const { res, data } = await postJson("/auth/phone/complete", {
+      password,
+      confirm_password: confirm,
+      display_name: document.getElementById("register-name").value,
+      remember_device: "1",
+    });
+    if (!res.ok || !data.ok) { showError(data.error || "Could not create account"); return; }
+    window.location.assign(data.redirect || "/account");
+  });
+})();
+</script>
+<script type="module" src="{{ url_for('static', filename='password-strength.js') }}"></script>
 {% endblock %}

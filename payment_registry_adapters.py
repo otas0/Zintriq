@@ -297,7 +297,7 @@ def _midtrans_wallet(enabled: str) -> Callable:
 
 
 def _stripe_wallet(fields, **kw) -> dict[str, str]:
-    """Apple Pay / Google Pay via Stripe Checkout (wallets show when enabled on the Stripe account)."""
+    """Apple Pay via Stripe Checkout (wallet shows when enabled on the Stripe account)."""
     key = fields.get("secret_key") or fields.get("api_key") or ""
     _require((key, "Stripe secret key"))
     body = urllib.parse.urlencode({
@@ -482,7 +482,6 @@ def build_registry_extensions(
         "zelle": _scheme_bank("zelle", "https://api.zellepay.com"),
         "interac_e_transfer": _scheme_bank("interac_e_transfer", "https://gateway.moneris.com"),
         "apple_pay": _stripe_wallet,
-        "google_pay": _stripe_wallet,
     }
     for slug, fn in specials.items():
         creators[slug] = fn

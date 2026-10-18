@@ -1,0 +1,111 @@
+<!doctype html>
+<html lang="en">
+<head>
+  {% include 'partials/theme_init.html' %}
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="csrf-token" content="{{ csrf_token() }}">
+  <title>Zintriq{% if mvp_ai_builder %} · AI Builder{% endif %}</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='tokens.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='desktop-app.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='studio/workbench.css') }}">
+</head>
+<body class="da-app da-welcome{% if mvp_ai_builder %} da-mvp-ai{% endif %}" data-draft-slug="{{ current_draft|default('') }}" data-editor-view="{{ editor_pane|default('') }}" data-fill-pack="{{ fill_pack|default('') }}" data-fill-label="{{ fill_label|default('Fill') }}" data-fill-pane="{{ fill_pane|default('') }}" data-mvp-ai-builder="{{ '1' if mvp_ai_builder else '0' }}">
+  <span hidden>Personal · Local</span>
+  {% set workbench_surface = 'library' %}
+  {% include 'studio/_workbench_bar.html' %}
+  <main class="da-welcome-main">
+    <div class="da-welcome-head">
+      <div>
+        {% if mvp_ai_builder %}
+        <h1 class="da-welcome-title">AI Builder</h1>
+        <p class="da-welcome-kicker">Prompt in, webpage out — on this computer. Optional local model when weights are installed.</p>
+        {% else %}
+        <h1 class="da-welcome-title">Empty Space</h1>
+        <p class="da-welcome-kicker">This host has no tools. Install plugins from Community. Open anything on this machine.</p>
+        {% endif %}
+      </div>
+      <ul class="da-welcome-actions">
+        {% if mvp_ai_builder %}
+        <li><a class="da-btn" href="/studio/meta?new=1">New blank</a></li>
+        <li><button type="button" class="da-btn" id="da-import">Open…</button></li>
+        <li><a class="da-btn da-btn--muted" href="/app/community" data-page="community" title="Full catalog later">Community · later</a></li>
+        <li><a class="da-btn" href="/studio/settings">Settings</a></li>
+        {% else %}
+        <li><a class="da-btn da-btn--primary" href="/studio/meta?new=1">New</a></li>
+        <li><button type="button" class="da-btn" id="da-import">Open…</button></li>
+        <li><a class="da-btn" href="/app/community">Add plugin</a></li>
+        <li><a class="da-btn" href="/app/community" data-page="community">Community</a></li>
+        <li><a class="da-btn" href="/studio/settings">Settings</a></li>
+        {% endif %}
+      </ul>
+    </div>
+    {% if mvp_ai_builder %}
+    <section class="da-ai-builder" aria-label="AI Builder">
+      <label class="da-ai-builder__label" for="da-ai-prompt">What do you want to build?</label>
+      <textarea id="da-ai-prompt" class="da-ai-builder__prompt" rows="4" maxlength="2000" placeholder="e.g. A one-page site for a neighbourhood café with hours and a contact form"></textarea>
+      <div class="da-ai-builder__row">
+        <button type="button" class="da-btn da-btn--primary" id="da-ai-generate">Generate webpage</button>
+        <span class="da-ai-builder__hint" id="da-ai-hint">Uses a local template if no model weights are installed.</span>
+      </div>
+    </section>
+    {% endif %}
+    <section class="da-welcome-stage" aria-label="Recent">
+      <h2>{% if mvp_ai_builder %}Recent on this machine{% else %}On this machine{% endif %}</h2>
+      <ul class="da-list da-welcome-recent" id="da-factory">
+        {% for item in local_drafts|default([]) %}
+        <li{% if current_draft and item.slug == current_draft %} class="is-current{% if item.empty %} is-current-empty{% endif %}"{% elif item.empty %} class="is-empty"{% endif %} data-draft-row="{{ item.slug }}"{% if item.empty %} data-draft-empty="1"{% endif %}>
+          <a href="/studio/meta/{{ item.slug }}">{{ item.slug }}</a>
+          {% if item.empty and current_draft and item.slug == current_draft %}<span class="da-draft-empty">Current · Empty</span>
+          {% elif item.empty %}<span class="da-draft-empty">Empty</span>{% endif %}
+          {% if item.updated_at %}<span>{{ item.updated_at }}</span>{% endif %}
+          {% if item.empty %}<span class="da-draft-hint">Right-click for Fill / Rename / Remove</span>{% endif %}
+          {% if not item.empty %}
+          <button type="button" class="da-btn da-btn--tiny" data-rename-draft="{{ item.slug }}">Rename</button>
+          <button type="button" class="da-btn da-btn--tiny" data-remove-draft="{{ item.slug }}">Remove</button>
+          {% endif %}
+        </li>
+        {% endfor %}
+        {% if not mvp_ai_builder %}
+        {% for pack in installed_packs|default([]) %}
+        <li data-pack-row="1" data-pack-id="{{ pack.id }}"{% if pack.draft_slug %} data-draft-slug="{{ pack.draft_slug }}"{% endif %}>
+          <a href="/app/community#{{ pack.id }}" data-pack-id="{{ pack.id }}">{{ pack.name }}</a>
+          <span>Plugin</span>
+          <button type="button" class="da-btn da-btn--tiny" data-pack-disable="{{ pack.id }}">Disable</button>
+          <button type="button" class="da-btn da-btn--tiny" data-pack-remove="{{ pack.id }}"{% if pack.draft_slug %} data-bound-draft="{{ pack.draft_slug }}"{% endif %}>Remove</button>
+        </li>
+        {% endfor %}
+        {% endif %}
+        {% for item in local_artifacts|default([]) %}
+        <li>
+          <a href="{{ item.public_url }}/home">{{ item.slug }}</a>
+          {% if item.target and item.target != 'web_build' %}<span>{{ item.target }}</span>{% endif %}
+          <a href="/studio/meta/{{ item.slug }}">Open</a>
+          {% if item.zip_url %}<a href="{{ item.zip_url }}">Zip</a>{% endif %}
+          <button type="button" class="da-btn da-btn--tiny" data-remove-site="{{ item.slug }}">Remove</button>
+        </li>
+        {% endfor %}
+        {% if not local_drafts and not local_artifacts and (mvp_ai_builder or not installed_packs) %}
+        <li class="da-empty">{% if mvp_ai_builder %}Nothing yet. Type a prompt above and generate a webpage.{% else %}Nothing here yet. New opens a blank document. Community adds tools.{% endif %}</li>
+        {% endif %}
+      </ul>
+    </section>
+    <p class="da-probe" id="da-probe" role="status">Local host: checking…</p>
+    <button type="button" class="da-btn da-btn--tiny" id="da-copy-log">Copy log and exit code</button>
+    <section class="da-diag" id="da-diag" hidden>
+      <h2>Host</h2>
+      <p id="da-diag-reason"></p>
+      <p id="da-diag-next"></p>
+      <pre id="da-diag-log"></pre>
+      <button type="button" class="da-btn" id="da-relaunch">Quit and reopen</button>
+    </section>
+    <input id="da-import-file" type="file" accept=".zip,.zintriq-app.zip,.json,.zintriq-plugin.json,.zintriq.json,application/zip,application/json" multiple hidden>
+    <button type="button" id="da-sync" hidden>Sync now</button>
+    <ul class="da-list" id="da-cloud-drafts" hidden></ul>
+  </main>
+  <script src="{{ url_for('static', filename='studio/zintriq.js') }}"></script>
+  <script src="{{ url_for('static', filename='studio/workbench.js') }}"></script>
+  <script src="{{ url_for('static', filename='studio/factory.js') }}"></script>
+  <script src="{{ url_for('static', filename='studio/account-chip.js') }}"></script>
+</body>
+</html>

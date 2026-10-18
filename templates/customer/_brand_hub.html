@@ -1,7 +1,7 @@
 {# Brand hub — sibling stores (same owner / workspace) #}
 {% if brand_hub and brand_hub.locations %}
 <section class="sf-brand-hub" aria-labelledby="sf-brand-hub-title">
-  <h2 class="sf-brand-hub__title" id="sf-brand-hub-title">More from {{ brand_hub.brand_name }}</h2>
+  <h2 class="sf-brand-hub__title" id="sf-brand-hub-title">{{ _('customer.brand.more_from', name=brand_hub.brand_name) }}</h2>
   <ul class="sf-brand-hub__list">
     {% for loc in brand_hub.locations %}
     <li>
@@ -20,7 +20,7 @@
           <span class="sf-brand-hub__meta">
             {% if loc.is_open is not none %}
             <span class="sf-status sf-status--{% if loc.is_open %}open{% else %}closed{% endif %} sf-brand-hub__status">
-              {% if loc.is_open %}Open{% else %}Closed{% endif %}
+              {% if loc.is_open %}{{ _('places.open') }}{% else %}{{ _('places.closed') }}{% endif %}
             </span>
             {% endif %}
             {% if loc.distance_label %}

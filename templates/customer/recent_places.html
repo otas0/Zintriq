@@ -1,5 +1,5 @@
 {% extends 'customer_base.html' %}
-{% block title %}Your places{% endblock %}
+{% block title %}{{ _('places.title') }}{% endblock %}
 {% block content %}
 <section class="guest-places ch-hub-page" id="places-page"
          data-places-count="{{ places|length }}">
@@ -8,55 +8,26 @@
   <div class="places-toolbar material-module">
     <label class="places-toolbar__search">
       <span class="places-toolbar__search-icon" aria-hidden="true">⌕</span>
-      <input class="places-toolbar__input" type="search" id="places-search" placeholder="Search saved shops…" autocomplete="off">
+      <input class="places-toolbar__input" type="search" id="places-search" placeholder="{{ _('places.search') }}" autocomplete="off">
     </label>
     <label class="places-toolbar__sort-wrap">
-      <span class="places-toolbar__sort-label">Sort</span>
+      <span class="places-toolbar__sort-label">{{ _('places.sort') }}</span>
       <select class="places-toolbar__sort" id="places-sort">
-        <option value="recent">Recent visit</option>
-        <option value="name">Name A–Z</option>
-        <option value="open">Open first</option>
-        <option value="visits">Most visited</option>
+        <option value="recent">{{ _('places.sort_recent') }}</option>
+        <option value="name">{{ _('places.sort_name') }}</option>
+        <option value="open">{{ _('places.sort_open') }}</option>
+        <option value="visits">{{ _('places.sort_visits') }}</option>
       </select>
     </label>
   </div>
 
   <div class="places-stats" id="places-stats" aria-live="polite">
-    <span class="places-stats__pill">{{ places|length }} shop{% if places|length != 1 %}s{% endif %}</span>
+    <span class="places-stats__pill">{% if places|length == 1 %}{{ _('places.shops_one') }}{% else %}{{ _('places.shops_n', n=places|length) }}{% endif %}</span>
     {% if places_open_count|default(0) > 0 %}
-    <span class="places-stats__pill places-stats__pill--open">{{ places_open_count }} open now</span>
+    <span class="places-stats__pill places-stats__pill--open">{{ _('places.open_now_n', n=places_open_count) }}</span>
     {% endif %}
   </div>
-  {% endif %}
 
-  {% if not customer_logged_in|default(false) %}
-  <aside class="guest-remember material-module" id="remember">
-    {% if guest_remembered_email %}
-    <div class="guest-remember__saved">
-      <p class="guest-remember__label">Sync across devices</p>
-      <p class="guest-remember__email">{{ guest_remembered_email }}</p>
-      <p class="guest-remember__hint">Open the email link on another mobile device to restore your places.</p>
-    </div>
-    {% else %}
-    <div class="guest-remember__form-wrap">
-      <p class="guest-remember__label">Sync across devices</p>
-      <p class="guest-remember__hint">Email yourself a link — no password needed.</p>
-      <form class="guest-remember__form" method="post" action="{{ url_for('index') }}">
-        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-        <label class="guest-remember__field">
-          <span class="guest-remember__field-label">Email</span>
-          <input class="guest-remember__input" type="email" name="email" required autocomplete="email"
-                 placeholder="you@example.com"
-                 value="{{ guest_contact.customer_email if guest_contact is defined and guest_contact.customer_email else '' }}">
-        </label>
-        <button class="mq-btn mq-btn-primary guest-remember__submit" type="submit">Email me a link</button>
-      </form>
-    </div>
-    {% endif %}
-  </aside>
-  {% endif %}
-
-  {% if places %}
   <ul class="guest-places__list guest-places__list--stack" id="places-list">
     {% for place in places %}
     <li class="places-list__item"
@@ -68,20 +39,48 @@
     </li>
     {% endfor %}
   </ul>
-  <p class="places-empty-filter mq-empty" id="places-empty-filter" hidden>No shops match your search.</p>
+  <p class="places-empty-filter mq-empty" id="places-empty-filter" hidden>{{ _('places.no_match') }}</p>
   {% else %}
   <div class="mq-empty guest-places__empty">
-    <p><strong>No places yet</strong></p>
-    <p>Scan a shop QR code in store — it will show up here.</p>
-    <a class="mq-btn mq-btn-primary" href="{{ url_for('customer_help_home') }}">How to scan</a>
+    <p><strong>{{ _('places.empty_title') }}</strong></p>
+    <p>{{ _('places.empty_body') }}</p>
+    <a class="mq-btn mq-btn-primary" href="{{ url_for('customer_help_home') }}">{{ _('places.how_to_scan') }}</a>
   </div>
+  {% endif %}
+
+  {% if not customer_logged_in|default(false) %}
+  <aside class="guest-remember material-module{% if places %} guest-remember--secondary{% endif %}" id="remember">
+    {% if guest_remembered_email %}
+    <div class="guest-remember__saved">
+      <p class="guest-remember__label">{{ _('places.sync_title') }}</p>
+      <p class="guest-remember__email">{{ guest_remembered_email }}</p>
+      <p class="guest-remember__hint">{{ _('places.sync_saved_hint') }}</p>
+    </div>
+    {% else %}
+    <div class="guest-remember__form-wrap">
+      <p class="guest-remember__label">{{ _('places.sync_title') }}</p>
+      <p class="guest-remember__hint">{{ _('places.sync_hint') }}</p>
+      <form class="guest-remember__form" method="post" action="{{ url_for('guest_remember_request') }}">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <input type="hidden" name="next" value="{{ url_for('guest_recent_places') }}#remember">
+        <label class="guest-remember__field">
+          <span class="guest-remember__field-label">{{ _('places.email') }}</span>
+          <input class="guest-remember__input" type="email" name="email" required autocomplete="email"
+                 placeholder="{{ _('places.email_placeholder') }}"
+                 value="{{ guest_contact.customer_email if guest_contact is defined and guest_contact.customer_email else '' }}">
+        </label>
+        <button class="mq-btn mq-btn-ghost guest-remember__submit" type="submit">{{ _('places.email_link') }}</button>
+      </form>
+    </div>
+    {% endif %}
+  </aside>
   {% endif %}
 
   {% if places %}
   <aside class="places-tip material-module">
-    <h2 class="places-tip__title">Tip</h2>
-    <p class="places-tip__text">Each scan adds or updates a shop here. Use search when you visit markets with many vendors.</p>
-    <a class="ch-home__section-link" href="{{ url_for('index') }}">Browse markets &amp; venues →</a>
+    <h2 class="places-tip__title">{{ _('places.tip_title') }}</h2>
+    <p class="places-tip__text">{{ _('places.tip_body') }}</p>
+    <a class="ch-home__section-link" href="{{ url_for('guest_venues') }}">{{ _('places.browse_markets') }}</a>
   </aside>
   {% endif %}
 </section>

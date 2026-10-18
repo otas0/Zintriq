@@ -1,40 +1,40 @@
 {% extends 'owner_base.html' %}
 {% from 'owner/_customer_qr_nav.html' import customer_qr_nav %}
 {% set active_tab = 'qr' %}
-{% block title %}Event Passes — {{ store.name }}{% endblock %}
+{% block title %}{{ _('owner.event_passes_title') }} — {{ store.name }}{% endblock %}
 {% block os_header %}
-<h1 class="os-page-title">Event Pass</h1>
-<p class="os-page-subtitle">Create events, generate attendee QR passes, and check in guests.</p>
+<h1 class="os-page-title">{{ _('owner.event_pass') }}</h1>
+<p class="os-page-subtitle">{{ _('owner.event_passes_subtitle') }}</p>
 {% endblock %}
 {% block owner_content %}
 {{ customer_qr_nav(store, 'event') }}
 
 <section class="os-card os-card-padded">
-  <h2 class="os-card-title">Create event</h2>
+  <h2 class="os-card-title">{{ _('owner.create_event') }}</h2>
   <form method="post" class="os-form">
     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
     <input type="hidden" name="action" value="create">
     <div class="os-grid-2">
-      <div class="os-field"><label class="os-label">Event name *</label><input class="os-input" name="name" required placeholder="Summer Market Night"></div>
-      <div class="os-field"><label class="os-label">Venue</label><input class="os-input" name="venue" placeholder="Main hall"></div>
+      <div class="os-field"><label class="os-label">{{ _('owner.event_name_required') }}</label><input class="os-input" name="name" required placeholder="{{ _('owner.event_name_placeholder') }}"></div>
+      <div class="os-field"><label class="os-label">{{ _('owner.venue') }}</label><input class="os-input" name="venue" placeholder="{{ _('owner.venue_placeholder') }}"></div>
     </div>
     <div class="os-grid-2">
-      <div class="os-field"><label class="os-label">Date</label><input class="os-input" name="event_date" type="date"></div>
-      <div class="os-field"><label class="os-label">Capacity</label><input class="os-input" name="capacity" type="number" min="1" value="100"></div>
+      <div class="os-field"><label class="os-label">{{ _('owner.date') }}</label><input class="os-input" name="event_date" type="date"></div>
+      <div class="os-field"><label class="os-label">{{ _('owner.capacity') }}</label><input class="os-input" name="capacity" type="number" min="1" value="100"></div>
     </div>
     <div class="os-grid-2">
-      <div class="os-field"><label class="os-label">Start time</label><input class="os-input" name="start_time" type="time"></div>
-      <div class="os-field"><label class="os-label">End time</label><input class="os-input" name="end_time" type="time"></div>
+      <div class="os-field"><label class="os-label">{{ _('owner.start_time') }}</label><input class="os-input" name="start_time" type="time"></div>
+      <div class="os-field"><label class="os-label">{{ _('owner.end_time') }}</label><input class="os-input" name="end_time" type="time"></div>
     </div>
-    <div class="os-field"><label class="os-label">Description</label><textarea class="os-textarea" name="description" rows="2" placeholder="What attendees should know"></textarea></div>
-    <button class="os-btn os-btn-primary" type="submit">Create event</button>
+    <div class="os-field"><label class="os-label">{{ _('bos.description') }}</label><textarea class="os-textarea" name="description" rows="2" placeholder="{{ _('owner.event_desc_placeholder') }}"></textarea></div>
+    <button class="os-btn os-btn-primary" type="submit">{{ _('owner.create_event') }}</button>
   </form>
 </section>
 
 <section class="items">
-  <div class="section-title"><h2>Your events</h2><span class="os-tag">{{ event_rows|length }} total</span></div>
+  <div class="section-title"><h2>{{ _('owner.your_events') }}</h2><span class="os-tag">{{ _('owner.total_n', n=event_rows|length) }}</span></div>
   {% if not event_rows %}
-  <div class="ep-empty">No events yet. Create one above to start generating passes.</div>
+  <div class="ep-empty">{{ _('owner.no_events_yet') }}</div>
   {% else %}
   <div class="ep-event-grid">
     {% for row in event_rows %}
@@ -47,20 +47,20 @@
           <h3><a href="{{ url_for('manage_event_pass_detail', slug=store.slug, event_id=ev.id) }}">{{ ev.name }}</a></h3>
           <span class="os-tag os-tag-{{ ev.status }}">{{ ev.status }}</span>
         </div>
-        <p class="ep-event-meta">{{ ev.event_date or 'Date TBD' }}{% if ev.start_time %} · {{ ev.start_time }}{% endif %}{% if ev.venue %} · {{ ev.venue }}{% endif %}</p>
+        <p class="ep-event-meta">{{ ev.event_date or _('owner.date_tbd') }}{% if ev.start_time %} · {{ ev.start_time }}{% endif %}{% if ev.venue %} · {{ ev.venue }}{% endif %}</p>
         <div class="ep-stat-row">
-          <span><strong>{{ st.registered }}</strong> registered</span>
-          <span><strong>{{ st.checked_in }}</strong> checked in</span>
-          <span><strong>{{ st.remaining }}</strong> remaining</span>
+          <span><strong>{{ st.registered }}</strong> {{ _('owner.registered') }}</span>
+          <span><strong>{{ st.checked_in }}</strong> {{ _('owner.checked_in') }}</span>
+          <span><strong>{{ st.remaining }}</strong> {{ _('owner.remaining') }}</span>
         </div>
         <div class="row-actions">
-          <a class="os-btn os-btn-primary os-btn-sm" href="{{ url_for('manage_event_pass_detail', slug=store.slug, event_id=ev.id) }}">Manage</a>
-          <a class="os-btn os-btn-ghost os-btn-sm" href="{{ url_for('event_pass_scanner', slug=store.slug, event_id=ev.id) }}">Scanner</a>
+          <a class="os-btn os-btn-primary os-btn-sm" href="{{ url_for('manage_event_pass_detail', slug=store.slug, event_id=ev.id) }}">{{ _('bos.manage') }}</a>
+          <a class="os-btn os-btn-ghost os-btn-sm" href="{{ url_for('event_pass_scanner', slug=store.slug, event_id=ev.id) }}">{{ _('owner.scanner') }}</a>
           <form method="post" class="inline-form">
             <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
             <input type="hidden" name="action" value="duplicate">
             <input type="hidden" name="event_id" value="{{ ev.id }}">
-            <button class="os-btn os-btn-ghost os-btn-sm" type="submit">Duplicate</button>
+            <button class="os-btn os-btn-ghost os-btn-sm" type="submit">{{ _('bos.duplicate') }}</button>
           </form>
         </div>
       </div>

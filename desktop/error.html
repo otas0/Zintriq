@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="zh">
+<html lang="en">
 <head>
   <meta charset="utf-8">
   <title>Zintriq</title>
@@ -11,8 +11,11 @@
   </style>
 </head>
 <body>
-  <h1>无法启动</h1>
+  <h1>Zintriq did not start</h1>
   <p id="msg"></p>
-  <p>日志：<span id="log"></span></p>
+  <p>The local host on this computer is not running. Quit the app and open it again. If the port is already in use, quit the other Zintriq copy first. If the token does not match, quit and reopen — do not paste a website URL. Making stays in Zintriq.</p>
+  <p>Flask exit, token, and port status are in the log tail below. Use Quit and reopen — this page is not a login wall.</p>
+  <pre id="tail" style="white-space:pre-wrap;max-height:12rem;overflow:auto;background:#f4f4f4;padding:12px;"></pre>
+  <p>Log: <span id="log"></span></p>
 </body>
 </html>

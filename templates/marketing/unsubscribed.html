@@ -1,0 +1,14 @@
+{% extends 'marketing_base.html' %}
+{% block title %}{{ _('notice.unsubscribed') }} — Zintriq{% endblock %}
+{% block content %}
+<article class="page site-page">
+  <section class="page-hero">
+    <div>
+      <h1>{{ _('notice.unsubscribed') if removed else _('notice.unsubscribed.missing') }}</h1>
+    </div>
+  </section>
+  <section class="page-end page-end--paper">
+    <p class="page-actions"><a class="btn-primary" href="{{ murl('/') }}">Zintriq</a></p>
+  </section>
+</article>
+{% endblock %}

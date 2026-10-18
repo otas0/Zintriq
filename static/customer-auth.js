@@ -2,6 +2,12 @@
 
 const AUTH_HEADER = "X-Customer-Auth";
 
+function accountPath(rest) {
+  const base = (document.body && document.body.dataset.workBase) || "";
+  const piece = String(rest || "account").replace(/^\/+/, "");
+  return `${base}/${piece}`;
+}
+
 const state = {
   panel: "login",
   signupChannel: "email",
@@ -13,6 +19,22 @@ const state = {
   skipPassword: false,
   signupMode: "new",
 };
+
+function turnstileToken(root) {
+  const scope = root || document;
+  const input = scope.querySelector('textarea[name="cf-turnstile-response"], input[name="cf-turnstile-response"]');
+  return (input && input.value) || "";
+}
+
+function withTurnstile(body, root) {
+  const token = turnstileToken(root);
+  if (!token) return body;
+  if (body instanceof FormData) {
+    body.set("cf-turnstile-response", token);
+    return body;
+  }
+  return { ...body, "cf-turnstile-response": token };
+}
 
 function csrfToken() {
   return document.querySelector('meta[name="csrf-token"]')?.content || "";
@@ -37,8 +59,10 @@ function setNextUrl(path) {
 function showError(id, message) {
   const el = document.getElementById(id);
   if (!el) return;
-  el.textContent = message || "";
-  el.hidden = !message;
+  const localize = (typeof globalThis.t === "function") ? globalThis.t : (s) => s;
+  const text = message ? localize(String(message)) : "";
+  el.textContent = text;
+  el.hidden = !text;
 }
 
 function clearErrors(prefix) {
@@ -164,7 +188,7 @@ async function checkUsername(inputEl, hintEl) {
     hintEl.textContent = "";
     return;
   }
-  const { data } = await authFetch(`/account/username/check?q=${encodeURIComponent(q)}`, { method: "GET" });
+  const { data } = await authFetch(`${accountPath("account/username/check")}?q=${encodeURIComponent(q)}`, { method: "GET" });
   if (data.available) {
     hintEl.textContent = `@${data.username} is available`;
     hintEl.className = "ig-auth__hint ig-auth__hint--ok";
@@ -186,13 +210,13 @@ function setSignupPasswordFields(skip) {
   });
   if (title) title.textContent = skip ? "Set up shopping" : "Set up account";
   if (lead && !skip) lead.textContent = "Pick a username and password.";
-  if (lead && skip) lead.textContent = "Pick a username for personal mode. Your business password stays the same.";
+  if (lead && skip) lead.textContent = "Pick a username. Your existing password stays the same.";
 }
 
 export function openCustomerAuth(mode = "login", opts = {}) {
   const root = authRoot();
   if (!root) {
-    window.location.href = "/account?open=" + (mode === "signup" ? "signup" : "login");
+    window.location.href = accountPath("account") + "?open=" + (mode === "signup" ? "signup" : "login");
     return;
   }
   state.panelStack = [];
@@ -269,14 +293,14 @@ function bindAuthSheet() {
   loginForm?.addEventListener("submit", async (e) => {
     e.preventDefault();
     showError("ig-auth-login-error", "");
-    const fd = new FormData(loginForm);
+    const fd = withTurnstile(new FormData(loginForm), loginForm);
     fd.set("email", fd.get("identifier") || "");
     fd.set("remember_device", rememberDeviceChecked(loginForm) ? "1" : "0");
     fd.set("csrf_token", csrfToken());
     const submit = loginForm.querySelector('[type="submit"]');
     submit.disabled = true;
     try {
-      const res = await fetch("/account/login", {
+      const res = await fetch(accountPath("account/login"), {
         method: "POST",
         body: fd,
         credentials: "same-origin",
@@ -285,10 +309,15 @@ function bindAuthSheet() {
       const data = await res.json().catch(() => ({}));
       if (!res.ok || !data.ok) {
         showError("ig-auth-login-error", authErrorMessage(data, "Could not sign in."));
+        if (typeof turnstile !== "undefined" && turnstile.reset) {
+          loginForm.querySelectorAll(".cf-turnstile").forEach((el) => {
+            try { turnstile.reset(el); } catch (_) { /* ignore */ }
+          });
+        }
         return;
       }
       closeCustomerAuth();
-      window.location.assign(data.redirect || "/home");
+      window.location.assign(data.redirect || "/");
     } finally {
       submit.disabled = false;
     }
@@ -303,8 +332,11 @@ function bindAuthSheet() {
       return;
     }
     const target = e.target.querySelector('input[name="target"]').value.trim();
-    const { res, data } = await authFetch("/account/verify/send", {
-      body: { channel: state.signupChannel, target, purpose: "signup", legal_consent: true },
+    const { res, data } = await authFetch(accountPath("account/verify/send"), {
+      body: withTurnstile(
+        { channel: state.signupChannel, target, purpose: "signup", legal_consent: true },
+        e.target,
+      ),
     });
     if (!res.ok || !data.ok) {
       showError("ig-signup-send-error", authErrorMessage(data, "Could not send code."));
@@ -324,8 +356,12 @@ function bindAuthSheet() {
   });
 
   document.getElementById("ig-signup-resend")?.addEventListener("click", async () => {
-    await authFetch("/account/verify/send", {
-      body: { channel: state.signupChannel, target: state.verifyTarget, purpose: "signup" },
+    const form = document.getElementById("ig-signup-send-form");
+    await authFetch(accountPath("account/verify/send"), {
+      body: withTurnstile(
+        { channel: state.signupChannel, target: state.verifyTarget, purpose: "signup" },
+        form,
+      ),
     });
     startResendTimer("ig-signup-resend", 60);
   });
@@ -334,7 +370,7 @@ function bindAuthSheet() {
     e.preventDefault();
     showError("ig-signup-code-error", "");
     const code = otpValue("ig-signup-otp");
-    const { res, data } = await authFetch("/account/verify/check", {
+    const { res, data } = await authFetch(accountPath("account/verify/check"), {
       body: { channel: state.signupChannel, target: state.verifyTarget, code, purpose: "signup" },
     });
     if (!res.ok || !data.ok) {
@@ -394,7 +430,7 @@ function bindAuthSheet() {
     const submit = form.querySelector('[type="submit"]');
     submit.disabled = true;
     try {
-      const res = await fetch("/account/onboarding/complete", {
+      const res = await fetch(accountPath("account/onboarding/complete"), {
         method: "POST",
         body: fd,
         credentials: "same-origin",
@@ -406,7 +442,7 @@ function bindAuthSheet() {
         return;
       }
       closeCustomerAuth();
-      window.location.assign(data.redirect || "/home");
+      window.location.assign(data.redirect || "/");
     } finally {
       submit.disabled = false;
     }
@@ -432,8 +468,11 @@ function bindAuthSheet() {
     e.preventDefault();
     showError("ig-login-send-error", "");
     const target = e.target.querySelector('input[name="target"]').value.trim();
-    const { res, data } = await authFetch("/account/verify/send", {
-      body: { channel: state.loginChannel, target, purpose: "login" },
+    const { res, data } = await authFetch(accountPath("account/verify/send"), {
+      body: withTurnstile(
+        { channel: state.loginChannel, target, purpose: "login" },
+        e.target,
+      ),
     });
     if (!res.ok || !data.ok) {
       showError("ig-login-send-error", authErrorMessage(data, "Could not send code."));
@@ -447,8 +486,12 @@ function bindAuthSheet() {
   });
 
   document.getElementById("ig-login-resend")?.addEventListener("click", async () => {
-    await authFetch("/account/verify/send", {
-      body: { channel: state.loginChannel, target: state.verifyTarget, purpose: "login" },
+    const form = document.getElementById("ig-login-send-form");
+    await authFetch(accountPath("account/verify/send"), {
+      body: withTurnstile(
+        { channel: state.loginChannel, target: state.verifyTarget, purpose: "login" },
+        form,
+      ),
     });
     startResendTimer("ig-login-resend", 60);
   });
@@ -457,9 +500,9 @@ function bindAuthSheet() {
     e.preventDefault();
     showError("ig-login-code-error", "");
     const code = otpValue("ig-login-otp");
-    const next = document.querySelector("[data-auth-next]")?.value || "/home";
+    const next = document.querySelector("[data-auth-next]")?.value || "/";
     const loginCodeForm = document.getElementById("ig-login-code-form");
-    const { res, data } = await authFetch("/account/verify/check", {
+    const { res, data } = await authFetch(accountPath("account/verify/check"), {
       body: {
         channel: state.loginChannel,
         target: state.verifyTarget,
@@ -474,7 +517,7 @@ function bindAuthSheet() {
       return;
     }
     closeCustomerAuth();
-    window.location.assign(data.redirect || "/home");
+    window.location.assign(data.redirect || "/");
   });
 
   const params = new URLSearchParams(window.location.search);

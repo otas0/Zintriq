@@ -2,56 +2,56 @@
 <div class="os-modal" id="sf-add-product-modal" hidden role="dialog" aria-labelledby="sf-add-product-title" aria-modal="true">
   <div class="os-modal__backdrop" data-modal-close tabindex="-1"></div>
   <div class="os-modal__panel os-card">
-    <h2 class="os-modal__title" id="sf-add-product-title">Add product</h2>
-    <p class="os-modal__text">New items appear on your customer storefront when published.</p>
+    <h2 class="os-modal__title" id="sf-add-product-title">{{ _('owner.add_product') }}</h2>
+    <p class="os-modal__text">{{ _('owner.add_product_hint') }}</p>
     <form method="post" enctype="multipart/form-data" class="os-form">
       <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
       <input type="hidden" name="action" value="create_item">
       <div class="os-field">
-        <label class="os-label">Item name *</label>
-        <input class="os-input" name="name" required placeholder="e.g. Sourdough loaf">
+        <label class="os-label">{{ _('owner.item_name_required') }}</label>
+        <input class="os-input" name="name" required placeholder="{{ _('owner.item_name_placeholder') }}">
       </div>
       <div class="os-grid-2">
-        <div class="os-field"><label class="os-label">Price *</label><input class="os-input" name="price" required type="number" min="0" step="0.01" placeholder="0.00"></div>
-        <div class="os-field"><label class="os-label">Unit</label><input class="os-input" name="unit" placeholder="900 ml"></div>
+        <div class="os-field"><label class="os-label">{{ _('owner.price_required') }}</label><input class="os-input" name="price" required type="number" min="0" step="0.01" placeholder="0.00"></div>
+        <div class="os-field"><label class="os-label">{{ _('owner.unit') }}</label><input class="os-input" name="unit" placeholder="{{ _('owner.unit_placeholder') }}"></div>
       </div>
       <div class="os-grid-2">
-        <div class="os-field"><label class="os-label">SKU</label><input class="os-input" name="sku" placeholder="Optional"></div>
-        <div class="os-field"><label class="os-label">Inventory</label><input class="os-input" name="inventory" type="number" min="0" placeholder="Optional"></div>
+        <div class="os-field"><label class="os-label">{{ _('owner.sku') }}</label><input class="os-input" name="sku" placeholder="{{ _('bos.optional') }}"></div>
+        <div class="os-field"><label class="os-label">{{ _('owner.inventory') }}</label><input class="os-input" name="inventory" type="number" min="0" placeholder="{{ _('bos.optional') }}"></div>
       </div>
       <div class="os-grid-2">
-        <div class="os-field"><label class="os-label">Category</label>
+        <div class="os-field"><label class="os-label">{{ _('owner.category') }}</label>
           <select class="os-select" name="group_id">
-            <option value="">Default</option>
+            <option value="">{{ _('owner.default') }}</option>
             {% for group in item_groups %}<option value="{{ group.id }}"{% if active_group == group.id %} selected{% endif %}>{{ group.name }}</option>{% endfor %}
           </select>
         </div>
-        <div class="os-field"><label class="os-label">Status</label>
+        <div class="os-field"><label class="os-label">{{ _('bos.status') }}</label>
           <select class="os-select" name="status">
-            <option value="published">Published</option>
-            <option value="draft">Draft</option>
-            <option value="hidden">Hidden</option>
+            <option value="published">{{ _('owner.published') }}</option>
+            <option value="draft">{{ _('bos.draft') }}</option>
+            <option value="hidden">{{ _('owner.hidden') }}</option>
           </select>
         </div>
       </div>
       <div class="os-image-block">
-        <div class="os-field"><label class="os-label">Photo URL</label><input class="os-input" name="image_url" id="add-item-image-url" type="text" placeholder="https://..."></div>
-        <div class="os-field"><label class="os-label">Or upload</label><input name="image_file" type="file" accept="image/jpeg,image/png,image/webp,image/gif" data-preview="add-item-image-preview"></div>
-        <div class="os-image-preview" id="add-item-image-preview"><span>No image selected</span></div>
+        <div class="os-field"><label class="os-label">{{ _('owner.photo_url') }}</label><input class="os-input" name="image_url" id="add-item-image-url" type="text" placeholder="https://..."></div>
+        <div class="os-field"><label class="os-label">{{ _('owner.or_upload') }}</label><input name="image_file" type="file" accept="image/jpeg,image/png,image/webp,image/gif" data-preview="add-item-image-preview"></div>
+        <div class="os-image-preview" id="add-item-image-preview"><span>{{ _('owner.no_image_selected') }}</span></div>
       </div>
-      <div class="os-field"><label class="os-label">Description</label><textarea class="os-textarea" name="description" rows="3" placeholder="Short description for customers"></textarea></div>
+      <div class="os-field"><label class="os-label">{{ _('bos.description') }}</label><textarea class="os-textarea" name="description" rows="3" placeholder="{{ _('owner.description_placeholder') }}"></textarea></div>
       {% if store_checkout_enabled|default(false) %}
       <div class="os-field os-field--check">
         <label class="os-check">
           <input type="checkbox" name="allow_cart" value="1">
-          Allow add to cart
+          {{ _('owner.allow_cart') }}
         </label>
-        <p class="os-label-hint">When checked, customers can add this item to their cart and pay online.</p>
+        <p class="os-label-hint">{{ _('owner.allow_cart_hint') }}</p>
       </div>
       {% endif %}
       <div class="os-modal__actions">
-        <button class="os-btn os-btn-ghost" type="button" data-modal-close>Cancel</button>
-        <button class="os-btn os-btn-primary" type="submit">Add product</button>
+        <button class="os-btn os-btn-ghost" type="button" data-modal-close>{{ _('bos.cancel') }}</button>
+        <button class="os-btn os-btn-primary" type="submit">{{ _('owner.add_product') }}</button>
       </div>
     </form>
   </div>

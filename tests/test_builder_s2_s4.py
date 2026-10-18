@@ -5,8 +5,12 @@ from __future__ import annotations
 import json
 import os
 import re
+import sys
 import unittest
 import uuid
+from pathlib import Path
+
+sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 os.environ.setdefault("SECRET_KEY", "test-builder-s2")
 
@@ -42,11 +46,15 @@ class TrackerScenarioTests(unittest.TestCase):
         with cls.app.app_context():
             app_module.init_db()
 
-    def test_s2_published_form_invokes_create_record(self):
-        os.environ.pop("ZINTRIQ_DESKTOP", None)
-        from builder_http_support import auth_headers, login_editor
+    def tearDown(self):
+        from builder_http_support import disable_application_host
 
-        client = self.app.test_client()
+        disable_application_host()
+
+    def test_s2_published_form_invokes_create_record(self):
+        from builder_http_support import application_client, auth_headers, login_editor
+
+        client = application_client(self.app)
         _user_id, _ws, csrf = login_editor(client, self.app_module)
         headers = auth_headers(csrf)
         created = client.post(
@@ -328,11 +336,10 @@ class TrackerScenarioTests(unittest.TestCase):
         self.assertEqual(count, 2)
         self.assertEqual(surfaces, {"published"})
 
-    def test_s2_blank_project_seed_currently_injects_official_product_card(self):
-        os.environ.pop("ZINTRIQ_DESKTOP", None)
-        from builder_http_support import auth_headers, login_editor
+    def test_s2_blank_project_does_not_seed_official_product_card(self):
+        from builder_http_support import application_client, auth_headers, login_editor
 
-        client = self.app.test_client()
+        client = application_client(self.app)
         _user_id, _ws, csrf = login_editor(client, self.app_module)
         created = client.post(
             "/api/builder-core/projects",
@@ -345,10 +352,10 @@ class TrackerScenarioTests(unittest.TestCase):
         payload = boot.get_json()
         definitions = payload.get("component_definitions") or payload.get("definitions") or []
         keys = {item.get("component_key") or item.get("key") for item in definitions}
-        self.assertIn(
+        self.assertNotIn(
             "official.product-card",
             keys,
-            "web general workspaces still seed official.product-card; personal/desktop must not",
+            "Application/desktop blank projects must not seed official.product-card",
         )
         bindings = payload.get("bindings") or []
         commerce = [item for item in bindings if "commerce.products" in json.dumps(item)]
@@ -359,11 +366,10 @@ class TrackerScenarioTests(unittest.TestCase):
         )
 
     def test_s2_public_detail_and_live_list(self):
-        os.environ.pop("ZINTRIQ_DESKTOP", None)
-        from builder_http_support import auth_headers, login_editor
+        from builder_http_support import application_client, auth_headers, login_editor
         from builder_kernel.records import SURFACE_PREVIEW, SURFACE_PUBLISHED
 
-        client = self.app.test_client()
+        client = application_client(self.app)
         _user_id, _ws, csrf = login_editor(client, self.app_module)
         headers = auth_headers(csrf)
         created = client.post(
@@ -467,12 +473,11 @@ class TrackerScenarioTests(unittest.TestCase):
         self.assertGreaterEqual(published_count, 1)
 
     def test_s2_rate_limit_and_honeypot(self):
-        os.environ.pop("ZINTRIQ_DESKTOP", None)
-        from builder_http_support import auth_headers, login_editor
+        from builder_http_support import application_client, auth_headers, login_editor
         from builder_kernel.rate_limit import get_rate_limiter
 
         get_rate_limiter().reset()
-        client = self.app.test_client()
+        client = application_client(self.app)
         _user_id, _ws, csrf = login_editor(client, self.app_module)
         headers = auth_headers(csrf)
         created = client.post(
@@ -587,20 +592,15 @@ class PersonalToolScenarioTests(unittest.TestCase):
             app_module.init_db()
 
     def tearDown(self):
-        os.environ.pop("ZINTRIQ_DESKTOP", None)
+        from builder_http_support import disable_application_host
 
-    def _login_personal_editor(self, client):
-        os.environ["ZINTRIQ_DESKTOP"] = "1"
-        from builder_http_support import login_editor
-
-        try:
-            return login_editor(client, self.app_module)
-        finally:
-            os.environ.pop("ZINTRIQ_DESKTOP", None)
+        disable_application_host()
 
     def test_s4_personal_workspace_has_no_store(self):
-        client = self.app.test_client()
-        user_id, workspace_id, _csrf = self._login_personal_editor(client)
+        from builder_http_support import application_client, login_editor
+
+        client = application_client(self.app)
+        user_id, workspace_id, _csrf = login_editor(client, self.app_module)
         with self.app_module.db() as conn:
             workspace = conn.execute(
                 "SELECT type FROM workspaces WHERE id=?",
@@ -615,10 +615,10 @@ class PersonalToolScenarioTests(unittest.TestCase):
         self.assertTrue(user_id)
 
     def test_s4_publish_is_build_url_not_hybrid_home(self):
-        from builder_http_support import auth_headers
+        from builder_http_support import application_client, auth_headers, login_editor
 
-        client = self.app.test_client()
-        _user_id, workspace_id, csrf = self._login_personal_editor(client)
+        client = application_client(self.app)
+        _user_id, workspace_id, csrf = login_editor(client, self.app_module)
         headers = auth_headers(csrf)
         listed = client.get("/api/builder-core/projects")
         self.assertEqual(listed.status_code, 200, listed.get_data(as_text=True)[:400])

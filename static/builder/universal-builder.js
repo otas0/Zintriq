@@ -1109,7 +1109,7 @@ async function renderConnectionMode() {
           return `<div class="ub-cap-row${on ? " is-on" : ""}" data-cap-id="${esc(id)}"><div><strong>${esc(labelize(id))}</strong><small>${esc(spec.description || "")}</small></div><button type="button" class="ub-btn ${on ? "" : "ub-btn--primary"}" data-toggle-cap="${esc(id)}" data-enable="${on ? "0" : "1"}">${on ? "Disconnect" : "Connect"}</button></div>`;
         }).join("") || '<div class="ub-empty-panel"><p>Capability registry unavailable.</p></div>'}</div>
       </section>
-      <section class="ub-section-box"><h3>Community packages</h3><p class="ub-dialog__hint">Import on the web Community, then manage installs here.</p>
+      <section class="ub-section-box"><h3>Community packages</h3><p class="ub-dialog__hint">Browse Community in Studio, then manage installs here.</p>
         <p><strong>${(installations || []).length}</strong> installed</p>
         <div class="ub-dialog__actions"><button type="button" class="ub-btn" data-open-installed>Manage installed</button><button type="button" class="ub-btn ub-btn--primary" data-open-community-2>Open Community</button></div>
       </section>
@@ -1233,7 +1233,7 @@ async function renderPublishMode() {
     { id: "firmware", label: "Firmware", status: "planned", note: "Device adapters later" },
     { id: "model_api", label: "Model API", status: "planned", note: "Model adapters later" },
   ];
-  fullMode.innerHTML = `<div class="ub-mode-page"><div class="ub-mode-page__head"><div><p class="ub-eyebrow">Publish</p><h1>Ship this composition</h1><p>Preflight checks, then publish an immutable web revision. Draft editing stays separate. Community packaging stays on the web.</p></div><div class="ub-mode-page__actions"><button type="button" class="ub-btn" id="ub-publish-checkpoint">Save checkpoint</button><button type="button" class="ub-btn ub-btn--primary" id="ub-publish-now" ${errors.length ? "disabled" : ""}>Publish web revision</button></div></div>
+  fullMode.innerHTML = `<div class="ub-mode-page"><div class="ub-mode-page__head"><div><p class="ub-eyebrow">Publish</p><h1>Ship this composition</h1><p>Preflight checks, then publish an immutable web revision. Draft editing stays separate. Share packages from Community in Studio.</p></div><div class="ub-mode-page__actions"><button type="button" class="ub-btn" id="ub-publish-checkpoint">Save checkpoint</button><button type="button" class="ub-btn ub-btn--primary" id="ub-publish-now" ${errors.length ? "disabled" : ""}>Publish web revision</button></div></div>
     <div class="ub-data-layout ub-publish-layout">
       <section class="ub-section-box"><h3>Preflight</h3>${
         issues.length
@@ -1247,7 +1247,7 @@ async function renderPublishMode() {
         ? recent.map((item) => `<div class="ub-action-card"><div class="ub-action-card__head"><strong>Version ${esc(item.revision_number)}${item.kind === "published" ? " · Published" : ""}</strong><button type="button" class="ub-btn" data-restore="${item.id}">Restore as draft</button></div><p>${esc(item.note || "Saved version")}</p><small>${esc(item.created_at || "")}</small></div>`).join("")
         : "<p>No revisions yet. Publish or save a checkpoint to create the first one.</p>"
     }</div>
-    <div class="ub-section-box"><h3>Community</h3><p>Browse packages on the web Community, then import into this composition. Community never runs inside the editor shell.</p><button type="button" class="ub-btn" data-open-community>Open Community in browser</button></div></div>`;
+    <div class="ub-section-box"><h3>Community</h3><p>Browse and import creator packages from Community inside Studio.</p><button type="button" class="ub-btn" data-open-community>Open Community</button></div></div>`;
   fullMode.querySelector("#ub-publish-now")?.addEventListener("click", () => publishProject());
   fullMode.querySelector("#ub-publish-checkpoint")?.addEventListener("click", async () => {
     try {

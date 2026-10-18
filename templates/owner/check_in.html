@@ -1,51 +1,51 @@
 {% extends 'owner_base.html' %}
 {% from 'owner/_customer_qr_nav.html' import customer_qr_nav %}
 {% set active_tab = 'qr' %}
-{% block title %}Check-in — {{ store.name }}{% endblock %}
+{% block title %}{{ _('owner.check_in') }} — {{ store.name }}{% endblock %}
 {% block os_header %}
-<h1 class="os-page-title">Check-in</h1>
-<p class="os-page-subtitle">QR-based check-in for visitors, staff, appointments, and more.</p>
+<h1 class="os-page-title">{{ _('owner.check_in') }}</h1>
+<p class="os-page-subtitle">{{ _('owner.check_in_subtitle') }}</p>
 {% endblock %}
 {% block os_actions %}
-<a class="os-btn os-btn-ghost" href="{{ url_for('export_check_in', slug=store.slug) }}">Export history</a>
+<a class="os-btn os-btn-ghost" href="{{ url_for('export_check_in', slug=store.slug) }}">{{ _('owner.export_history') }}</a>
 {% endblock %}
 {% block owner_content %}
 {{ customer_qr_nav(store, 'checkin') }}
 
 <section class="ep-dash-grid">
-  <div class="ep-stat-card os-card"><span class="ep-stat-val">{{ points|length }}</span><span class="ep-stat-lbl">Check-in points</span></div>
-  <div class="ep-stat-card os-card"><span class="ep-stat-val">{{ total_checkins }}</span><span class="ep-stat-lbl">Total check-ins</span></div>
+  <div class="ep-stat-card os-card"><span class="ep-stat-val">{{ points|length }}</span><span class="ep-stat-lbl">{{ _('owner.check_in_points') }}</span></div>
+  <div class="ep-stat-card os-card"><span class="ep-stat-val">{{ total_checkins }}</span><span class="ep-stat-lbl">{{ _('owner.total_checkins') }}</span></div>
 </section>
 
 <section class="os-card os-card-padded">
-  <h2 class="os-card-title">Create check-in point</h2>
+  <h2 class="os-card-title">{{ _('owner.create_check_in_point') }}</h2>
   <form method="post" class="os-form">
     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
     <input type="hidden" name="action" value="create">
     <div class="os-grid-2">
-      <div class="os-field"><label class="os-label">Name *</label><input class="os-input" name="name" required placeholder="Front desk"></div>
-      <div class="os-field"><label class="os-label">Location</label><input class="os-input" name="location" placeholder="Building A, Level 1"></div>
+      <div class="os-field"><label class="os-label">{{ _('owner.name_required') }}</label><input class="os-input" name="name" required placeholder="{{ _('owner.check_in_name_placeholder') }}"></div>
+      <div class="os-field"><label class="os-label">{{ _('owner.location') }}</label><input class="os-input" name="location" placeholder="{{ _('owner.location_placeholder') }}"></div>
     </div>
-    <div class="os-field"><label class="os-label">Scenario</label>
+    <div class="os-field"><label class="os-label">{{ _('owner.scenario') }}</label>
       <select class="os-select" name="scenario">
         {% for val, label in scenarios %}<option value="{{ val }}">{{ label }}</option>{% endfor %}
       </select>
     </div>
-    <button class="os-btn os-btn-primary" type="submit">Create check-in point</button>
+    <button class="os-btn os-btn-primary" type="submit">{{ _('owner.create_check_in_point') }}</button>
   </form>
 </section>
 
 <section class="items">
-  <div class="section-title"><h2>Check-in points</h2><span class="os-tag">{{ points|length }} total</span></div>
+  <div class="section-title"><h2>{{ _('owner.check_in_points') }}</h2><span class="os-tag">{{ _('owner.total_n', n=points|length) }}</span></div>
   <div class="ep-toolbar">
-    <input type="search" class="os-input ep-search" id="qr-entity-search" placeholder="Search points…">
+    <input type="search" class="os-input ep-search" id="qr-entity-search" placeholder="{{ _('owner.search_points') }}">
     <select class="os-select ep-filter" id="qr-entity-filter">
-      <option value="">All statuses</option>
+      <option value="">{{ _('owner.all_statuses') }}</option>
       {% for s in entity_statuses %}<option value="{{ s }}">{{ s }}</option>{% endfor %}
     </select>
   </div>
   {% if not points %}
-  <div class="ep-empty">No check-in points yet.</div>
+  <div class="ep-empty">{{ _('owner.no_check_in_points') }}</div>
   {% else %}
   <div class="ep-entity-grid">
     {% for point in points %}
@@ -53,14 +53,14 @@
       <div class="ep-entity-head">
         <div>
           <h3><a href="{{ url_for('manage_check_in_detail', slug=store.slug, point_id=point.id) }}">{{ point.name }}</a></h3>
-          <p class="ep-muted">{{ point.location or 'No location' }} · {{ point.scenario|replace('_', ' ') }}</p>
+          <p class="ep-muted">{{ point.location or _('owner.no_location') }} · {{ point.scenario|replace('_', ' ') }}</p>
         </div>
         <span class="os-tag os-tag-{{ point.status }}">{{ point.status }}</span>
       </div>
       <div class="row-actions">
-        <a class="os-btn os-btn-primary os-btn-sm" href="{{ url_for('manage_check_in_detail', slug=store.slug, point_id=point.id) }}">Manage</a>
-        <a class="os-btn os-btn-ghost os-btn-sm" href="{{ url_for('check_in_scanner', slug=store.slug, point_id=point.id) }}">Scanner</a>
-        <form method="post" class="inline-form"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><input type="hidden" name="action" value="duplicate"><input type="hidden" name="point_id" value="{{ point.id }}"><button class="os-btn os-btn-ghost os-btn-sm" type="submit">Duplicate</button></form>
+        <a class="os-btn os-btn-primary os-btn-sm" href="{{ url_for('manage_check_in_detail', slug=store.slug, point_id=point.id) }}">{{ _('bos.manage') }}</a>
+        <a class="os-btn os-btn-ghost os-btn-sm" href="{{ url_for('check_in_scanner', slug=store.slug, point_id=point.id) }}">{{ _('owner.scanner') }}</a>
+        <form method="post" class="inline-form"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><input type="hidden" name="action" value="duplicate"><input type="hidden" name="point_id" value="{{ point.id }}"><button class="os-btn os-btn-ghost os-btn-sm" type="submit">{{ _('bos.duplicate') }}</button></form>
       </div>
     </article>
     {% endfor %}

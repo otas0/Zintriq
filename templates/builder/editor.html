@@ -1,7 +1,7 @@
 {% extends 'builder/base.html' %}
 {% block content %}
 {% set studio_base = studio_base or '/studio' %}
-{% set community_url = community_url or '/' %}
+{% set community_url = community_url or '/app/community' %}
 {% if studio_mode|default(false) %}
 <link rel="stylesheet" href="{{ url_for('static', filename='studio-desktop.css') }}">
 <script src="{{ url_for('static', filename='studio-desktop.js') }}" defer></script>
@@ -42,6 +42,9 @@
       </button>
     </nav>
     <div class="ub-topbar__right">
+      {% if desktop_mode %}
+      <a class="ub-btn ub-btn--ghost" href="{{ studio_base }}/meta">Meta</a>
+      {% endif %}
       <a class="ub-btn ub-btn--ghost" id="ub-open-community" href="{{ community_url }}">{{ _('nav.community') }}</a>
       <button class="ub-icon-btn" id="ub-undo" title="{{ _('studio.editor.undo') }}" disabled>↶</button>
       <button class="ub-icon-btn" id="ub-redo" title="{{ _('studio.editor.redo') }}" disabled>↷</button>

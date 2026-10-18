@@ -1,39 +1,39 @@
 {% extends 'owner_base.html' %}
 {% from 'owner/_customer_qr_nav.html' import customer_qr_nav %}
 {% set active_tab = 'qr' %}
-{% block title %}Business Cards — {{ store.name }}{% endblock %}
+{% block title %}{{ _('owner.business_cards_title') }} — {{ store.name }}{% endblock %}
 {% block os_header %}
-<h1 class="os-page-title">Business Card</h1>
-<p class="os-page-subtitle">Digital contact cards with QR codes for your team.</p>
+<h1 class="os-page-title">{{ _('owner.business_card') }}</h1>
+<p class="os-page-subtitle">{{ _('owner.business_cards_subtitle') }}</p>
 {% endblock %}
 {% block owner_content %}
 {{ customer_qr_nav(store, 'card') }}
 
 <section class="os-card os-card-padded">
-  <h2 class="os-card-title">Create business card</h2>
+  <h2 class="os-card-title">{{ _('owner.create_business_card') }}</h2>
   <form method="post" class="os-actions-row">
     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
     <input type="hidden" name="action" value="create">
-    <input class="os-input" style="flex:1;max-width:320px" name="name" placeholder="e.g. Jane Smith" required>
-    <button class="os-btn os-btn-primary" type="submit">Create</button>
+    <input class="os-input" style="flex:1;max-width:320px" name="name" placeholder="{{ _('owner.card_name_placeholder') }}" required>
+    <button class="os-btn os-btn-primary" type="submit">{{ _('bos.create') }}</button>
   </form>
 </section>
 
 <section class="items">
-  <div class="section-title"><h2>Your cards</h2><span class="os-tag">{{ cards|length }} total</span></div>
+  <div class="section-title"><h2>{{ _('owner.your_cards') }}</h2><span class="os-tag">{{ _('owner.total_n', n=cards|length) }}</span></div>
   <div class="ep-toolbar">
-    <input type="search" class="os-input ep-search" id="qr-entity-search" placeholder="Search cards…">
+    <input type="search" class="os-input ep-search" id="qr-entity-search" placeholder="{{ _('owner.search_cards') }}">
     <select class="os-select ep-filter" id="qr-entity-filter">
-      <option value="">All statuses</option>
+      <option value="">{{ _('owner.all_statuses') }}</option>
       {% for s in entity_statuses %}<option value="{{ s }}">{{ s }}</option>{% endfor %}
     </select>
     <select class="os-select ep-filter" id="qr-group-filter">
-      <option value="">All groups</option>
+      <option value="">{{ _('owner.all_groups') }}</option>
       {% for g in groups %}<option value="{{ g }}">{{ g }}</option>{% endfor %}
     </select>
   </div>
   {% if not cards %}
-  <div class="ep-empty">No business cards yet.</div>
+  <div class="ep-empty">{{ _('owner.no_business_cards') }}</div>
   {% else %}
   <div class="ep-entity-grid">
     {% for card in cards %}
@@ -42,15 +42,15 @@
         {% if card.profile_photo %}<img src="{{ card.profile_photo }}" alt="" class="ep-entity-avatar">{% else %}<div class="ep-entity-avatar ep-entity-avatar--empty">{{ card.name[:1] }}</div>{% endif %}
         <div>
           <h3><a href="{{ url_for('manage_business_card_detail', slug=store.slug, card_id=card.id) }}">{{ card.name }}</a></h3>
-          <p class="ep-muted">{{ card.position or 'No title' }}{% if card.company %} · {{ card.company }}{% endif %}</p>
+          <p class="ep-muted">{{ card.position or _('owner.no_title') }}{% if card.company %} · {{ card.company }}{% endif %}</p>
         </div>
         <span class="os-tag os-tag-{{ card.status }}">{{ card.status }}</span>
       </div>
-      <div class="ep-stat-row"><span><strong>{{ card.scan_count or 0 }}</strong> scans</span></div>
+      <div class="ep-stat-row"><span><strong>{{ card.scan_count or 0 }}</strong> {{ _('owner.scans') }}</span></div>
       <div class="row-actions">
-        <a class="os-btn os-btn-primary os-btn-sm" href="{{ url_for('manage_business_card_detail', slug=store.slug, card_id=card.id) }}">Edit</a>
-        <form method="post" class="inline-form"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><input type="hidden" name="action" value="duplicate"><input type="hidden" name="card_id" value="{{ card.id }}"><button class="os-btn os-btn-ghost os-btn-sm" type="submit">Duplicate</button></form>
-        <form method="post" class="inline-form"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><input type="hidden" name="action" value="archive"><input type="hidden" name="card_id" value="{{ card.id }}"><button class="os-btn os-btn-ghost os-btn-sm" type="submit">Archive</button></form>
+        <a class="os-btn os-btn-primary os-btn-sm" href="{{ url_for('manage_business_card_detail', slug=store.slug, card_id=card.id) }}">{{ _('bos.edit') }}</a>
+        <form method="post" class="inline-form"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><input type="hidden" name="action" value="duplicate"><input type="hidden" name="card_id" value="{{ card.id }}"><button class="os-btn os-btn-ghost os-btn-sm" type="submit">{{ _('bos.duplicate') }}</button></form>
+        <form method="post" class="inline-form"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><input type="hidden" name="action" value="archive"><input type="hidden" name="card_id" value="{{ card.id }}"><button class="os-btn os-btn-ghost os-btn-sm" type="submit">{{ _('owner.archive') }}</button></form>
       </div>
     </article>
     {% endfor %}

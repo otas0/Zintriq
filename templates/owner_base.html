@@ -3,7 +3,7 @@
 {% block os_sidebar_extra %}
 {% if store %}
 <section class="os-store-context">
-  <a class="os-context-back" href="{{ url_for('universal_builder_home') }}">← All stores</a>
+  <a class="os-context-back" href="{{ url_for('index') }}">← {{ _('owner.all_stores') }}</a>
 </section>
 {% endif %}
 {% endblock %}
@@ -23,14 +23,14 @@
         <span class="os-tag os-tag-sm os-tag-{{ s.status }}">{{ s.status }}</span>
       </a>
       {% endfor %}
-      <a class="os-store-switcher__item os-store-switcher__all" href="{{ url_for('universal_builder_home') }}">All stores in Zintriq →</a>
+      <a class="os-store-switcher__item os-store-switcher__all" href="{{ url_for('index') }}">{{ _('owner.all_stores_zintriq') }}</a>
     </div>
   </div>
-  <nav class="os-tabs os-tabs--store" aria-label="Store sections">
-    <a href="{{ url_for('manage_store', slug=store.slug) }}" class="os-tab{% if active_tab == 'products' %} is-active{% endif %}">Products</a>
-    <a href="{{ url_for('manage_storefront_hub', slug=store.slug) }}" class="os-tab{% if active_tab == 'storefront' %} is-active{% endif %}">Storefront</a>
-    <a href="{{ url_for('manage_qr_hub', slug=store.slug) }}" class="os-tab{% if active_tab == 'qr' %} is-active{% endif %}">Customer QR</a>
-    <a href="{{ url_for('manage_store_insights', slug=store.slug) }}" class="os-tab{% if active_tab == 'insights' %} is-active{% endif %}">Insights</a>
+  <nav class="os-tabs os-tabs--store" aria-label="{{ _('owner.storefront_sections') }}">
+    <a href="{{ url_for('manage_store', slug=store.slug) }}" class="os-tab{% if active_tab == 'products' %} is-active{% endif %}">{{ _('owner.products') }}</a>
+    <a href="{{ url_for('manage_storefront_hub', slug=store.slug) }}" class="os-tab{% if active_tab == 'storefront' %} is-active{% endif %}">{{ _('owner.storefront') }}</a>
+    <a href="{{ url_for('manage_qr_hub', slug=store.slug) }}" class="os-tab{% if active_tab == 'qr' %} is-active{% endif %}">{{ _('owner.customer_qr') }}</a>
+    <a href="{{ url_for('manage_store_insights', slug=store.slug) }}" class="os-tab{% if active_tab == 'insights' %} is-active{% endif %}">{{ _('owner.insights') }}</a>
   </nav>
 </div>
 {% endif %}

@@ -324,7 +324,7 @@
   color: var(--color-text-muted);
 }
 
-@media (max-width: 720px) {
+@media (max-width: 768px) {
   .place-owner-qr__grid {
     grid-template-columns: 1fr;
   }

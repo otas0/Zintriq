@@ -1822,5 +1822,17 @@
   "owner.add_block": "Додати блок",
   "owner.add_shop_qr": "Додати Shop QR",
   "studio.editor.publish": "Publish",
-  "owner.builder": "Builder"
+  "owner.builder": "Builder",
+  "home.hero.kicker": "Верстак · на цьому комп’ютері",
+  "product.kicker": "Будуй що завгодно в одному просторі",
+  "hw.kicker": "Одна ціль · той самий простір",
+  "dl.kicker": "Встанови · потім роби",
+  "pricing.kicker": "Весь простір · кожен план",
+  "docs.kicker": "Короткі нотатки · для застосунку",
+  "about.kicker": "Метапростір · без стін",
+  "contact.kicker": "Напиши · ми відповімо",
+  "sec.kicker": "Спочатку тут · цей комп’ютер",
+  "changelog.kicker": "Нотатки · після кожного випуску",
+  "compare.kicker": "Той самий простір · інші інструменти",
+  "translate.kicker": "Мови · ти їх приносиш"
 }

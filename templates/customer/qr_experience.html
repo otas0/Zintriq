@@ -15,7 +15,7 @@
          data-runtime='{{ experience.runtime | tojson }}'
          lang="{{ experience.branding.language or 'en' }}">
   {% if preview_mode %}
-  <p class="qrx-preview-note">Customer preview — interactions use real workspace data.</p>
+  <p class="qrx-preview-note">{{ _('customer.qr.preview_note') }}</p>
   {% endif %}
 
   {% for block in experience.blocks %}
@@ -55,7 +55,7 @@
         {{ block.content.label or 'View shop' }}
       </a>
       {% else %}
-      <p class="qrx-muted">Connect a store to enable the shop link.</p>
+      <p class="qrx-muted">{{ _('customer.qr.connect_store') }}</p>
       {% endif %}
     </section>
 
@@ -81,7 +81,7 @@
           </a>
           {% else %}
           <button type="button" class="qrx-action-btn qrx-action-btn--disabled" disabled
-                  title="Connect this action in your workspace first">
+                  title="{{ _('customer.qr.connect_action') }}">
             {{ action.label }}
           </button>
           {% endif %}
@@ -99,7 +99,7 @@
         {{ survey_action[0].label or 'Start Survey' }}
       </a>
       {% else %}
-      <p class="qrx-muted">Publish a survey in Customers to enable this step.</p>
+      <p class="qrx-muted">{{ _('customer.qr.publish_survey') }}</p>
       {% endif %}
     </section>
 
@@ -108,17 +108,17 @@
       {% if block.content.title %}<h2>{{ block.content.title }}</h2>{% endif %}
       {% if not preview_mode %}
       <form id="qrx-booking-form" class="qrx-form" data-action-id="{{ (experience.actions | selectattr('type', 'equalto', 'create_booking') | list | first).id if (experience.actions | selectattr('type', 'equalto', 'create_booking') | list) else '' }}">
-        <label class="qrx-label">Your name *</label>
+        <label class="qrx-label">{{ _('contact.your_name') }}</label>
         <input class="qrx-input" name="customer_name" required autocomplete="name">
-        <label class="qrx-label">Email</label>
+        <label class="qrx-label">{{ _('auth.email') }}</label>
         <input class="qrx-input" type="email" name="customer_email" autocomplete="email">
-        <label class="qrx-label">Phone</label>
+        <label class="qrx-label">{{ _('auth.phone') }}</label>
         <input class="qrx-input" type="tel" name="customer_phone" autocomplete="tel">
-        <label class="qrx-label">Date & time *</label>
+        <label class="qrx-label">{{ _('customer.qr.date_time') }}</label>
         <input class="qrx-input" type="datetime-local" name="starts_at" required>
-        <label class="qrx-label">Notes</label>
+        <label class="qrx-label">{{ _('customer.qr.notes') }}</label>
         <textarea class="qrx-input" name="notes" rows="2"></textarea>
-        <button type="submit" class="qrx-action-btn">Book Now</button>
+        <button type="submit" class="qrx-action-btn">{{ _('customer.qr.book_now') }}</button>
       </form>
       <p id="qrx-booking-msg" class="qrx-success hidden"></p>
       {% endif %}
@@ -129,9 +129,9 @@
       {% if block.content.title %}<h2>{{ block.content.title }}</h2>{% endif %}
       {% if not preview_mode %}
       <form id="qrx-checkin-form" class="qrx-form" data-action-id="{{ (experience.actions | selectattr('type', 'equalto', 'start_checkin') | list | first).id if (experience.actions | selectattr('type', 'equalto', 'start_checkin') | list) else '' }}">
-        <label class="qrx-label">Your name (optional)</label>
-        <input class="qrx-input" name="customer_name" autocomplete="name" placeholder="Guest">
-        <button type="submit" class="qrx-action-btn">Check-in Now</button>
+        <label class="qrx-label">{{ _('customer.qr.name_optional') }}</label>
+        <input class="qrx-input" name="customer_name" autocomplete="name" placeholder="{{ _('customer.qr.guest') }}">
+        <button type="submit" class="qrx-action-btn">{{ _('customer.qr.checkin_now') }}</button>
       </form>
       <p id="qrx-checkin-msg" class="qrx-success hidden"></p>
       {% endif %}
@@ -150,7 +150,7 @@
         {% endif %}
       </ul>
       {% elif experience.store_slug %}
-      <a class="qrx-link" href="/store/{{ experience.store_slug }}">Visit storefront</a>
+      <a class="qrx-link" href="/store/{{ experience.store_slug }}">{{ _('customer.qr.visit_storefront') }}</a>
       {% endif %}
     </section>
     {% endif %}

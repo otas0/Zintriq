@@ -5,24 +5,24 @@
 {% endblock %}
 {% block customer_header_actions %}
 {% if checkout_enabled|default(false) %}
-<a class="mq-public-header__guest-link sf-header-cart" href="{{ url_for('store_checkout_page', slug=store.slug) }}">Cart</a>
+<a class="mq-public-header__guest-link sf-header-cart" href="{{ url_for('store_checkout_page', slug=store.slug) }}">{{ _('cart.cart') }}</a>
 {% endif %}
 {% if store_profile.contact %}
-<a class="mq-btn mq-btn-primary mq-btn-sm" href="#sf-contact">Contact</a>
+<a class="mq-btn mq-btn-primary mq-btn-sm" href="#sf-contact">{{ _('store.contact') }}</a>
 {% endif %}
 {% endblock %}
 {% block content %}
 {% if preview_mode|default(false) %}
 <div class="sf-preview-banner material-feedback" role="status">
-  Preview — customer view
+  {{ _('store.preview_banner') }}
   {% if checkout_enabled|default(false) %}
-  · <a href="{{ url_for('store_checkout_page', slug=store.slug) }}">Open cart</a>
+  · <a href="{{ url_for('store_checkout_page', slug=store.slug) }}">{{ _('store.open_cart') }}</a>
   {% endif %}
 </div>
 {% endif %}
 <div class="sf-page" data-store-slug="{{ store.slug }}" data-checkout-enabled="{{ '1' if checkout_enabled|default(false) else '0' }}" data-has-cartable="{{ '1' if has_cartable_items|default(false) else '0' }}">
   <header class="sf-hero">
-    <div class="sf-hero__banner{% if not store.background_image %} sf-hero__banner--empty{% endif %}"
+    <div class="sf-hero__banner{% if not store.background_image %} sf-hero__banner--empty{% if preview_mode|default(false) %} sf-hero__banner--hint{% endif %}{% endif %}"
          {% if store.background_image %}style="background-image:url('{{ store.background_image }}')"{% endif %}
          role="img" aria-label="{{ store.name }} cover"></div>
     <div class="sf-hero__logo-wrap">
@@ -41,7 +41,7 @@
       <div class="sf-search-wrap sf-search-wrap--sticky">
         <label class="sf-search">
           <span class="sf-search__icon" aria-hidden="true">⌕</span>
-          <input class="sf-search__input" type="search" id="sf-search" placeholder="Search products…" autocomplete="off">
+          <input class="sf-search__input" type="search" id="sf-search" placeholder="{{ _('store.search_products') }}" autocomplete="off">
         </label>
       </div>
 
@@ -54,7 +54,7 @@
 
       {% if group_in_url and store_view == 'shop' and catalog_sections|length == 1 %}
       <p class="sf-back-shop">
-        <a href="{{ url_for('store_preview' if preview_mode else 'storefront', slug=store.slug, view='shop') }}">← All categories</a>
+        <a href="{{ url_for('store_preview' if preview_mode else 'storefront', slug=store.slug, view='shop') }}">{{ _('store.back_all_categories') }}</a>
       </p>
       {% endif %}
 
@@ -70,12 +70,12 @@
             </div>
             {% if not group_in_url and section.id not in ('all', 'deals') and section['items']|length > 3 %}
             {% set group_param = 'default' if section.id == 'default' else section.id|string %}
-            <a class="sf-catalog__see-all" href="{{ url_for('store_preview' if preview_mode else 'storefront', slug=store.slug, group=group_param, view='shop') }}">See all →</a>
+            <a class="sf-catalog__see-all" href="{{ url_for('store_preview' if preview_mode else 'storefront', slug=store.slug, group=group_param, view='shop') }}">{{ _('store.see_all') }}</a>
             {% endif %}
           </div>
           <div class="sf-catalog__track-wrap">
             {% if section['items']|length > 2 %}
-            <button type="button" class="sf-catalog__scroll sf-catalog__scroll--prev" aria-label="Scroll {{ section.name }} left" data-scroll="-1">‹</button>
+            <button type="button" class="sf-catalog__scroll sf-catalog__scroll--prev" aria-label="{{ _('store.scroll_section_left', name=section.name) }}" data-scroll="-1">‹</button>
             {% endif %}
             <div class="sf-catalog__track">
             {% for item in section['items'] %}
@@ -86,7 +86,7 @@
             {% endfor %}
             </div>
             {% if section['items']|length > 2 %}
-            <button type="button" class="sf-catalog__scroll sf-catalog__scroll--next" aria-label="Scroll {{ section.name }} right" data-scroll="1">›</button>
+            <button type="button" class="sf-catalog__scroll sf-catalog__scroll--next" aria-label="{{ _('store.scroll_section_right', name=section.name) }}" data-scroll="1">›</button>
             {% endif %}
           </div>
         </section>
@@ -94,7 +94,7 @@
       </div>
       {% else %}
       <div class="mq-empty sf-catalog__empty">
-        {% if store_view == 'deals' %}No active deals right now.{% elif show_group_nav %}No items in this group yet.{% else %}This storefront is getting ready. Please check back soon.{% endif %}
+        {% if store_view == 'deals' %}{{ _('store.no_deals') }}{% elif show_group_nav %}{{ _('store.no_items_group') }}{% else %}{{ _('store.getting_ready') }}{% endif %}
       </div>
       {% endif %}
 

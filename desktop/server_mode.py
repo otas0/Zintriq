@@ -26,6 +26,9 @@ from typing import NamedTuple, Optional
 TOKEN_HEADER = "X-Zintriq-Desktop-Token"
 MIN_TOKEN_LENGTH = 32
 LOCAL_EMAIL = "local@desktop.zintriq"
+# MVP AI Builder: prompt → webpage. Default on in desktop; set ZINTRIQ_MVP_AI_BUILDER=0 to restore full shell.
+MVP_AI_BUILDER_ENV = "ZINTRIQ_MVP_AI_BUILDER"
+MVP_AI_BUILDER_PANES = frozenset({"code", "page", "artifact"})
 DB_FILENAME = "zintriq.db"
 SECRET_FILENAME = "secret_key"
 DESKTOP_SCHEMA_VERSION = 3
@@ -42,31 +45,21 @@ AUTH_RULES = frozenset(
         "/login/2fa",
         "/logout",
         "/forgot-password",
+        "/forgot-password/verify",
         "/reset-password/<token>",
         "/magic-link",
         "/magic-signin/<token>",
+        "/login/device",
         "/auth/phone/send",
         "/auth/phone/check",
         "/auth/phone/complete",
-        "/account/register",
-        "/account/login",
-        "/account/logout",
-        "/account/forgot-password",
-        "/account/reset-password/<token>",
-        "/account/magic-link",
-        "/account/magic-signin/<token>",
         "/account/2fa",
         "/account/2fa/disable",
         "/account/change-password",
         "/account/delete",
         "/account/delete/cancel",
-        "/account/switch/business",
-        "/account/switch/personal",
-        "/account/verify/send",
-        "/account/verify/check",
         "/account/link-email/send",
         "/account/link-email/check",
-        "/account/onboarding/complete",
         "/guest/remember/<token>",
         "/places/remember",
         "/studio/desktop",
@@ -77,6 +70,30 @@ AUTH_RULES = frozenset(
         "/api/integrations/payments/<provider>/oauth/callback",
         "/api/integrations/reputation/<provider>/oauth/start",
         "/api/integrations/reputation/<provider>/oauth/callback",
+        "/store/<work_slug>/account/register",
+        "/store/<work_slug>/account/login",
+        "/store/<work_slug>/account/logout",
+        "/store/<work_slug>/account/forgot-password",
+        "/store/<work_slug>/account/reset-password/<token>",
+        "/store/<work_slug>/account/magic-link",
+        "/store/<work_slug>/account/magic-signin/<token>",
+        "/store/<work_slug>/account/verify/send",
+        "/store/<work_slug>/account/verify/check",
+        "/store/<work_slug>/account/onboarding/complete",
+        "/store/<work_slug>/account/link-email/send",
+        "/store/<work_slug>/account/link-email/check",
+        "/build/<work_slug>/account/register",
+        "/build/<work_slug>/account/login",
+        "/build/<work_slug>/account/logout",
+        "/build/<work_slug>/account/forgot-password",
+        "/build/<work_slug>/account/reset-password/<token>",
+        "/build/<work_slug>/account/magic-link",
+        "/build/<work_slug>/account/magic-signin/<token>",
+        "/build/<work_slug>/account/verify/send",
+        "/build/<work_slug>/account/verify/check",
+        "/build/<work_slug>/account/onboarding/complete",
+        "/build/<work_slug>/account/link-email/send",
+        "/build/<work_slug>/account/link-email/check",
     }
 )
 
@@ -111,6 +128,14 @@ class DesktopPaths(NamedTuple):
 
 def desktop_enabled() -> bool:
     return (os.environ.get("ZINTRIQ_DESKTOP") or "").strip() == "1"
+
+
+def mvp_ai_builder_enabled() -> bool:
+    """Prompt→webpage cold-start shell. On by default when desktop is on."""
+    if not desktop_enabled():
+        return False
+    raw = (os.environ.get(MVP_AI_BUILDER_ENV) or "1").strip().lower()
+    return raw in {"1", "true", "yes", "on"}
 
 
 def is_production_env() -> bool:
@@ -358,6 +383,15 @@ def install_desktop_guards(app) -> None:
         rule = matched_rule(app, request.path, request.method)
         if rule_is_auth(rule or ""):
             return redirect("/studio")
+        path = request.path or "/"
+        if path == "/":
+            return redirect("/studio")
+        if (
+            path == "/build"
+            or path.startswith("/build/")
+            or path.startswith("/builder-runtime/")
+        ):
+            return None
         _attach_local_session(session)
         return None
 

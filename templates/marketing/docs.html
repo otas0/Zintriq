@@ -1,0 +1,201 @@
+{% extends 'marketing_base.html' %}
+{% block title %}{{ _('docs.title') }} — Zintriq{% endblock %}
+{% block content %}
+<article class="page site-page">
+  <section class="page-hero">
+    <div>
+      <p class="page-kicker">{{ _('docs.kicker') }}</p>
+      <h1>{{ _('docs.title') }}</h1>
+      <p class="page-lead">{{ _('docs.lead') }}</p>
+    </div>
+  </section>
+  <label class="docs-search" for="docs-search">{{ _('docs.search') }}
+    <input class="field-input" id="docs-search" type="search" autocomplete="off" enterkeyhint="search">
+  </label>
+  <div id="docs-list">
+    <section class="page-section docs-topic" data-reveal>
+      <h2>{{ _('docs.what.title') }}</h2>
+      <p class="page-lead">{{ _('docs.what.body') }}</p>
+      <p>{{ _('docs.what.p2') }}</p>
+    </section>
+    <section class="page-section docs-topic" data-reveal>
+      <h2>{{ _('docs.ends.title') }}</h2>
+      <p class="page-lead">{{ _('docs.ends.body') }}</p>
+      <p>{{ _('product.desktop.body') }}</p>
+    </section>
+    <section class="page-section docs-topic" data-reveal>
+      <h2>{{ _('docs.install.title') }}</h2>
+      <p class="page-lead">{{ _('docs.install.body') }}</p>
+      <p>{{ _('docs.install.p2') }}</p>
+      <p class="page-follow"><a class="btn-secondary" href="{{ murl('/download') }}">{{ _('nav.download') }}</a></p>
+    </section>
+    <section class="page-section docs-topic" data-reveal>
+      <h2>{{ _('docs.work.title') }}</h2>
+      <p class="page-lead">{{ _('docs.work.body') }}</p>
+      <ul class="paper-list">
+        <li>
+          <span class="inst-lamp inst-lamp--brand" aria-hidden="true"></span>
+          <div class="paper-list__body">
+            <p><strong>{{ _('docs.work.describe.title') }}</strong></p>
+            <p>{{ _('docs.work.describe.body') }}</p>
+          </div>
+        </li>
+        <li>
+          <span class="inst-lamp" aria-hidden="true"></span>
+          <div class="paper-list__body">
+            <p><strong>{{ _('docs.work.simulate.title') }}</strong></p>
+            <p>{{ _('docs.work.simulate.body') }}</p>
+          </div>
+        </li>
+        <li>
+          <span class="inst-lamp" aria-hidden="true"></span>
+          <div class="paper-list__body">
+            <p><strong>{{ _('docs.work.instantiate.title') }}</strong></p>
+            <p>{{ _('docs.work.instantiate.body') }}</p>
+          </div>
+        </li>
+        <li>
+          <span class="inst-lamp" aria-hidden="true"></span>
+          <div class="paper-list__body">
+            <p><strong>{{ _('docs.work.bound.title') }}</strong></p>
+            <p>{{ _('docs.work.bound.body') }}</p>
+          </div>
+        </li>
+      </ul>
+    </section>
+    <section class="page-section docs-topic" data-reveal>
+      <h2>{{ _('docs.bench.title') }}</h2>
+      <p class="page-lead">{{ _('docs.bench.body') }}</p>
+    </section>
+    <section class="page-section docs-topic" data-reveal>
+      <h2>{{ _('docs.targets.title') }}</h2>
+      <p class="page-lead">{{ _('docs.targets.body') }}</p>
+      <ul class="paper-list">
+        <li>
+          <span class="inst-lamp inst-lamp--brand" aria-hidden="true"></span>
+          <div class="paper-list__body">
+            <p><strong>{{ _('docs.targets.meta.title') }}</strong></p>
+            <p>{{ _('docs.targets.meta.body') }}</p>
+          </div>
+        </li>
+        <li>
+          <span class="inst-lamp" aria-hidden="true"></span>
+          <div class="paper-list__body">
+            <p><strong>{{ _('docs.targets.app.title') }}</strong></p>
+            <p>{{ _('docs.targets.app.body') }}</p>
+          </div>
+        </li>
+        <li>
+          <span class="inst-lamp" aria-hidden="true"></span>
+          <div class="paper-list__body">
+            <p><strong>{{ _('docs.targets.web.title') }}</strong></p>
+            <p>{{ _('docs.targets.web.body') }}</p>
+          </div>
+        </li>
+        <li>
+          <span class="inst-lamp" aria-hidden="true"></span>
+          <div class="paper-list__body">
+            <p><strong>{{ _('docs.targets.sw.title') }}</strong></p>
+            <p>{{ _('docs.targets.sw.body') }}</p>
+          </div>
+        </li>
+        <li>
+          <span class="inst-lamp" aria-hidden="true"></span>
+          <div class="paper-list__body">
+            <p><strong>{{ _('docs.targets.hw.title') }}</strong></p>
+            <p>{{ _('docs.targets.hw.body') }}</p>
+          </div>
+        </li>
+      </ul>
+    </section>
+    <section class="page-section docs-topic" data-reveal>
+      <h2>{{ _('docs.files.title') }}</h2>
+      <p class="page-lead">{{ _('docs.files.body') }}</p>
+      <ul class="paper-list">
+        <li>
+          <span class="inst-lamp inst-lamp--brand" aria-hidden="true"></span>
+          <div class="paper-list__body"><p>{{ rich(_('home.anywhere.export')) }}</p></div>
+        </li>
+        <li>
+          <span class="inst-lamp" aria-hidden="true"></span>
+          <div class="paper-list__body"><p>{{ rich(_('home.anywhere.offline')) }}</p></div>
+        </li>
+        <li>
+          <span class="inst-lamp" aria-hidden="true"></span>
+          <div class="paper-list__body"><p>{{ rich(_('home.anywhere.sync')) }}</p></div>
+        </li>
+        <li>
+          <span class="inst-lamp" aria-hidden="true"></span>
+          <div class="paper-list__body"><p>{{ rich(_('home.anywhere.publish')) }}</p></div>
+        </li>
+      </ul>
+    </section>
+    <section class="page-section docs-topic" data-reveal>
+      <h2>{{ _('docs.account.title') }}</h2>
+      <p class="page-lead">{{ _('docs.account.body') }}</p>
+    </section>
+    <section class="page-section docs-topic" data-reveal>
+      <h2>{{ _('docs.share.title') }}</h2>
+      <p class="page-lead">{{ _('product.community.lead') }}</p>
+      <p>{{ _('home.community.note') }}</p>
+    </section>
+    <section class="page-section docs-topic" data-reveal>
+      <h2>{{ _('home.hw.title') }}</h2>
+      <p class="page-lead">{{ _('home.hw.lead') }}</p>
+      <p>{{ _('docs.hw.body') }}</p>
+      <p class="page-follow"><a class="btn-secondary" href="{{ murl('/hardware') }}">{{ _('home.hw.cta') }}</a></p>
+    </section>
+    <section class="page-section docs-topic" data-reveal>
+      <h2>{{ _('docs.plan.title') }}</h2>
+      <p class="page-lead">{{ _('pricing.lead') }}</p>
+      <p>{{ _('home.end.pricing') }}</p>
+      <p class="page-follow"><a class="btn-secondary" href="{{ murl('/pricing') }}">{{ _('nav.pricing') }}</a></p>
+    </section>
+    <section class="page-section docs-topic" data-reveal>
+      <h2>{{ _('home.trust.title') }}</h2>
+      <ul class="paper-list">
+        <li>
+          <span class="inst-lamp inst-lamp--brand" aria-hidden="true"></span>
+          <div class="paper-list__body"><p>{{ rich(_('home.trust.tracking')) }}</p></div>
+        </li>
+        <li>
+          <span class="inst-lamp" aria-hidden="true"></span>
+          <div class="paper-list__body"><p>{{ rich(_('home.trust.drafts')) }}</p></div>
+        </li>
+        <li>
+          <span class="inst-lamp" aria-hidden="true"></span>
+          <div class="paper-list__body"><p>{{ rich(_('home.trust.workspace')) }}</p></div>
+        </li>
+      </ul>
+      <p class="page-follow"><a class="btn-ghost btn-cta-arrow" href="{{ murl('/security') }}">{{ _('home.trust.cta') }}</a></p>
+    </section>
+    <section class="page-section docs-topic" data-reveal>
+      <h2>{{ _('docs.locale.title') }}</h2>
+      <p class="page-lead">{{ _('docs.locale.body') }}</p>
+    </section>
+    <section class="page-section docs-topic" data-reveal>
+      <h2>{{ _('docs.help.title') }}</h2>
+      <p class="page-lead">{{ _('docs.help.body') }}</p>
+      <p class="page-follow"><a class="btn-secondary" href="{{ murl('/contact') }}">{{ _('nav.contact') }}</a></p>
+    </section>
+  </div>
+  <section class="page-end page-end--paper site-end" data-reveal>
+    <p class="page-actions">
+      <a class="btn-primary" href="{{ murl('/download') }}">{{ _('docs.cta') }}</a>
+    </p>
+  </section>
+</article>
+<script>
+(function () {
+  var input = document.getElementById("docs-search");
+  var items = document.querySelectorAll("#docs-list .docs-topic");
+  if (!input) return;
+  input.addEventListener("input", function () {
+    var q = input.value.trim().toLowerCase();
+    items.forEach(function (item) {
+      item.hidden = q && item.textContent.toLowerCase().indexOf(q) === -1;
+    });
+  });
+})();
+</script>
+{% endblock %}

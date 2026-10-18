@@ -103,7 +103,11 @@ def is_storefront_shell_path(path: str) -> bool:
 
 
 def is_customer_surface_path(path: str) -> bool:
-    if path == "/home" or path == "/account" or path.startswith("/account/"):
+    from work_urls import parse_work_account_from_path
+
+    if path == "/" or path == "/home":
+        return True
+    if parse_work_account_from_path(path):
         return True
     if path == "/venues" or path.startswith("/help"):
         return True
@@ -114,7 +118,12 @@ def is_customer_surface_path(path: str) -> bool:
 
 def is_customer_hub_path(path: str) -> bool:
     """Shell with side/bottom nav — home, places, account, help."""
-    if path == "/home" or path == "/account" or path.startswith("/help"):
+    from work_urls import parse_work_account_from_path
+
+    if path == "/" or path == "/home" or path.startswith("/help"):
+        return True
+    parsed = parse_work_account_from_path(path)
+    if parsed and not parsed[2]:
         return True
     if path == "/places" or path.startswith("/places/"):
         return True
@@ -123,11 +132,13 @@ def is_customer_hub_path(path: str) -> bool:
 
 def customer_nav_tab(path: str) -> str | None:
     """Bottom tab highlight for in-store customer shell."""
-    if path == "/home":
+    from work_urls import parse_work_account_from_path
+
+    if path == "/" or path == "/home":
         return "home"
     if path == "/places" or path.startswith("/places/"):
         return "places"
-    if path == "/account":
+    if parse_work_account_from_path(path):
         return "account"
     return None
 

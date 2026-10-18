@@ -1,0 +1,387 @@
+/* Design that pairs with marketing motion — atmosphere, marquee, draw titles, rails */
+
+.zh-hero__atmosphere {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 0;
+  background-image:
+    linear-gradient(var(--color-border) 1px, transparent 1px),
+    linear-gradient(90deg, var(--color-border) 1px, transparent 1px);
+  background-size: 64px 64px;
+  mask-image: radial-gradient(ellipse 70% 60% at 70% 40%, #000 20%, transparent 75%);
+  -webkit-mask-image: radial-gradient(ellipse 70% 60% at 70% 40%, #000 20%, transparent 75%);
+  opacity: 0.45;
+  animation: zh-atmosphere-drift 28s linear infinite;
+}
+
+@keyframes zh-atmosphere-drift {
+  from { background-position: 0 0, 0 0; }
+  to { background-position: 64px 32px, 32px 64px; }
+}
+
+.zh-hero__cell-ix {
+  font-size: 10px;
+  font-weight: var(--weight-semibold);
+  letter-spacing: 0.08em;
+  opacity: 0.55;
+  line-height: 1;
+  position: relative;
+  z-index: 1;
+}
+
+.zh-hero__cell-label {
+  font-size: inherit;
+  font-weight: inherit;
+  letter-spacing: inherit;
+  text-transform: inherit;
+  line-height: 1.2;
+  position: relative;
+  z-index: 1;
+  display: inline-block;
+  padding-left: 1px; /* avoid radius / backdrop clip on first glyph */
+}
+
+.zh-hero__cell--data .zh-hero__cell-ix,
+.zh-hero__cell--publish .zh-hero__cell-ix {
+  opacity: 0.72;
+}
+
+.zh-hero__grid.is-alive .zh-hero__cell-ix {
+  animation: zh-ix-in 520ms var(--motion-smooth, cubic-bezier(0.22, 1, 0.36, 1)) both;
+  animation-delay: inherit;
+}
+
+@keyframes zh-ix-in {
+  from { opacity: 0; transform: translate3d(0, 6px, 0); }
+  to { opacity: 0.55; transform: none; }
+}
+
+.zh-hero__cell--data .zh-hero__cell-ix,
+.zh-hero__cell--publish .zh-hero__cell-ix {
+  animation-name: zh-ix-in-strong;
+}
+
+@keyframes zh-ix-in-strong {
+  from { opacity: 0; transform: translate3d(0, 6px, 0); }
+  to { opacity: 0.72; transform: none; }
+}
+
+/* Infinite primitive marquee */
+.zh-marquee {
+  overflow: hidden;
+  border-top: 1px solid var(--color-border);
+  border-bottom: 1px solid var(--color-border);
+  background: var(--color-brand-soft);
+  padding: 14px 0;
+}
+
+.zh-marquee__track {
+  display: flex;
+  width: max-content;
+  gap: 0;
+  animation: zh-marquee 32s linear infinite;
+}
+
+.zh-marquee__track span {
+  display: inline-flex;
+  align-items: center;
+  padding: 0 28px;
+  font-size: 12px;
+  font-weight: var(--weight-bold);
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--color-text-primary);
+  white-space: nowrap;
+}
+
+.zh-marquee__track span::after {
+  content: "";
+  width: 6px;
+  height: 6px;
+  margin-left: 28px;
+  border-radius: 1px;
+  background: var(--color-brand);
+  border: 1px solid var(--color-text-primary);
+}
+
+@keyframes zh-marquee {
+  from { transform: translate3d(0, 0, 0); }
+  to { transform: translate3d(-50%, 0, 0); }
+}
+
+/* Title underline draws in on reveal */
+.zh-title-draw {
+  position: relative;
+  display: inline-block;
+  padding-bottom: 10px;
+}
+
+.zh-title-draw::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  bottom: 0;
+  height: 3px;
+  width: 100%;
+  background: var(--color-brand);
+  border: 1px solid var(--color-text-primary);
+  border-radius: 1px;
+  transform: scaleX(0);
+  transform-origin: left center;
+  transition: transform 640ms var(--motion-smooth, cubic-bezier(0.22, 1, 0.36, 1)) 120ms;
+}
+
+.mq-reveal.is-visible .zh-title-draw::after,
+.zh-section.mq-reveal.is-visible .zh-title-draw::after {
+  transform: scaleX(1);
+}
+
+.zh-close .zh-title-draw::after {
+  border-color: var(--canvas-bg);
+}
+
+/* Steps with growing rail */
+.zh-steps {
+  position: relative;
+}
+
+.zh-steps::before {
+  content: "";
+  position: absolute;
+  left: 17px;
+  top: 18px;
+  bottom: 18px;
+  width: 2px;
+  background: linear-gradient(
+    180deg,
+    var(--color-brand) 0%,
+    var(--color-border) 100%
+  );
+  transform: scaleY(0);
+  transform-origin: top center;
+  transition: transform 700ms var(--motion-smooth, cubic-bezier(0.22, 1, 0.36, 1)) 80ms;
+  z-index: 0;
+}
+
+.zh-steps.mq-reveal.is-visible::before,
+.zh-steps.mq-reveal-stagger.is-visible::before {
+  transform: scaleY(1);
+}
+
+.zh-step {
+  position: relative;
+  z-index: 1;
+}
+
+.zh-step::before {
+  position: relative;
+  z-index: 1;
+}
+
+/* Primitive rows — accent bar on hover (no layout shift) */
+.zh-primitive {
+  position: relative;
+  padding-left: 12px;
+  transition: background-color var(--motion-hover);
+}
+
+.zh-primitive::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 18px;
+  bottom: 18px;
+  width: 3px;
+  background: var(--color-brand);
+  border: 1px solid var(--color-text-primary);
+  border-radius: 1px;
+  transform: scaleY(0);
+  transform-origin: center top;
+  transition: transform 280ms var(--motion-smooth, cubic-bezier(0.22, 1, 0.36, 1));
+  pointer-events: none;
+}
+
+.zh-primitive:hover {
+  background: color-mix(in srgb, var(--color-brand-soft) 70%, transparent);
+}
+
+.zh-primitive:hover::before {
+  transform: scaleY(1);
+}
+
+.zh-entry__ix {
+  margin: 0 0 10px;
+  font-size: 12px;
+  font-weight: var(--weight-bold);
+  letter-spacing: 0.1em;
+  color: var(--color-text-secondary);
+}
+
+.zh-entry {
+  padding: 8px 0 4px;
+  border-top: 1px solid transparent;
+  transition: border-color var(--motion-hover), transform var(--motion-hover);
+}
+
+.zh-entry:hover {
+  border-top-color: var(--color-brand);
+  transform: translateY(-2px);
+}
+
+.zh-proof__quote {
+  position: relative;
+  padding-left: 18px;
+}
+
+.zh-proof__quote::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 0.2em;
+  bottom: 0.2em;
+  width: 3px;
+  background: var(--color-brand);
+  border: 1px solid var(--color-text-primary);
+  border-radius: 1px;
+  transform: scaleY(0);
+  transform-origin: top center;
+  transition: transform 520ms var(--motion-smooth, cubic-bezier(0.22, 1, 0.36, 1)) 160ms;
+}
+
+.zh-proof.mq-reveal.is-visible .zh-proof__quote::before {
+  transform: scaleY(1);
+}
+
+.zh-template-card__tags li {
+  transition: background-color var(--motion-hover), border-color var(--motion-hover), color var(--motion-hover), transform var(--motion-hover);
+}
+
+.zh-template-card:hover .zh-template-card__tags li {
+  background: var(--color-brand);
+  border-color: var(--color-text-primary);
+  color: var(--color-on-brand);
+}
+
+.zh-pricing-tease__price {
+  display: inline-block;
+  padding-bottom: 4px;
+  border-bottom: 3px solid var(--color-brand);
+}
+
+.zh-trust__item {
+  position: relative;
+  padding-left: 14px;
+}
+
+.zh-trust__item::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 0.55em;
+  width: 6px;
+  height: 6px;
+  border-radius: 1px;
+  background: var(--color-brand);
+  border: 1px solid var(--color-text-primary);
+  transform: scale(0);
+  transition: transform 320ms var(--motion-smooth, cubic-bezier(0.22, 1, 0.36, 1));
+}
+
+.zh-trust.mq-reveal-stagger.is-visible > .mq-reveal-child::before {
+  transform: scale(1);
+  transition-delay: var(--stagger-delay, 0ms);
+}
+
+/* Soft film grain over marketing home */
+.mq-public-main:has(.zh-hero)::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 150;
+  opacity: 0.03;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+}
+
+@media (max-width: 959px) {
+  .zh-hero__atmosphere {
+    mask-image: radial-gradient(ellipse 90% 50% at 50% 0%, #000 10%, transparent 70%);
+    -webkit-mask-image: radial-gradient(ellipse 90% 50% at 50% 0%, #000 10%, transparent 70%);
+    opacity: 0.28;
+  }
+
+  .zh-steps::before {
+    left: 17px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .zh-hero__atmosphere,
+  .zh-marquee__track,
+  .zh-hero__grid.is-alive .zh-hero__cell-ix {
+    animation: none !important;
+  }
+
+  .zh-title-draw::after,
+  .zh-steps::before,
+  .zh-primitive::before,
+  .zh-proof__quote::before,
+  .zh-trust__item::before {
+    transform: none !important;
+  }
+
+  .zh-title-draw::after {
+    transform: scaleX(1) !important;
+  }
+
+  .zh-steps::before {
+    transform: scaleY(1) !important;
+  }
+
+  .zh-proof__quote::before {
+    transform: scaleY(1) !important;
+  }
+
+  .zh-trust__item::before {
+    transform: scale(1) !important;
+  }
+
+  .zh-entry:hover {
+    transform: none;
+  }
+}
+
+/* RTL layout specifics for design surfaces (shared base rules live in marketing.css) */
+html[dir="rtl"] .zh-hero__cell-label,
+html[dir="rtl"] .zh-stack__meta,
+html[dir="rtl"] .zh-band__tag,
+html[dir="rtl"] .zh-pin__tag {
+  letter-spacing: 0.04em;
+}
+
+html[lang^="ar"] .zh-hero__cell-label,
+html[lang^="ar"] .zh-stack__meta,
+html[lang^="ar"] .zh-band__tag,
+html[lang^="ar"] .zh-pin__tag,
+html[lang="he"] .zh-hero__cell-label,
+html[lang="he"] .zh-stack__meta,
+html[lang="he"] .zh-band__tag,
+html[lang="he"] .zh-pin__tag {
+  letter-spacing: 0 !important;
+}
+
+html[dir="rtl"] .zh-proof__quote::before,
+html[dir="rtl"] .zh-trust__item::before {
+  inset-inline-start: 0;
+  inset-inline-end: auto;
+}
+
+html[dir="rtl"] .zh-pin__nav li {
+  padding-inline: 12px 0;
+}
+
+html[dir="rtl"] .zh-surface-proof__cap,
+html[dir="rtl"] .zh-band__note {
+  letter-spacing: 0;
+}

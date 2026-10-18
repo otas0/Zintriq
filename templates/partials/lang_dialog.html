@@ -1,0 +1,25 @@
+{% set next_path = request.path or '/' %}
+<dialog class="lang-dialog" id="lang-dialog" aria-labelledby="lang-dialog-title" tabindex="-1">
+  <div class="lang-dialog__head">
+    <h2 id="lang-dialog-title">{{ _('lang.title') }}</h2>
+    <button type="button" class="lang-dialog__close" id="lang-dialog-close" aria-label="{{ _('lang.close') }}">×</button>
+  </div>
+  <ul class="lang-dialog__list" role="listbox" aria-label="{{ _('lang.title') }}">
+    {% for lang in ui_languages|default([]) %}
+    <li data-lang-item>
+      <a href="{{ url_for('set_locale_redirect', code=lang.code, next=next_path) }}"
+         hreflang="{{ lang.code }}"
+         lang="{{ lang.code }}"
+         {% if lang.code == ui_lang %}aria-current="true"{% endif %}>
+        <span class="lang-dialog__native">{{ lang.native }}</span>
+        {% if lang.name and lang.name != lang.native %}
+        <span class="lang-dialog__name">{{ lang.name }}</span>
+        {% endif %}
+      </a>
+    </li>
+    {% endfor %}
+  </ul>
+  <div class="lang-dialog__foot">
+    <a href="{{ murl('/contact') }}">{{ _('nav.contact') }}</a>
+  </div>
+</dialog>

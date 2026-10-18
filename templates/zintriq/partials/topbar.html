@@ -14,7 +14,6 @@
     </a>
   </div>
   <div class="zw-topbar__actions">
-    <a class="zw-topbar__link" href="{{ url_for('account_workspaces') }}">{{ _('bos.team') }}</a>
     <button type="button" class="zw-topbar__btn" id="zw-theme-toggle" aria-label="{{ _('studio.topbar.theme') }}" title="{{ _('studio.topbar.theme') }}">
       <svg width="20" height="20" viewBox="0 0 20 20" fill="none" aria-hidden="true">
         <circle cx="10" cy="10" r="4" stroke="currentColor" stroke-width="1.5"/>
@@ -32,11 +31,13 @@
           <span>{{ current_user.email }}</span>
         </div>
         {% endif %}
+        {% if not desktop_mode %}
         <a class="zw-user-dropdown__item" role="menuitem" href="{{ url_for('account') }}">{{ _('studio.sidebar.account') }}</a>
         <form method="post" action="{{ url_for('logout') }}" class="zw-user-dropdown__form">
           <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
           <button type="submit" class="zw-user-dropdown__item zw-user-dropdown__item--danger" role="menuitem">{{ _('nav.sign_out') }}</button>
         </form>
+        {% endif %}
       </div>
     </div>
   </div>

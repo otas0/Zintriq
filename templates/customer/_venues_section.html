@@ -2,13 +2,13 @@
 {% if venues %}
 <section class="ch-venues-block ch-animate-in" aria-labelledby="{{ section_id|default('ch-venues-title') }}">
   <div class="ch-home__section-head ch-venue-section__head">
-    <h2 class="ch-home__section-title" id="{{ section_id|default('ch-venues-title') }}">Markets &amp; venues</h2>
+    <h2 class="ch-home__section-title" id="{{ section_id|default('ch-venues-title') }}">{{ _('venue.title') }}</h2>
     <div class="ch-venue-section__actions">
-      <a class="ch-home__section-link" href="{{ url_for('index') }}">See all</a>
+      <a class="ch-home__section-link" href="{{ url_for('guest_venues') }}">{{ _('home.see_all') }}</a>
       {% if venues|length > 2 %}
       <div class="ch-venue-rail-nav" hidden>
-        <button type="button" class="ch-venue-rail-nav__btn" data-venue-rail-prev aria-label="Scroll venues left">‹</button>
-        <button type="button" class="ch-venue-rail-nav__btn" data-venue-rail-next aria-label="Scroll venues right">›</button>
+        <button type="button" class="ch-venue-rail-nav__btn" data-venue-rail-prev aria-label="{{ _('venue.scroll_left') }}">‹</button>
+        <button type="button" class="ch-venue-rail-nav__btn" data-venue-rail-next aria-label="{{ _('venue.scroll_right') }}">›</button>
       </div>
       {% endif %}
     </div>

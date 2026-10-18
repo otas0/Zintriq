@@ -1,36 +1,36 @@
 {% extends 'owner_base.html' %}
 {% from 'owner/_feedback_nav.html' import feedback_nav %}
 {% set active_tab = 'insights' %}
-{% block title %}Inbox — Feedback{% endblock %}
+{% block title %}{{ _('owner.inbox') }} — {{ _('owner.feedback') }}{% endblock %}
 {% block os_header %}
-<h1 class="os-page-title">Inbox</h1>
-<p class="os-page-subtitle">Search, filter, and respond to customer feedback.</p>
+<h1 class="os-page-title">{{ _('owner.inbox') }}</h1>
+<p class="os-page-subtitle">{{ _('owner.inbox_subtitle') }}</p>
 {% endblock %}
 {% block os_actions %}
-<a class="os-btn os-btn-ghost" href="{{ url_for('export_feedback', slug=store.slug) }}">Export</a>
+<a class="os-btn os-btn-ghost" href="{{ url_for('export_feedback', slug=store.slug) }}">{{ _('owner.export') }}</a>
 {% endblock %}
 {% block owner_content %}
 {{ feedback_nav(store, fb_section) }}
 
 <form method="get" class="fb-toolbar">
-  <input type="search" class="os-input" name="q" value="{{ filters.q }}" placeholder="Search feedback…">
-  <select class="os-select" name="status" onchange="this.form.submit()"><option value="">All statuses</option>{% for s in feedback_statuses %}<option value="{{ s }}"{% if filters.status == s %} selected{% endif %}>{{ s }}</option>{% endfor %}</select>
-  <select class="os-select" name="type" onchange="this.form.submit()"><option value="">All types</option>{% for t in feedback_types %}<option value="{{ t }}"{% if filters.type == t %} selected{% endif %}>{{ t }}</option>{% endfor %}</select>
-  <select class="os-select" name="rating" onchange="this.form.submit()"><option value="">All ratings</option>{% for n in range(5,0,-1) %}<option value="{{ n }}"{% if filters.rating == n|string %} selected{% endif %}>{{ n }}★</option>{% endfor %}</select>
-  <select class="os-select" name="has_reply" onchange="this.form.submit()"><option value="">Reply</option><option value="no"{% if filters.has_reply == 'no' %} selected{% endif %}>Awaiting reply</option><option value="yes"{% if filters.has_reply == 'yes' %} selected{% endif %}>Replied</option></select>
+  <input type="search" class="os-input" name="q" value="{{ filters.q }}" placeholder="{{ _('owner.search_feedback') }}">
+  <select class="os-select" name="status" onchange="this.form.submit()"><option value="">{{ _('owner.all_statuses') }}</option>{% for s in feedback_statuses %}<option value="{{ s }}"{% if filters.status == s %} selected{% endif %}>{{ s }}</option>{% endfor %}</select>
+  <select class="os-select" name="type" onchange="this.form.submit()"><option value="">{{ _('owner.all_types') }}</option>{% for t in feedback_types %}<option value="{{ t }}"{% if filters.type == t %} selected{% endif %}>{{ t }}</option>{% endfor %}</select>
+  <select class="os-select" name="rating" onchange="this.form.submit()"><option value="">{{ _('owner.all_ratings') }}</option>{% for n in range(5,0,-1) %}<option value="{{ n }}"{% if filters.rating == n|string %} selected{% endif %}>{{ n }}★</option>{% endfor %}</select>
+  <select class="os-select" name="has_reply" onchange="this.form.submit()"><option value="">{{ _('owner.reply') }}</option><option value="no"{% if filters.has_reply == 'no' %} selected{% endif %}>{{ _('owner.awaiting_reply') }}</option><option value="yes"{% if filters.has_reply == 'yes' %} selected{% endif %}>{{ _('owner.replied') }}</option></select>
 </form>
 
 <form method="post" id="fb-batch-form" class="fb-batch hidden">
   <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
   <input type="hidden" name="action" value="batch_status">
   <input type="hidden" name="feedback_ids" id="fb-batch-ids">
-  <span id="fb-batch-count">0 selected</span>
+  <span id="fb-batch-count">{{ _('bos.selected_n', n=0) }}</span>
   <select class="os-select" name="status">{% for s in feedback_statuses %}<option value="{{ s }}">{{ s }}</option>{% endfor %}</select>
-  <button class="os-btn os-btn-primary os-btn-sm" type="submit">Apply</button>
+  <button class="os-btn os-btn-primary os-btn-sm" type="submit">{{ _('owner.apply') }}</button>
 </form>
 
 {% if not records %}
-<p class="fb-empty-hint">Inbox is empty.</p>
+<p class="fb-empty-hint">{{ _('owner.inbox_empty') }}</p>
 {% else %}
 <div class="fb-inbox-list">
   {% for r in records %}
@@ -43,9 +43,9 @@
         <span class="fb-meta">{{ r.feedback_type }} · {{ r.source_type|replace('_', ' ') }}</span>
       </div>
       <p class="fb-inbox-preview">{{ (r.comment or '—')[:120] }}</p>
-      <span class="fb-meta">{% if r.is_anonymous %}Anonymous{% else %}{{ r.customer_name or 'Customer' }}{% endif %} · {{ r.created_at[:10] if r.created_at else '' }}</span>
+      <span class="fb-meta">{% if r.is_anonymous %}{{ _('owner.anonymous') }}{% else %}{{ r.customer_name or _('owner.customer') }}{% endif %} · {{ r.created_at[:10] if r.created_at else '' }}</span>
     </a>
-    {% if r.owner_reply %}<span class="fb-replied-badge">Replied</span>{% endif %}
+    {% if r.owner_reply %}<span class="fb-replied-badge">{{ _('owner.replied') }}</span>{% endif %}
   </article>
   {% endfor %}
 </div>

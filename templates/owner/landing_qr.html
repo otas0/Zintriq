@@ -1,18 +1,18 @@
 {% extends 'owner_base.html' %}
 {% from 'owner/_customer_qr_nav.html' import customer_qr_nav %}
 {% set active_tab = 'qr' %}
-{% block title %}Landing QR — {{ store.name }}{% endblock %}
+{% block title %}{{ _('owner.landing_qr') }} — {{ store.name }}{% endblock %}
 {% block os_head %}
 <link rel="stylesheet" href="{{ url_for('static', filename='bos/merchant.css') }}">
 <link rel="stylesheet" href="{{ url_for('static', filename='bos/polish.css') }}">
 <link rel="stylesheet" href="{{ url_for('static', filename='bos/components-ui.css') }}">
 {% endblock %}
 {% block os_header %}
-<h1 class="os-page-title">Landing QR</h1>
-<p class="os-page-subtitle">Pages customers see first — then optionally open your shop.</p>
+<h1 class="os-page-title">{{ _('owner.landing_qr') }}</h1>
+<p class="os-page-subtitle">{{ _('owner.landing_qr_subtitle') }}</p>
 {% endblock %}
 {% block os_actions %}
-<button type="button" class="os-btn os-btn-primary os-btn-sm" id="landing-qr-add">Add landing page</button>
+<button type="button" class="os-btn os-btn-primary os-btn-sm" id="landing-qr-add">{{ _('owner.add_landing_page') }}</button>
 {% endblock %}
 {% block owner_content %}
 {{ customer_qr_nav(store, 'landing') }}

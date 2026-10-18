@@ -7,11 +7,11 @@
 <article class="fb-customer material-sheet" id="fb-experience">
   {% if submitted %}
   <div class="fb-confirm">
-    <h1>Thank you</h1>
-    <p>{{ thank_you or publication.thank_you_message or 'Your feedback has been received.' }}</p>
+    <h1>{{ _('customer.survey.thanks') }}</h1>
+    <p>{{ thank_you or publication.thank_you_message or _('customer.survey.received') }}</p>
   </div>
   {% elif preview_mode %}
-  <p class="mq-flash-warning">Customer preview — submissions disabled.</p>
+  <p class="mq-flash-warning">{{ _('customer.feedback.preview') }}</p>
   {% endif %}
   {% if not submitted %}
   <header class="fb-head">
@@ -23,9 +23,9 @@
     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
     <div id="fb-customer-blocks" data-blocks='{{ blocks|tojson }}'></div>
     {% if settings.anonymous_allowed %}
-    <label class="fb-check"><input type="checkbox" name="is_anonymous" value="1" id="fb-anon"> Submit anonymously</label>
+    <label class="fb-check"><input type="checkbox" name="is_anonymous" value="1" id="fb-anon"> {{ _('customer.feedback.anonymous') }}</label>
     {% endif %}
-    <button class="mq-btn mq-btn-primary" type="submit">Submit</button>
+    <button class="mq-btn mq-btn-primary" type="submit">{{ _('customer.survey.submit') }}</button>
   </form>
   {% else %}
   <div id="fb-customer-blocks" data-blocks='{{ blocks|tojson }}' data-preview="1"></div>

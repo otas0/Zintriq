@@ -1,0 +1,49 @@
+{% extends 'marketing_base.html' %}
+{% block title %}{{ _('product.title') }} — Zintriq{% endblock %}
+{% block content %}
+<article class="page site-page">
+  <section class="page-hero">
+    <div>
+      <p class="page-kicker">{{ _('product.kicker') }}</p>
+      <h1>{{ _('product.title') }}</h1>
+      <p class="page-lead">{{ _('product.lead') }}</p>
+      <p class="page-actions">
+        <a class="btn-primary" href="{{ murl('/download') }}">{{ _('product.cta') }}</a>
+        <a class="btn-secondary" href="{{ murl('/docs') }}">{{ _('product.cta_docs') }}</a>
+      </p>
+    </div>
+  </section>
+
+  <section data-reveal class="page-section">
+    <h2>{{ _('product.open.title') }}</h2>
+    <p class="page-lead">{{ _('product.open.body') }}</p>
+    <ul class="product-sheet">
+      <li>
+        <h3>{{ _('product.space.title') }}</h3>
+        <p>{{ _('product.space.body') }}</p>
+      </li>
+      <li>
+        <h3>{{ _('product.desktop.title') }}</h3>
+        <p>{{ _('product.desktop.body') }}</p>
+      </li>
+      <li>
+        <h3>{{ _('docs.targets.web.title') }}</h3>
+        <p>{{ _('docs.targets.web.body') }}</p>
+      </li>
+      <li>
+        <h3>{{ _('product.bounds.title') }}</h3>
+        <p>{{ _('product.bounds.body') }}</p>
+      </li>
+    </ul>
+  </section>
+
+  <section data-reveal class="page-end page-end--paper">
+    <h2>{{ _('product.end.title') }}</h2>
+    <p class="page-lead">{{ _('product.end.body') }}</p>
+    <p class="page-actions">
+      <a class="btn-primary" href="{{ murl('/download') }}">{{ _('product.cta') }}</a>
+      <a class="btn-secondary" href="{{ murl('/docs') }}">{{ _('product.cta_docs') }}</a>
+    </p>
+  </section>
+</article>
+{% endblock %}

@@ -1,0 +1,323 @@
+{% extends 'marketing_base.html' %}
+{% block title %}{{ _('pricing.title') }} — Zintriq{% endblock %}
+{% block content %}
+{% set personal_year = price_personal * 10 %}
+{% set team_year = price_team * 10 %}
+{% set personal_mo = '%.2f'|format(personal_year / 12) %}
+{% set team_mo = '%.2f'|format(team_year / 12) %}
+{% set team_5_year_mo = '%.2f'|format(team_year / 12 * 5) %}
+{% set team_5_month = price_team * 5 %}
+<article class="page site-page">
+  <section class="page-hero">
+    <div>
+      <p class="page-kicker">{{ _('pricing.kicker') }}</p>
+      <h1>{{ _('pricing.title') }}</h1>
+      <p class="page-lead">{{ _('pricing.lead') }}</p>
+      <div class="price-toggle" role="group" aria-label="{{ _('pricing.monthly') }}">
+        <button type="button" id="price-monthly" aria-pressed="false">{{ _('pricing.monthly') }}</button>
+        <button type="button" id="price-yearly" aria-pressed="true">{{ _('pricing.toggle_yearly') }}</button>
+      </div>
+      <p class="page-note">{{ _('pricing.yearly_save') }}</p>
+      <p class="page-note">{{ _('pricing.tax_note', currency='USD') }}</p>
+    </div>
+  </section>
+
+  <section class="plan-grid site-plans" data-reveal>
+    {% if trial_days %}
+    <article class="plan-card site-plan plan-card--trial">
+      <div class="plan-card__head">
+        <span class="inst-lamp inst-lamp--brand" aria-hidden="true"></span>
+        <div>
+          <h2>{{ _('plan.trial.name') }}</h2>
+          <p class="plan-card__for">{{ _('plan.trial.for', trial_days=trial_days) }}</p>
+        </div>
+      </div>
+      <p class="plan-card__note">{{ _('pricing.trial_note') }}</p>
+      <p class="plan-card__cta"><a class="btn-primary" href="{{ murl('/download') }}">{{ _('plan.trial.cta') }}</a></p>
+    </article>
+    {% endif %}
+
+    <article class="plan-card site-plan">
+      <div class="plan-card__head">
+        <span class="inst-lamp inst-lamp--brand" aria-hidden="true"></span>
+        <div>
+          <h2>{{ _('plan.personal.name') }}</h2>
+          <p class="plan-card__for">{{ _('plan.personal.for') }}</p>
+        </div>
+      </div>
+      <p class="plan-price site-price num"
+         data-monthly="{{ _('plan.personal.price', price='$' ~ price_personal) }}"
+         data-yearly-main="${{ personal_mo }} {{ _('pricing.per_month') }}"
+         data-yearly-sub="{{ _('pricing.billed_yearly', price='$' ~ personal_year) }}"
+         data-yearly="{{ _('plan.price_yearly', price='$' ~ personal_year) }}"
+         data-equiv="{{ _('plan.price_yearly_monthly', price='$' ~ personal_mo) }}">
+        <span class="site-price__main">${{ personal_mo }} {{ _('pricing.per_month') }}</span>
+        <span class="plan-price__sub site-price__equiv">{{ _('pricing.billed_yearly', price='$' ~ personal_year) }}</span>
+      </p>
+      {% if not billing_checkout_ready %}
+      <p class="plan-card__note">{{ _('pricing.not_yet') }}</p>
+      {% endif %}
+      <p class="plan-card__note">{{ _('pricing.trial_note') }}</p>
+      {% if billing_checkout_ready %}
+      <form class="plan-card__cta site-plan__cta" method="post" action="{{ url_for('billing_checkout') }}">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <input type="hidden" name="plan" value="personal">
+        <button class="btn-primary mq-btn mq-btn-primary" type="submit">{{ _('plan.subscribe', plan=_('plan.personal.name')) }}</button>
+      </form>
+      {% elif billing_enabled %}
+      <p class="plan-card__cta site-plan__cta"><a class="btn-primary mq-btn mq-btn-primary" href="{{ murl('/contact') }}">{{ _('plan.subscribe', plan=_('plan.personal.name')) }}</a></p>
+      {% elif installer_available %}
+      <p class="plan-card__cta site-plan__cta"><a class="btn-primary mq-btn mq-btn-primary" href="{{ murl('/download') }}">{{ _('nav.download') }}</a></p>
+      {% else %}
+      <p class="plan-card__cta site-plan__cta"><a class="btn-primary mq-btn mq-btn-primary" href="{{ murl('/download') }}">{{ _('cta.notify') }}</a></p>
+      {% endif %}
+    </article>
+
+    <article class="plan-card site-plan">
+      <div class="plan-card__head">
+        <span class="inst-lamp inst-lamp--brand" aria-hidden="true"></span>
+        <div>
+          <h2>{{ _('plan.team.name') }}</h2>
+          <p class="plan-card__for">{{ _('plan.team.for') }}</p>
+        </div>
+      </div>
+      <p class="plan-price site-price num"
+         data-monthly="{{ _('plan.team.price', price='$' ~ price_team) }}"
+         data-yearly-main="${{ team_mo }} {{ _('pricing.per_seat') }}"
+         data-yearly-sub="{{ _('pricing.per_seat_year', price='$' ~ team_year) }}"
+         data-yearly="{{ _('plan.price_yearly_seat', price='$' ~ team_year) }}"
+         data-equiv="{{ _('plan.price_yearly_monthly_seat', price='$' ~ team_mo) }}"
+         data-example-yearly="{{ _('pricing.team_example', price='$' ~ team_5_year_mo) }}"
+         data-example-monthly="{{ _('pricing.team_example', price='$' ~ team_5_month) }}">
+        <span class="site-price__main">${{ team_mo }} {{ _('pricing.per_seat') }}</span>
+        <span class="plan-price__sub site-price__equiv">{{ _('pricing.per_seat_year', price='$' ~ team_year) }}</span>
+      </p>
+      <p class="plan-card__note site-price__example num">{{ _('pricing.team_example', price='$' ~ team_5_year_mo) }}</p>
+      {% if not billing_team_ready %}
+      <p class="plan-card__note">{{ _('pricing.not_yet') }}</p>
+      {% endif %}
+      <p class="plan-card__note">{{ _('pricing.trial_note') }}</p>
+      {% if billing_team_ready %}
+      <form class="plan-card__cta site-plan__cta" method="post" action="{{ url_for('billing_checkout') }}">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <input type="hidden" name="plan" value="team">
+        <button class="btn-primary mq-btn mq-btn-primary" type="submit">{{ _('plan.subscribe', plan=_('plan.team.name')) }}</button>
+      </form>
+      {% elif billing_enabled %}
+      <p class="plan-card__cta site-plan__cta"><a class="btn-primary mq-btn mq-btn-primary" href="{{ murl('/contact') }}">{{ _('plan.subscribe', plan=_('plan.team.name')) }}</a></p>
+      {% elif installer_available %}
+      <p class="plan-card__cta site-plan__cta"><a class="btn-primary mq-btn mq-btn-primary" href="{{ murl('/download') }}">{{ _('nav.download') }}</a></p>
+      {% else %}
+      <p class="plan-card__cta site-plan__cta"><a class="btn-primary mq-btn mq-btn-primary" href="{{ murl('/download') }}">{{ _('cta.notify') }}</a></p>
+      {% endif %}
+    </article>
+  </section>
+
+  <section class="page-section" data-reveal>
+    <div class="paper-band paper-band--action">
+      <span class="inst-lamp inst-lamp--brand" aria-hidden="true"></span>
+      <p class="paper-band__copy">{{ _('pricing.enterprise_band') }}</p>
+      <a class="btn-secondary" href="{{ murl('/contact') }}">{{ _('plan.enterprise.cta') }}</a>
+    </div>
+  </section>
+
+  <section class="page-section" data-reveal>
+    <h2>{{ _('pricing.compare_title') }}</h2>
+    <div class="page-table-wrap site-table-wrap">
+      <table class="page-table site-table">
+        <thead>
+          <tr>
+            <th></th>
+            <th>{{ _('plan.personal.name') }}</th>
+            <th>{{ _('plan.team.name') }}</th>
+            <th>{{ _('plan.enterprise.name') }}</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <th>{{ _('pricing.diff.capability') }}</th>
+            <td>{{ _('pricing.diff.all') }}</td>
+            <td>{{ _('pricing.diff.all') }}</td>
+            <td>{{ _('pricing.diff.all') }}</td>
+          </tr>
+          <tr>
+            <th>{{ _('pricing.diff.seats') }}</th>
+            <td>{{ _('pricing.diff.one') }}</td>
+            <td>{{ _('pricing.diff.per_seat') }}</td>
+            <td>{{ _('pricing.diff.contract') }}</td>
+          </tr>
+          <tr>
+            <th>{{ _('pricing.diff.collab') }}</th>
+            <td>{{ _('pricing.diff.none') }}</td>
+            <td>{{ _('pricing.diff.yes') }}</td>
+            <td>{{ _('pricing.diff.yes_admin') }}</td>
+          </tr>
+          {% if quota_personal or quota_seat %}
+          <tr>
+            <th>{{ _('pricing.diff.storage') }}</th>
+            <td>{{ _('pricing.diff.quota_personal', quota_personal=quota_personal or '') }}</td>
+            <td>{{ _('pricing.diff.quota_seat', quota_seat=quota_seat or '') }}</td>
+            <td>{{ _('pricing.diff.contract') }}</td>
+          </tr>
+          {% endif %}
+          <tr>
+            <th>{{ _('pricing.diff.support') }}</th>
+            <td>{{ _('pricing.diff.mail') }}</td>
+            <td>{{ _('pricing.diff.priority') }}</td>
+            <td>{{ _('pricing.diff.dedicated') }}</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <section class="page-section" data-reveal>
+    <h2>{{ _('pricing.all.title') }}</h2>
+    <ul class="include-grid paper-list">
+      <li>
+        <span class="inst-lamp inst-lamp--brand" aria-hidden="true"></span>
+        <div class="paper-list__body"><p>{{ _('pricing.all.platforms') }}</p></div>
+      </li>
+      <li>
+        <span class="inst-lamp" aria-hidden="true"></span>
+        <div class="paper-list__body"><p>{{ _('pricing.all.blocks') }}</p></div>
+      </li>
+      <li>
+        <span class="inst-lamp" aria-hidden="true"></span>
+        <div class="paper-list__body"><p>{{ _('pricing.all.export') }}</p></div>
+      </li>
+      <li>
+        <span class="inst-lamp" aria-hidden="true"></span>
+        <div class="paper-list__body"><p>{{ _('pricing.all.privacy') }}</p></div>
+      </li>
+    </ul>
+    <h3 class="include-soon-title">{{ _('home.make.soon') }}</h3>
+    <ul class="include-grid include-grid--soon paper-list">
+      <li>
+        <span class="inst-lamp" aria-hidden="true"></span>
+        <div class="paper-list__body"><p>{{ _('pricing.all.community') }}</p></div>
+      </li>
+      <li>
+        <span class="inst-lamp" aria-hidden="true"></span>
+        <div class="paper-list__body"><p>{{ _('pricing.all.offline') }}</p></div>
+      </li>
+      <li>
+        <span class="inst-lamp" aria-hidden="true"></span>
+        <div class="paper-list__body"><p>{{ _('pricing.all.versions') }}</p></div>
+      </li>
+    </ul>
+  </section>
+
+  <section class="page-section" data-reveal>
+    <div class="site-faq">
+      {% if trial_days %}
+      <details><summary>{{ _('pricing.faq.try.q') }}</summary><p>{{ _('pricing.faq.try.a', trial_days=trial_days) }}</p></details>
+      {% endif %}
+      <details><summary>{{ _('pricing.faq.sync.q') }}</summary><p>{{ _('pricing.faq.sync.a') }}</p></details>
+      <details><summary>{{ _('pricing.faq.offline.q') }}</summary><p>{{ _('pricing.faq.offline.a') }}</p></details>
+      <details><summary>{{ _('pricing.faq.stop.q') }}</summary><p>{{ _('pricing.faq.stop.a') }}</p></details>
+      {% if billing_enabled %}
+      <details><summary>{{ _('pricing.faq.charge.q') }}</summary><p>{{ _('pricing.faq.charge.a') }}</p></details>
+      <details><summary>{{ _('pricing.faq.refund.q') }}</summary><p>{{ _('pricing.faq.refund.a') }}</p></details>
+      {% endif %}
+      <details><summary>{{ _('pricing.faq.change.q') }}</summary><p>{{ _('pricing.faq.change.a') }}</p></details>
+      <details><summary>{{ _('pricing.faq.edu.q') }}</summary><p>{{ _('pricing.faq.edu.a') }}</p></details>
+    </div>
+  </section>
+
+  <section class="page-end page-end--paper site-end" data-reveal>
+    <h2>{{ _('home.end.title') }}</h2>
+    <p class="page-lead">{{ _('home.end.pricing') }}</p>
+    <div class="page-actions">
+      <a class="btn-primary" href="{{ murl('/download') }}">{{ _('home.end.cta_download') }}</a>
+      <a class="btn-secondary" href="{{ murl('/product') }}">{{ _('home.hero.cta_secondary') }}</a>
+    </div>
+  </section>
+</article>
+<script>
+(function () {
+  var monthly = document.getElementById("price-monthly");
+  var yearly = document.getElementById("price-yearly");
+  var reduce = window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  var easeIn = "cubic-bezier(0.3, 0, 0.8, 0.15)";
+  var easeOut = "cubic-bezier(0.05, 0.7, 0.1, 1)";
+  var busy = false;
+
+  function swapText(el, next, then) {
+    if (!el) { if (then) then(); return; }
+    if (reduce || typeof el.animate !== "function") {
+      el.textContent = next || "";
+      if (then) then();
+      return;
+    }
+    var out = el.animate(
+      [
+        { opacity: 1, transform: "translateY(0)" },
+        { opacity: 0, transform: "translateY(-6px)" }
+      ],
+      { duration: 120, easing: easeIn, fill: "forwards" }
+    );
+    out.onfinish = function () {
+      el.textContent = next || "";
+      var inn = el.animate(
+        [
+          { opacity: 0, transform: "translateY(6px)" },
+          { opacity: 1, transform: "translateY(0)" }
+        ],
+        { duration: 180, easing: easeOut, fill: "forwards" }
+      );
+      inn.onfinish = function () { if (then) then(); };
+    };
+  }
+
+  function paint(mode, animate) {
+    if (busy && animate) return;
+    monthly.setAttribute("aria-pressed", mode === "monthly" ? "true" : "false");
+    yearly.setAttribute("aria-pressed", mode === "yearly" ? "true" : "false");
+    var nodes = document.querySelectorAll(".site-price");
+    var pending = nodes.length;
+    if (!pending) return;
+    if (animate && !reduce) busy = true;
+    nodes.forEach(function (node) {
+      var main = node.querySelector(".site-price__main");
+      var equiv = node.querySelector(".site-price__equiv");
+      var example = node.parentElement && node.parentElement.querySelector(".site-price__example");
+      var nextMain = mode === "yearly"
+        ? (node.getAttribute("data-yearly-main") || node.getAttribute("data-yearly"))
+        : node.getAttribute("data-monthly");
+      var nextSub = mode === "yearly"
+        ? (node.getAttribute("data-yearly-sub") || node.getAttribute("data-equiv") || "")
+        : "";
+      var nextExample = mode === "yearly"
+        ? (node.getAttribute("data-example-yearly") || "")
+        : (node.getAttribute("data-example-monthly") || "");
+      function done() {
+        pending -= 1;
+        if (pending <= 0) busy = false;
+      }
+      if (!animate || reduce || !main) {
+        if (main) main.textContent = nextMain || "";
+        if (equiv) {
+          equiv.hidden = !nextSub;
+          equiv.textContent = nextSub;
+        }
+        if (example) example.textContent = nextExample;
+        done();
+        return;
+      }
+      swapText(main, nextMain, function () {
+        if (equiv) {
+          equiv.hidden = !nextSub;
+          if (nextSub) swapText(equiv, nextSub, done);
+          else { equiv.textContent = ""; done(); }
+        } else done();
+        if (example) example.textContent = nextExample;
+      });
+    });
+  }
+  monthly.addEventListener("click", function () { paint("monthly", true); });
+  yearly.addEventListener("click", function () { paint("yearly", true); });
+  paint("yearly", false);
+})();
+</script>
+{% endblock %}

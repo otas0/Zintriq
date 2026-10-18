@@ -1,0 +1,50 @@
+{% extends 'marketing_base.html' %}
+{% block title %}{{ _('region.title') }} — Zintriq{% endblock %}
+{% block content %}
+<article class="page site-page">
+  <section class="page-hero">
+    <div>
+      <p class="page-kicker">{{ _('region.footer_link') }}</p>
+      <h1>{{ _('region.title') }}</h1>
+      <p class="page-lead">{{ _('region.lead') }}</p>
+    </div>
+  </section>
+  {% if detected_markets %}
+  <p class="page-note">
+    {{ _('region.suggested') }}:
+    {% for market in detected_markets %}
+    <a href="{{ url_for('marketing_choose_region_go', slug=market.slug) }}">{{ market.region_name }}</a>{% if not loop.last %} · {% endif %}
+    {% endfor %}
+  </p>
+  {% elif detected %}
+  <p class="page-note">
+    {{ _('region.suggested') }}:
+    <a href="{{ url_for('marketing_choose_region_go', slug=detected) }}">{{ detected|upper }}</a>
+  </p>
+  {% endif %}
+
+  {% for group in groups %}
+  <section class="region-group">
+    <h2>{{ _(group.label_key) }}</h2>
+    <ul class="region-list">
+      {% for market in group.markets %}
+      <li>
+        <a href="{{ url_for('marketing_choose_region_go', slug=market.slug) }}">
+          <span>{{ market.region_name }}</span>
+        </a>
+      </li>
+      {% endfor %}
+    </ul>
+  </section>
+  {% endfor %}
+
+  <section class="region-group">
+    <h2>{{ _('region.other') }}</h2>
+    <ul class="region-list">
+      <li>
+        <a href="{{ url_for('marketing_choose_region_go', slug='intl') }}">{{ _('region.intl_name') }}</a>
+      </li>
+    </ul>
+  </section>
+</article>
+{% endblock %}

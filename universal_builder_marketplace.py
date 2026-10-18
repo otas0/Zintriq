@@ -17,6 +17,34 @@ from uuid import uuid4
 
 _log = logging.getLogger("app.universal_builder")
 
+# Official package catalog copy — localized via i18n keys when available.
+_OFFICIAL_PACKAGE_I18N = {
+    "zintriq-business": ("community.pkg.business_app.name", "community.pkg.business_app.desc"),
+    "zintriq-customer": ("community.pkg.customer_app.name", "community.pkg.customer_app.desc"),
+    "zintriq-system": ("community.pkg.system_app.name", "community.pkg.system_app.desc"),
+    "zintriq/business-app-shell": ("community.pkg.business_shell.name", "community.pkg.business_shell.desc"),
+    "zintriq/customer-navigation": ("community.pkg.customer_nav.name", "community.pkg.customer_nav.desc"),
+    "zintriq/product-card": ("community.pkg.product_card.name", "community.pkg.product_card.desc"),
+}
+
+
+def _localize_official_package(package_id: str, name: str, description: str) -> tuple[str, str]:
+    keys = _OFFICIAL_PACKAGE_I18N.get(package_id)
+    if not keys:
+        return name, description
+    try:
+        from i18n_platform import translate
+
+        loc_name = translate(keys[0])
+        loc_desc = translate(keys[1])
+        if loc_name and loc_name != keys[0]:
+            name = loc_name
+        if loc_desc and loc_desc != keys[1]:
+            description = loc_desc
+    except Exception:
+        _log.debug("official_package_i18n_failed", exc_info=True, extra={"op": "_localize_official_package"})
+    return name, description
+
 
 MARKETPLACE_SCHEMA_SQL = """
 CREATE TABLE IF NOT EXISTS builder_creator_profiles (
@@ -208,16 +236,44 @@ def _seed_existing_packages(conn):
             conn.execute("UPDATE builder_packages SET latest_version=?,manifest=? WHERE id=?", (latest["version"], latest["manifest"], row["id"]))
 
 
-def creator_to_api(conn, row, viewer_id=None):
+PUBLIC_PACKAGE_VISIBILITIES = frozenset({"public", "official"})
+
+
+def package_visible_to_viewer(row, viewer_creator_id=None) -> bool:
+    """Same gate as the public list — plus creator may see their own private/unlisted."""
+    if not row:
+        return False
+    is_owner = bool(viewer_creator_id and row["creator_id"] == viewer_creator_id)
+    if row["status"] != "active" or row["moderation_status"] != "active":
+        return is_owner
+    if row["visibility"] in PUBLIC_PACKAGE_VISIBILITIES:
+        return True
+    # private / unlisted / anything else: creator only
+    return is_owner
+
+
+def creator_to_api(conn, row, viewer_id=None, *, follower_count=None, following=None):
     if not row:
         return None
     creator_id = row["id"]
+    if follower_count is None:
+        follower_count = conn.execute(
+            "SELECT COUNT(*) c FROM builder_creator_follows WHERE creator_id=?", (creator_id,)
+        ).fetchone()["c"]
+    if following is None:
+        following = bool(
+            viewer_id
+            and conn.execute(
+                "SELECT 1 FROM builder_creator_follows WHERE user_id=? AND creator_id=?",
+                (viewer_id, creator_id),
+            ).fetchone()
+        )
     return {
         "id": creator_id, "display_name": row["display_name"], "handle": row["handle"],
         "avatar": row["avatar"] or "", "bio": row["bio"] or "", "publisher_type": row["publisher_type"],
         "trust_level": row["trust_level"], "official": row["trust_level"] == "official",
-        "follower_count": conn.execute("SELECT COUNT(*) c FROM builder_creator_follows WHERE creator_id=?", (creator_id,)).fetchone()["c"],
-        "following": bool(viewer_id and conn.execute("SELECT 1 FROM builder_creator_follows WHERE user_id=? AND creator_id=?", (viewer_id, creator_id)).fetchone()),
+        "follower_count": follower_count,
+        "following": following,
     }
 
 
@@ -246,21 +302,161 @@ def _version_row(conn, package_id, version=None):
     return max(rows, key=lambda row: semver_key(row["version"]), default=None)
 
 
-def package_to_api(conn, row, viewer_id=None, detail=False):
+def _latest_versions_map(conn, package_ids):
+    """Map package_id → latest published version row (by semver)."""
+    if not package_ids:
+        return {}
+    placeholders = ",".join("?" * len(package_ids))
+    rows = conn.execute(
+        f"SELECT * FROM builder_package_versions WHERE package_id IN ({placeholders}) AND status='published'",
+        package_ids,
+    ).fetchall()
+    latest = {}
+    for row in rows:
+        current = latest.get(row["package_id"])
+        if not current or semver_key(row["version"]) > semver_key(current["version"]):
+            latest[row["package_id"]] = row
+    return latest
+
+
+def packages_to_api(conn, rows, viewer_id=None):
+    """List serializer — batched counts/creators/versions (no N+1)."""
+    rows = list(rows)
+    if not rows:
+        return []
+    package_ids = [row["id"] for row in rows]
+    creator_ids = list({row["creator_id"] for row in rows if row["creator_id"]})
+
+    creators = {}
+    if creator_ids:
+        placeholders = ",".join("?" * len(creator_ids))
+        for item in conn.execute(
+            f"SELECT * FROM builder_creator_profiles WHERE id IN ({placeholders})", creator_ids
+        ).fetchall():
+            creators[item["id"]] = item
+
+    follower_counts = {cid: 0 for cid in creator_ids}
+    if creator_ids:
+        placeholders = ",".join("?" * len(creator_ids))
+        for item in conn.execute(
+            f"SELECT creator_id, COUNT(*) c FROM builder_creator_follows WHERE creator_id IN ({placeholders}) GROUP BY creator_id",
+            creator_ids,
+        ).fetchall():
+            follower_counts[item["creator_id"]] = item["c"]
+
+    following_ids = set()
+    if viewer_id and creator_ids:
+        placeholders = ",".join("?" * len(creator_ids))
+        following_ids = {
+            item["creator_id"]
+            for item in conn.execute(
+                f"SELECT creator_id FROM builder_creator_follows WHERE user_id=? AND creator_id IN ({placeholders})",
+                (viewer_id, *creator_ids),
+            ).fetchall()
+        }
+
+    saved_ids = set()
+    if viewer_id:
+        placeholders = ",".join("?" * len(package_ids))
+        saved_ids = {
+            item["package_id"]
+            for item in conn.execute(
+                f"SELECT package_id FROM builder_marketplace_saves WHERE user_id=? AND package_id IN ({placeholders})",
+                (viewer_id, *package_ids),
+            ).fetchall()
+        }
+
+    install_counts = {pid: 0 for pid in package_ids}
+    placeholders = ",".join("?" * len(package_ids))
+    for item in conn.execute(
+        f"SELECT package_id, COUNT(*) c FROM builder_package_installations WHERE package_id IN ({placeholders}) AND status='active' GROUP BY package_id",
+        package_ids,
+    ).fetchall():
+        install_counts[item["package_id"]] = item["c"]
+
+    remix_counts = {pid: 0 for pid in package_ids}
+    for item in conn.execute(
+        f"SELECT derived_from_package_id AS package_id, COUNT(*) c FROM builder_package_lineage WHERE derived_from_package_id IN ({placeholders}) GROUP BY derived_from_package_id",
+        package_ids,
+    ).fetchall():
+        remix_counts[item["package_id"]] = item["c"]
+
+    latest_map = _latest_versions_map(conn, package_ids)
+    items = []
+    for row in rows:
+        latest = latest_map.get(row["id"])
+        items.append(
+            package_to_api(
+                conn,
+                row,
+                viewer_id,
+                detail=False,
+                creator_row=creators.get(row["creator_id"]),
+                latest_row=latest,
+                saved=row["id"] in saved_ids,
+                install_count=install_counts.get(row["id"], 0),
+                remix_count=remix_counts.get(row["id"], 0),
+                follower_count=follower_counts.get(row["creator_id"], 0),
+                following=row["creator_id"] in following_ids,
+            )
+        )
+    return items
+
+
+def package_to_api(
+    conn,
+    row,
+    viewer_id=None,
+    detail=False,
+    *,
+    creator_row=None,
+    latest_row=None,
+    saved=None,
+    install_count=None,
+    remix_count=None,
+    follower_count=None,
+    following=None,
+):
     manifest = json_load(row["manifest"], {})
-    creator = conn.execute("SELECT * FROM builder_creator_profiles WHERE id=?", (row["creator_id"],)).fetchone()
-    latest = _version_row(conn, row["id"])
+    creator = creator_row if creator_row is not None else conn.execute(
+        "SELECT * FROM builder_creator_profiles WHERE id=?", (row["creator_id"],)
+    ).fetchone()
+    latest = latest_row if latest_row is not None else _version_row(conn, row["id"])
+    if saved is None:
+        saved = bool(
+            viewer_id
+            and conn.execute(
+                "SELECT 1 FROM builder_marketplace_saves WHERE user_id=? AND package_id=?",
+                (viewer_id, row["id"]),
+            ).fetchone()
+        )
+    if install_count is None:
+        install_count = conn.execute(
+            "SELECT COUNT(*) c FROM builder_package_installations WHERE package_id=? AND status='active'",
+            (row["id"],),
+        ).fetchone()["c"]
+    if remix_count is None:
+        remix_count = conn.execute(
+            "SELECT COUNT(*) c FROM builder_package_lineage WHERE derived_from_package_id=?",
+            (row["id"],),
+        ).fetchone()["c"]
+    name = row["name"] or manifest.get("name") or row["id"]
+    description = row["description"] or manifest.get("description") or ""
+    name, description = _localize_official_package(row["id"], name, description)
     result = {
-        "id": row["id"], "slug": row["slug"], "name": row["name"] or manifest.get("name") or row["id"],
-        "description": row["description"] or manifest.get("description") or "", "package_type": row["package_type"],
+        "id": row["id"], "slug": row["slug"], "name": name,
+        "description": description, "package_type": row["package_type"],
         "version": latest["version"] if latest else (row["latest_version"] or str(row["version"])),
         "visibility": row["visibility"], "category": row["category"] or "", "tags": json_load(row["tags"], []),
         "trust_level": row["trust_level"], "status": row["status"], "moderation_status": row["moderation_status"],
         "license_type": row["license_type"], "usage_rights": json_load(row["usage_rights"], ["install"]),
-        "creator": creator_to_api(conn, creator, viewer_id), "publisher": row["publisher"],
-        "saved": bool(viewer_id and conn.execute("SELECT 1 FROM builder_marketplace_saves WHERE user_id=? AND package_id=?", (viewer_id, row["id"])).fetchone()),
-        "install_count": conn.execute("SELECT COUNT(*) c FROM builder_package_installations WHERE package_id=? AND status='active'", (row["id"],)).fetchone()["c"],
-        "remix_count": conn.execute("SELECT COUNT(*) c FROM builder_package_lineage WHERE derived_from_package_id=?", (row["id"],)).fetchone()["c"],
+        "creator": creator_to_api(
+            conn, creator, viewer_id, follower_count=follower_count, following=following
+        ),
+        "publisher": row["publisher"],
+        "saved": bool(saved),
+        "install_count": install_count,
+        "remix_count": remix_count,
         "published_at": row["published_at"], "deprecated": bool(row["deprecated_at"]),
     }
     if detail and latest:
@@ -359,10 +555,11 @@ def sync_official_template_snapshot(conn, project_id):
     snapshot["entry_points"] = []
     snapshot["route_ownership"] = []
     source_project = snapshot.get("project") or {}
-    source_project.update({"name": "Business & Customer App", "legacy_source_type": None, "legacy_source_id": None, "status": "draft"})
+    source_project.update({"name": "Customer App", "legacy_source_type": None, "legacy_source_id": None, "status": "draft"})
     source_project["settings"] = {
         "runtime_adapter": "hybrid_strangler", "preserve_existing_routes": True,
-        "customer_and_business_are_one_template": True,
+        "customer_and_business_are_one_template": False,
+        "official_app": "zintriq-customer",
     }
     manifest = json_load(package["manifest"], {})
     manifest["version"] = "3.1.0"
@@ -512,7 +709,7 @@ def _materialize_component(conn, project_id, package_id, resources):
     key = f"marketplace.{package_id[:12]}.{original_key}"
     existing = conn.execute("SELECT * FROM builder_component_definitions WHERE project_id=? AND component_key=?", (project_id, key)).fetchone()
     values = [
-        project_id, key, definition.get("name") or "Marketplace Component", definition.get("description") or "",
+        project_id, key, definition.get("name") or "Community Component", definition.get("description") or "",
         definition.get("version") or 1, definition.get("root_structure") or "[]", definition.get("property_schema") or "{}",
         definition.get("slots") or "{}", definition.get("variants") or "{}", definition.get("default_variant") or "default",
         definition.get("data_inputs") or "{}", definition.get("events") or "[]", definition.get("token_dependencies") or "[]",
@@ -543,7 +740,7 @@ def _materialize_component(conn, project_id, package_id, resources):
             """INSERT INTO builder_design_tokens(project_id,token_key,name,category,group_name,values_json,description,updated_at)
                VALUES (?,?,?,?,?,?,?,?) ON CONFLICT(project_id,token_key) DO NOTHING""",
             (project_id, target_key, token.get("name") or target_key, token.get("category") or "color",
-             token.get("group_name") or "Marketplace", token.get("values_json") or "{}", token.get("description") or "", now()),
+             token.get("group_name") or "Community", token.get("values_json") or "{}", token.get("description") or "", now()),
         )
         token_map[source_key] = target_key
     return {"component_definition_id": definition_id, "component_key": key, "tokens": token_map}
@@ -619,33 +816,32 @@ def installation_to_api(conn, row):
 
 
 def register_marketplace_routes(app, context, owned_project):
-    from flask import abort, jsonify, render_template, request
+    from flask import abort, jsonify, request, session
     from app import current_user, db, login_required
 
     def user_name(user):
         return user.get("name") or user.get("display_name") or user.get("email", "Creator").split("@")[0]
 
     @app.get("/app/marketplace")
-    @login_required
-    def marketplace_home():
-        from app import workspace_snapshot
-        owner_id = current_user()["id"]
-        return render_template(
-            "zintriq/marketplace.html",
-            page_title="Marketplace",
-            workspace=workspace_snapshot(owner_id),
-        )
+    def marketplace_legacy_redirect():
+        """Legacy path — Community HTML is desktop-only via studio_community."""
+        from desktop.server_mode import desktop_enabled
+        from flask import abort, redirect
+
+        if desktop_enabled():
+            return redirect("/app/community", code=301)
+        abort(404)
 
     @app.get("/api/marketplace/packages")
-    @login_required
     def marketplace_packages():
         user = current_user()
+        viewer_id = int(user["id"]) if user else None
         query, package_type, category = request.args.get("q", "").strip().lower(), request.args.get("type", ""), request.args.get("category", "")
         with db() as conn:
             rows = conn.execute(
                 "SELECT * FROM builder_packages WHERE status='active' AND moderation_status='active' AND visibility IN ('public','official') ORDER BY trust_level='official' DESC,published_at DESC,id"
             ).fetchall()
-            items = [package_to_api(conn, row, int(user["id"])) for row in rows]
+            items = packages_to_api(conn, rows, viewer_id)
             if query:
                 items = [item for item in items if query in " ".join([item["name"], item["description"], item["publisher"], item["category"], *item["tags"]]).lower()]
             if package_type:
@@ -655,16 +851,25 @@ def register_marketplace_routes(app, context, owned_project):
             return jsonify({"packages": items, "count": len(items)})
 
     @app.get("/api/marketplace/packages/<path:package_id>")
-    @login_required
     def marketplace_package_detail(package_id):
         user = current_user()
+        viewer_id = int(user["id"]) if user else None
         with db() as conn:
             row = conn.execute("SELECT * FROM builder_packages WHERE id=?", (package_id,)).fetchone()
-            viewer_profile = conn.execute("SELECT id FROM builder_creator_profiles WHERE user_id=?", (user["id"],)).fetchone()
-            if not row or (row["visibility"] == "private" and row["creator_id"] != (viewer_profile["id"] if viewer_profile else None)):
+            viewer_profile = None
+            if viewer_id:
+                viewer_profile = conn.execute(
+                    "SELECT id FROM builder_creator_profiles WHERE user_id=?", (viewer_id,)
+                ).fetchone()
+            viewer_creator_id = viewer_profile["id"] if viewer_profile else None
+            if not package_visible_to_viewer(row, viewer_creator_id):
                 abort(404)
-            conn.execute("INSERT INTO builder_marketplace_events(user_id,package_id,event_type) VALUES (?,?,'view')", (user["id"], package_id))
-            return jsonify(package_to_api(conn, row, int(user["id"]), True))
+            if viewer_id:
+                conn.execute(
+                    "INSERT INTO builder_marketplace_events(user_id,package_id,event_type) VALUES (?,?,'view')",
+                    (viewer_id, package_id),
+                )
+            return jsonify(package_to_api(conn, row, viewer_id, True))
 
     @app.get("/api/marketplace/creators/<handle>")
     @login_required

@@ -1821,5 +1821,17 @@
   "owner.add_shop_qr": "Добавить Shop QR",
   "studio.editor.publish": "Publish",
   "owner.builder": "Builder",
-  "studio.dash.eyebrow": "Studio"
+  "studio.dash.eyebrow": "Studio",
+  "home.hero.kicker": "Верстак · на этом компьютере",
+  "product.kicker": "Строй что угодно в одном пространстве",
+  "hw.kicker": "Одна цель · то же пространство",
+  "dl.kicker": "Установи · потом делай",
+  "pricing.kicker": "Всё пространство · любой план",
+  "docs.kicker": "Короткие заметки · для приложения",
+  "about.kicker": "Метапространство · без стен",
+  "contact.kicker": "Напиши · мы ответим",
+  "sec.kicker": "Сначала здесь · этот компьютер",
+  "changelog.kicker": "Заметки · после каждого выпуска",
+  "compare.kicker": "То же пространство · другие инструменты",
+  "translate.kicker": "Языки · ты их приносишь"
 }

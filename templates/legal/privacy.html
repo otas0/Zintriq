@@ -1,150 +1,150 @@
 {% extends 'legal/base.html' %}
-{% block legal_title %}Privacy Policy{% endblock %}
-{% block legal_heading %}PRIVACY POLICY – GLOBAL COMPLIANCE (GDPR / PIPL / CCPA / LGPD){% endblock %}
-{% block legal_meta %}<p class="legal-doc__meta">Effective Date: August 21, 2026</p>{% endblock %}
+{% block legal_title %}{{ _('legal.privacy.title') }}{% endblock %}
+{% block legal_heading %}{{ _('legal.privacy.heading') }}{% endblock %}
+{% block legal_meta %}<p class="legal-doc__meta">{{ _('legal.privacy.effective') }}</p>{% endblock %}
 {% block legal_body %}
 <section>
-  <h2>1. OPERATOR AND DATA CONTROLLER INFORMATION</h2>
-  <p>zintriq (hereinafter "we", "us", or "our") operates this website as an individual student project.</p>
+  <h2>{{ _('legal.privacy.s1_h2') }}</h2>
+  <p>{{ _('legal.privacy.s1_p1') }}</p>
   <table>
     <tbody>
-      <tr><th>Operational Base</th><td>Shanghai, People's Republic of China</td></tr>
-      <tr><th>Data Storage Location</th><td>Frankfurt, Germany (European Union)</td></tr>
-      <tr><th>Contact Email</th><td><a href="mailto:{{ contact_email }}">{{ contact_email }}</a></td></tr>
+      <tr><th>{{ _('legal.privacy.th_operational_base') }}</th><td>{{ _('legal.privacy.td_shanghai') }}</td></tr>
+      <tr><th>{{ _('legal.privacy.th_data_storage') }}</th><td>{{ _('legal.privacy.td_frankfurt') }}</td></tr>
+      <tr><th>{{ _('legal.privacy.th_contact_email') }}</th><td><a href="mailto:{{ contact_email }}">{{ contact_email }}</a></td></tr>
     </tbody>
   </table>
-  <p>For the purposes of the General Data Protection Regulation (GDPR), we act as the Data Controller. As we operate from China and store data in Germany, our representative for EU data protection matters is reachable via the contact email above.</p>
+  <p>{{ _('legal.privacy.s1_p2') }}</p>
 </section>
 
 <section>
-  <h2>2. DATA WE COLLECT</h2>
+  <h2>{{ _('legal.privacy.s2_h2') }}</h2>
   <table>
     <thead>
-      <tr><th>Category</th><th>Data Points</th><th>Legal Basis</th></tr>
+      <tr><th>{{ _('legal.privacy.th_category') }}</th><th>{{ _('legal.privacy.th_data_points') }}</th><th>{{ _('legal.privacy.th_legal_basis') }}</th></tr>
     </thead>
     <tbody>
       <tr>
-        <td>Mandatory</td>
-        <td>Phone Number</td>
-        <td>Contractual Necessity (GDPR Art. 6(1)(b) / PIPL Art. 13(1)(2)) – required for account authentication, bot prevention, and service delivery.</td>
+        <td>{{ _('legal.privacy.row_mandatory') }}</td>
+        <td>{{ _('legal.privacy.row_mandatory_data') }}</td>
+        <td>{{ _('legal.privacy.row_mandatory_basis') }}</td>
       </tr>
       <tr>
-        <td>Optional</td>
-        <td>Email Address</td>
-        <td>Legitimate Interest / Consent – used solely for account recovery and major service updates.</td>
+        <td>{{ _('legal.privacy.row_optional') }}</td>
+        <td>{{ _('legal.privacy.row_optional_data') }}</td>
+        <td>{{ _('legal.privacy.row_optional_basis') }}</td>
       </tr>
       <tr>
-        <td>Automated</td>
-        <td>IP address, browser type, device fingerprints, operating system</td>
-        <td>Legitimate Interest – collected for security logging, fraud prevention, and anonymized analytics via privacy-first tools.</td>
+        <td>{{ _('legal.privacy.row_automated') }}</td>
+        <td>{{ _('legal.privacy.row_automated_data') }}</td>
+        <td>{{ _('legal.privacy.row_automated_basis') }}</td>
       </tr>
     </tbody>
   </table>
-  <p>We do NOT collect or process any payment information (credit cards, bank details). All financial transactions occur on third-party platforms.</p>
+  <p>{{ _('legal.privacy.s2_no_payment') }}</p>
 </section>
 
 <section>
-  <h2>3. CROSS-BORDER DATA TRANSFER (CRITICAL)</h2>
-  <p>Your personal data is transferred from your location to our servers located in Frankfurt, Germany (European Union).</p>
+  <h2>{{ _('legal.privacy.s3_h2') }}</h2>
+  <p>{{ _('legal.privacy.s3_p1') }}</p>
   <ul>
-    <li><strong>For Chinese Users (PIPL Compliance):</strong> By registering and providing your phone number, you provide separate, explicit consent to this cross-border data transfer as required by Article 38 of the Personal Information Protection Law of the People's Republic of China. We do not transfer your data to any country outside the EU.</li>
-    <li><strong>For EU Users (GDPR Compliance):</strong> Data transfers from the EU to Germany (intra-EU) do not require additional safeguards. All processing occurs within the EU legal framework.</li>
-    <li><strong>For Users in Other Regions:</strong> Your data is stored exclusively in the EU.</li>
+    <li><strong>{{ _('legal.privacy.s3_cn_label') }}</strong> {{ _('legal.privacy.s3_cn_body') }}</li>
+    <li><strong>{{ _('legal.privacy.s3_eu_label') }}</strong> {{ _('legal.privacy.s3_eu_body') }}</li>
+    <li><strong>{{ _('legal.privacy.s3_other_label') }}</strong> {{ _('legal.privacy.s3_other_body') }}</li>
   </ul>
 </section>
 
 <section>
-  <h2>4. COOKIES AND THIRD-PARTY TRACKING</h2>
+  <h2>{{ _('legal.privacy.s4_h2') }}</h2>
   <ul>
-    <li><strong>Essential Cookies:</strong> We use strictly necessary session cookies to keep you logged in and maintain security.</li>
-    <li><strong>Third-Party Cookies:</strong> Our embedded widgets (payment gateways, review platforms, and social media buttons) may place their own cookies. We do not control these cookies. We recommend reviewing the privacy policies of PayPal, Stripe, Trustpilot, Google, and other third-party platforms you interact with via zintriq.</li>
-    <li><strong>No Advertising Cookies:</strong> We do NOT use behavioral advertising, cross-site tracking, or marketing cookies.</li>
+    <li><strong>{{ _('legal.privacy.s4_essential_label') }}</strong> {{ _('legal.privacy.s4_essential_body') }}</li>
+    <li><strong>{{ _('legal.privacy.s4_third_label') }}</strong> {{ _('legal.privacy.s4_third_body') }}</li>
+    <li><strong>{{ _('legal.privacy.s4_no_ad_label') }}</strong> {{ _('legal.privacy.s4_no_ad_body') }}</li>
   </ul>
 </section>
 
 <section>
-  <h2>5. DATA RETENTION AND DELETION</h2>
+  <h2>{{ _('legal.privacy.s5_h2') }}</h2>
   <ul>
-    <li>Your personal data is retained for the duration of your active account.</li>
-    <li>Upon your request for account deletion, all identifiable data (including phone number and email) will be permanently anonymized or erased within 30 days.</li>
-    <li>We may retain anonymized, non-identifiable data for statistical purposes.</li>
+    <li>{{ _('legal.privacy.s5_li1') }}</li>
+    <li>{{ _('legal.privacy.s5_li2') }}</li>
+    <li>{{ _('legal.privacy.s5_li3') }}</li>
   </ul>
 </section>
 
 <section>
-  <h2>6. YOUR DATA SUBJECT RIGHTS</h2>
-  <p>You have the following rights under applicable data protection laws:</p>
+  <h2>{{ _('legal.privacy.s6_h2') }}</h2>
+  <p>{{ _('legal.privacy.s6_intro') }}</p>
   <ul>
-    <li><strong>Right to Access</strong> – Request a copy of the data we hold about you.</li>
-    <li><strong>Right to Rectification</strong> – Correct inaccurate or incomplete data.</li>
-    <li><strong>Right to Erasure ("Right to be Forgotten")</strong> – Request deletion of your data.</li>
-    <li><strong>Right to Restriction</strong> – Restrict processing of your data.</li>
-    <li><strong>Right to Data Portability</strong> – Receive your data in a structured, machine-readable format.</li>
-    <li><strong>Right to Withdraw Consent</strong> – Withdraw your consent to cross-border data transfer at any time (by deleting your account).</li>
+    <li><strong>{{ _('legal.privacy.s6_access_label') }}</strong> {{ _('legal.privacy.s6_access_body') }}</li>
+    <li><strong>{{ _('legal.privacy.s6_rectification_label') }}</strong> {{ _('legal.privacy.s6_rectification_body') }}</li>
+    <li><strong>{{ _('legal.privacy.s6_erasure_label') }}</strong> {{ _('legal.privacy.s6_erasure_body') }}</li>
+    <li><strong>{{ _('legal.privacy.s6_restriction_label') }}</strong> {{ _('legal.privacy.s6_restriction_body') }}</li>
+    <li><strong>{{ _('legal.privacy.s6_portability_label') }}</strong> {{ _('legal.privacy.s6_portability_body') }}</li>
+    <li><strong>{{ _('legal.privacy.s6_withdraw_label') }}</strong> {{ _('legal.privacy.s6_withdraw_body') }}</li>
   </ul>
-  <p>To exercise these rights, submit a verifiable request via: <a href="mailto:{{ contact_email }}">{{ contact_email }}</a>.</p>
+  <p>{{ _('legal.privacy.s6_exercise') }} <a href="mailto:{{ contact_email }}">{{ contact_email }}</a>.</p>
 </section>
 
 <section>
-  <h2>7. SECURITY MEASURES</h2>
-  <p>We implement industry-standard security measures to protect your data, including encryption in transit (TLS/SSL), secure server configurations, and Cloudflare DDoS protection. However, no method of transmission over the internet is 100% secure. You use the Platform at your own risk.</p>
+  <h2>{{ _('legal.privacy.s7_h2') }}</h2>
+  <p>{{ _('legal.privacy.s7_p') }}</p>
 </section>
 
 <section>
-  <h2>8. CHILDREN'S PRIVACY</h2>
+  <h2>{{ _('legal.privacy.s8_h2') }}</h2>
   <ul>
-    <li><strong>Global:</strong> The Platform is not intended for individuals under the age of 16.</li>
-    <li><strong>China (PIPL):</strong> The minimum age is 14. Users under 14 must have parental consent.</li>
+    <li><strong>{{ _('legal.privacy.s8_global_label') }}</strong> {{ _('legal.privacy.s8_global_body') }}</li>
+    <li><strong>{{ _('legal.privacy.s8_china_label') }}</strong> {{ _('legal.privacy.s8_china_body') }}</li>
   </ul>
-  <p>We do not knowingly collect data from minors. If we become aware of such collection, we will delete the data immediately.</p>
+  <p>{{ _('legal.privacy.s8_p') }}</p>
 </section>
 
 <section>
-  <h2>9. UPDATES TO THIS POLICY</h2>
-  <p>We reserve the right to update this Privacy Policy at any time. Changes will be posted on this page with an updated Effective Date. Continued use of the Platform constitutes acceptance of the revised policy.</p>
+  <h2>{{ _('legal.privacy.s9_h2') }}</h2>
+  <p>{{ _('legal.privacy.s9_p') }}</p>
 </section>
 
 <section>
-  <h2>10. CONTACT INFORMATION</h2>
-  <p>For any privacy-related inquiries, data requests, or complaints, please contact us at: <a href="mailto:{{ contact_email }}">{{ contact_email }}</a></p>
+  <h2>{{ _('legal.privacy.s10_h2') }}</h2>
+  <p>{{ _('legal.privacy.s10_p') }} <a href="mailto:{{ contact_email }}">{{ contact_email }}</a></p>
   <ul>
-    <li>For Chinese users, we will respond within 15 working days as required by PIPL.</li>
-    <li>For EU users, we will respond within 30 days as required by GDPR.</li>
+    <li>{{ _('legal.privacy.s10_li_cn') }}</li>
+    <li>{{ _('legal.privacy.s10_li_eu') }}</li>
   </ul>
 </section>
 
 <section>
-  <h2>REGION-SPECIFIC APPENDIX</h2>
+  <h2>{{ _('legal.privacy.appendix_h2') }}</h2>
 
-  <h3>A. SPECIAL PROVISIONS FOR USERS IN THE PEOPLE'S REPUBLIC OF CHINA (PIPL)</h3>
+  <h3>{{ _('legal.privacy.app_a_h3') }}</h3>
   <ul>
-    <li><strong>Age Requirement:</strong> You must be at least 14 years old to use zintriq. If you are under 14, parental consent is required.</li>
-    <li><strong>Cross-Border Transfer Consent:</strong> By registering, you explicitly consent to the transfer of your personal information to servers located in Frankfurt, Germany (EU).</li>
-    <li><strong>Your Rights:</strong> You have the right to access, correct, delete, and withdraw consent. Contact us at <a href="mailto:{{ contact_email }}">{{ contact_email }}</a>.</li>
-    <li><strong>Response Time:</strong> We will respond to your data requests within 15 working days.</li>
-    <li><strong>Complaint Channel:</strong> If unsatisfied with our response, you have the right to file a complaint with the Cyberspace Administration of China (CAC).</li>
+    <li><strong>{{ _('legal.privacy.app_a_age_label') }}</strong> {{ _('legal.privacy.app_a_age_body') }}</li>
+    <li><strong>{{ _('legal.privacy.app_a_transfer_label') }}</strong> {{ _('legal.privacy.app_a_transfer_body') }}</li>
+    <li><strong>{{ _('legal.privacy.app_a_rights_label') }}</strong> {{ _('legal.privacy.app_a_rights_body') }} <a href="mailto:{{ contact_email }}">{{ contact_email }}</a>.</li>
+    <li><strong>{{ _('legal.privacy.app_a_response_label') }}</strong> {{ _('legal.privacy.app_a_response_body') }}</li>
+    <li><strong>{{ _('legal.privacy.app_a_complaint_label') }}</strong> {{ _('legal.privacy.app_a_complaint_body') }}</li>
   </ul>
 
-  <h3>B. SPECIAL PROVISIONS FOR USERS IN THE EUROPEAN UNION (GDPR)</h3>
+  <h3>{{ _('legal.privacy.app_b_h3') }}</h3>
   <ul>
-    <li><strong>Age Requirement:</strong> You must be at least 16 years old to use zintriq.</li>
-    <li><strong>Data Transfers:</strong> All data is stored and processed within the EU (Frankfurt, Germany), ensuring full GDPR compliance.</li>
-    <li><strong>Supervisory Authority:</strong> You have the right to lodge a complaint with the data protection authority of your country of residence.</li>
-    <li><strong>Data Processing Agreement (DPA):</strong> A DPA is available upon request via <a href="mailto:{{ contact_email }}">{{ contact_email }}</a>.</li>
+    <li><strong>{{ _('legal.privacy.app_b_age_label') }}</strong> {{ _('legal.privacy.app_b_age_body') }}</li>
+    <li><strong>{{ _('legal.privacy.app_b_transfer_label') }}</strong> {{ _('legal.privacy.app_b_transfer_body') }}</li>
+    <li><strong>{{ _('legal.privacy.app_b_authority_label') }}</strong> {{ _('legal.privacy.app_b_authority_body') }}</li>
+    <li><strong>{{ _('legal.privacy.app_b_dpa_label') }}</strong> {{ _('legal.privacy.app_b_dpa_body') }} <a href="mailto:{{ contact_email }}">{{ contact_email }}</a>.</li>
   </ul>
 
-  <h3>C. SPECIAL PROVISIONS FOR USERS IN CALIFORNIA, USA (CCPA/CPRA)</h3>
+  <h3>{{ _('legal.privacy.app_c_h3') }}</h3>
   <ul>
-    <li>zintriq does NOT sell, rent, share, or trade your personal data with any third party for cross-context behavioral advertising or any commercial purposes.</li>
-    <li><strong>Right to Opt-Out of Sale:</strong> Not applicable, as we do not sell data.</li>
-    <li><strong>Right to Non-Discrimination:</strong> We do not discriminate against users who exercise their privacy rights.</li>
-    <li>For data access or deletion requests, contact us at <a href="mailto:{{ contact_email }}">{{ contact_email }}</a>.</li>
+    <li>{{ _('legal.privacy.app_c_no_sell') }}</li>
+    <li><strong>{{ _('legal.privacy.app_c_optout_label') }}</strong> {{ _('legal.privacy.app_c_optout_body') }}</li>
+    <li><strong>{{ _('legal.privacy.app_c_nondisc_label') }}</strong> {{ _('legal.privacy.app_c_nondisc_body') }}</li>
+    <li>{{ _('legal.privacy.app_c_contact') }} <a href="mailto:{{ contact_email }}">{{ contact_email }}</a>.</li>
   </ul>
 
-  <h3>D. SPECIAL PROVISIONS FOR USERS IN BRAZIL (LGPD)</h3>
+  <h3>{{ _('legal.privacy.app_d_h3') }}</h3>
   <ul>
-    <li>You have the same rights to access, correct, port, anonymize, and delete your data as listed in Section 6 above.</li>
-    <li>The Brazilian National Data Protection Authority (ANPD) is your supervisory authority.</li>
+    <li>{{ _('legal.privacy.app_d_li1') }}</li>
+    <li>{{ _('legal.privacy.app_d_li2') }}</li>
   </ul>
 </section>
 {% endblock %}

@@ -1,0 +1,18 @@
+{% extends 'marketing_base.html' %}
+{% block title %}{{ _('status.title') }} — Zintriq{% endblock %}
+{% block content %}
+<article class="page site-page">
+  <section class="page-hero">
+    <div>
+      <p class="page-kicker">{{ _('status.kicker') }}</p>
+      <h1>{{ _('status.title') }}</h1>
+      <p class="page-lead">{{ _('status.lead') }}</p>
+      <ul>
+        <li>{{ _('status.item.account') }}</li>
+        <li>{{ _('status.item.sync') }}</li>
+        <li>{{ _('status.item.share') }}</li>
+      </ul>
+    </div>
+  </section>
+</article>
+{% endblock %}

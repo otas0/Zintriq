@@ -95,8 +95,6 @@ SLUG_ICON: dict[str, str] = {
     "tripadvisor": "tripadvisor",
     "yelp": "yelp",
     "trustpilot": "trustpilot",
-    "google_reviews": "google",
-    "google_customer_reviews": "google",
     "facebook_reviews": "facebook",
     "instagram_business": "instagram",
     "linkedin_company": "linkedin",
@@ -140,7 +138,6 @@ SLUG_ICON: dict[str, str] = {
     "tiktok_business": "tiktok",
     "tiktok_shop": "tiktok",
     "whatsapp_business": "whatsapp",
-    "youtube_brand": "youtube",
     "tap_and_go": "octopus",
     "line_official": "line",
     "rabbit_line_pay": "line",
@@ -194,7 +191,6 @@ SLUG_ICON: dict[str, str] = {
     "paidy": "paidy",
     "samsung_pay": "samsungpay",
     "apple_pay": "applepay",
-    "google_pay": "googlepay",
     "coinbase": "coinbase",
     "bitpay": "bitpay",
     "clover": "clover",
@@ -444,10 +440,10 @@ def _fetch_wikimedia(slug: str) -> bytes | None:
     return None
 
 
-def _fetch_google_favicon(domain: str) -> bytes | None:
+def _fetch_ddg_favicon(domain: str) -> bytes | None:
     if not domain:
         return None
-    url = f"https://www.google.com/s2/favicons?domain={urllib.parse.quote(domain)}&sz=128"
+    url = f"https://icons.duckduckgo.com/ip3/{urllib.parse.quote(domain)}.ico"
     return fetch(url, timeout=12)
 
 
@@ -516,8 +512,8 @@ def fetch_logo(slug: str, index: dict[str, dict], *, force: bool) -> str:
         source = "domain-favicon"
     if not data:
         domain = (PLUGIN_BRANDS.get(slug) or {}).get("domain") or ""
-        data = _fetch_google_favicon(domain)
-        source = "google-favicon"
+        data = _fetch_ddg_favicon(domain)
+        source = "ddg-favicon"
     if data:
         try:
             if save(slug, data):
@@ -547,13 +543,13 @@ def main() -> int:
         "simple-icons-fuzzy": [],
         "wikimedia": [],
         "domain-favicon": [],
-        "google-favicon": [],
+        "ddg-favicon": [],
         "miss": [],
     }
     for i, slug in enumerate(slugs, 1):
         result = fetch_logo(slug, index, force=args.force)
         stats[result].append(slug)
-        if result in ("simple-icons", "simple-icons-source", "simple-icons-fuzzy", "wikimedia", "domain-favicon", "google-favicon"):
+        if result in ("simple-icons", "simple-icons-source", "simple-icons-fuzzy", "wikimedia", "domain-favicon", "ddg-favicon"):
             print(f"OK [{i}/{len(slugs)}] {slug} ({result})")
         elif result == "miss":
             print(f"MISS [{i}/{len(slugs)}] {slug}")
@@ -566,7 +562,7 @@ def main() -> int:
         + len(stats["simple-icons-fuzzy"])
         + len(stats["wikimedia"])
         + len(stats["domain-favicon"])
-        + len(stats["google-favicon"])
+        + len(stats["ddg-favicon"])
     )
     print(
         f"\nDone — skip={len(stats['skip'])} fetched={got} missing={len(stats['miss'])}"
@@ -580,7 +576,7 @@ def main() -> int:
             if slug not in REMOTE_OFFICIAL:
                 domain = (PLUGIN_BRANDS.get(slug) or {}).get("domain") or ""
                 if domain:
-                    REMOTE_OFFICIAL[slug] = f"https://www.google.com/s2/favicons?domain={domain}&sz=128"
+                    REMOTE_OFFICIAL[slug] = f"https://icons.duckduckgo.com/ip3/{domain}.ico"
             url = REMOTE_OFFICIAL.get(slug)
             if url:
                 (OUT / f"{slug}.svg").write_text(wrap_remote(slug, url), encoding="utf-8")

@@ -18,12 +18,20 @@ def email_provider_name() -> str:
 
 
 def calendar_provider_name() -> str:
-    return (os.environ.get("CALENDAR_PROVIDER") or "google").strip().lower()
+    # Local / CalDAV only — Google Calendar is not offered.
+    return (os.environ.get("CALENDAR_PROVIDER") or "none").strip().lower()
 
 
 def auth_configured() -> bool:
     provider = auth_provider_name()
-    if provider in ("auth0", "clerk", "supabase"):
+    if provider == "auth0":
+        return bool(
+            os.environ.get("AUTH0_DOMAIN")
+            and os.environ.get("AUTH0_CLIENT_ID")
+            and os.environ.get("AUTH0_CLIENT_SECRET")
+            and os.environ.get("AUTH0_CALLBACK_URL")
+        )
+    if provider in ("clerk", "supabase"):
         return bool(os.environ.get("AUTH_PROVIDER_KEY") or os.environ.get(f"{provider.upper()}_CLIENT_ID"))
     return provider == "local"
 
@@ -61,6 +69,7 @@ def integration_status() -> dict:
         },
         "calendar": {
             "provider": calendar_provider_name(),
-            "configured": calendar_provider_name() == "google",
+            "configured": calendar_provider_name() in ("caldav", "local")
+            and bool(os.environ.get("CALENDAR_PROVIDER_KEY") or os.environ.get("CALDAV_URL")),
         },
     }

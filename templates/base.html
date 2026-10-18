@@ -1,83 +1,162 @@
 <!doctype html>
-<html lang="{{ html_lang|default('en') }}" dir="{{ ui_lang_dir|default('ltr') }}">
+<html lang="{{ html_lang|default('en') }}" dir="{{ ui_lang_dir|default('ltr') }}"{% if html_theme %} data-theme="{{ html_theme }}"{% endif %} data-theme-pref="{{ html_theme_pref|default('system') }}">
 <head>
   {% include 'partials/theme_init.html' %}
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="ui-lang" content="{{ ui_lang|default('en') }}">
   <title>{% block title %}Zintriq{% endblock %}</title>
+  <link rel="canonical" href="{{ seo_canonical }}">
+  {% for code, href in seo_hreflang %}
+  <link rel="alternate" hreflang="{{ code }}" href="{{ href }}">
+  {% endfor %}
+  <meta name="description" content="{{ seo_description }}">
+  {% if seo_noindex %}<meta name="robots" content="noindex, nofollow">{% endif %}
+  <meta property="og:site_name" content="Zintriq">
+  <meta property="og:type" content="website">
+  <meta property="og:title" content="{% block og_title %}{{ self.title() }}{% endblock %}">
+  <meta property="og:description" content="{{ seo_description }}">
+  <meta property="og:url" content="{{ seo_og_url }}">
+  <meta property="og:locale" content="{{ seo_og_locale }}">
   <meta name="csrf-token" content="{{ csrf_token() }}">
   {% include 'partials/favicon_links.html' %}
-  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/geist@1.3.1/dist/fonts/geist-sans/style.min.css">
+  {% block font_preload %}
+  <link rel="preload" href="{{ url_for('static', filename='fonts/InterVariable.woff2') }}" as="font" type="font/woff2" crossorigin>
+  {% endblock %}
+  {% block site_css %}
   <link rel="stylesheet" href="{{ url_for('static', filename='tokens.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/base.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/components.css') }}">
   <link rel="stylesheet" href="{{ url_for('static', filename='materials.css') }}">
   <link rel="stylesheet" href="{{ url_for('static', filename='system.css') }}">
   <link rel="stylesheet" href="{{ url_for('static', filename='marketing.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/pages.css') }}">
   <link rel="stylesheet" href="{{ url_for('static', filename='legal.css') }}">
+  {% endblock %}
   {% block public_head %}{% endblock %}
 </head>
-<body class="material-canvas mq-app mq-density-customer mq-public">
-  <header class="material-panel mq-public-header" id="mq-public-header">
-    <div class="mq-public-header__inner">
-      <a class="mq-shell-brand" href="{{ url_for('index') }}" aria-label="zintriq">
-        {% with class='mq-shell-brand__logo zintriq-logo', width=180, height=48 %}
+<body class="material-canvas mq-app mq-density-customer mq-public{% block body_class %}{% endblock %}">
+  <a class="mq-skip" href="#mq-main">{{ _('nav.skip') }}</a>
+  {% set auth_return = (request.path ~ ('?' ~ request.query_string.decode('utf-8', 'ignore') if request.query_string else '')) if request.path not in ('/login', '/register') and request.path.startswith('/') else '' %}
+  {% set _auth_gate = (request.endpoint or '') in (
+    'login', 'register', 'login_device', 'two_factor_login',
+    'account_verify_phone', 'forgot_password', 'forgot_password_verify',
+    'reset_password', 'magic_link'
+  ) %}
+  {% block public_header %}
+  {% set _path = request.path or '/' %}
+  {% if _path != '/' and _path.endswith('/') %}{% set _path = _path[:-1] %}{% endif %}
+  <header class="site-header mq-public-header" id="mq-public-header">
+    <div class="site-header__inner mq-public-header__inner">
+      <a class="site-header__brand mq-shell-brand" href="{{ murl('/') }}" aria-label="zintriq">
+        {% with variant='theme', class='mq-shell-brand__logo zintriq-logo', width=180, height=48 %}
         {% include 'partials/brand_logo.html' %}
         {% endwith %}
       </a>
-      <nav class="mq-public-nav" aria-label="Main">
-        {% if current_user %}
-        <a href="{{ url_for('workspace_dashboard') }}">Dashboard</a>
-        <a href="{{ url_for('account') }}">Account</a>
+      <nav class="site-nav mq-public-nav" aria-label="{{ _('aria.nav_main') }}">
+      <div class="site-nav__links">
+        <a href="{{ murl('/product') }}"{% if _path.endswith('/product') %} aria-current="page"{% endif %}>{{ _('nav.product') }}</a>
+        <a href="{{ murl('/hardware') }}"{% if _path.endswith('/hardware') %} aria-current="page"{% endif %}>{{ _('nav.hardware') }}</a>
+        <a href="{{ murl('/pricing') }}"{% if _path.endswith('/pricing') %} aria-current="page"{% endif %}>{{ _('nav.pricing') }}</a>
+        <a href="{{ murl('/docs') }}"{% if _path.endswith('/docs') %} aria-current="page"{% endif %}>{{ _('nav.docs') }}</a>
+        <a href="{{ murl('/download') }}"{% if _path.endswith('/download') %} aria-current="page"{% endif %}>{{ _('nav.download') }}</a>
+      </div>
+      <div class="site-nav__end">
+        {% if current_user and not _auth_gate %}
+        <a href="{{ url_for('account') }}">{{ _('nav.account') }}</a>
         <form method="post" action="{{ url_for('logout') }}">
           <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-          <button type="submit">Sign out</button>
+          <button type="submit">{{ _('nav.logout') }}</button>
+        </form>
+        {% elif current_user and _auth_gate %}
+        <form method="post" action="{{ url_for('logout') }}">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+          <button type="submit">{{ _('nav.logout') }}</button>
         </form>
         {% else %}
-        <a href="{{ url_for('index') }}#product">Product</a>
-        <a href="{{ url_for('index') }}#solutions">Solutions</a>
-        <a href="{{ url_for('login') }}">Login</a>
-        <a class="mq-btn mq-btn-primary" href="{{ url_for('register') }}">Create QR</a>
+        <a href="{{ url_for('login', next=auth_return or None) }}">{{ _('nav.login') }}</a>
+        <a href="{{ url_for('register', next=auth_return or None) }}">{{ _('nav.signup') }}</a>
         {% endif %}
+        {% include 'partials/lang_switch_btn.html' %}
+        {% with theme_switch_id='nav' %}{% include 'partials/theme_switch.html' %}{% endwith %}
+      </div>
       </nav>
-      <button type="button" class="material-tool mq-menu-toggle" id="mq-menu-toggle" aria-label="Open menu" aria-expanded="false">☰</button>
+      <div class="site-header__mobile">
+        <a class="site-header__pricing-link" href="{{ murl('/pricing') }}">{{ _('nav.pricing') }}</a>
+        <button type="button" class="site-menu-btn" id="site-menu-btn" aria-haspopup="dialog" aria-controls="site-menu" aria-expanded="false">{{ _('nav.menu') }}</button>
+      </div>
     </div>
-    <nav class="mq-mobile-nav" id="mq-mobile-nav" aria-label="Mobile">
-      {% if current_user %}
-      <a href="{{ url_for('workspace_dashboard') }}">Dashboard</a>
-      <a href="{{ url_for('account') }}">Account</a>
+  </header>
+  <div id="site-menu" class="site-menu" popover="manual" role="dialog" aria-label="{{ _('nav.menu') }}">
+    <div class="site-menu__top">
+      <a class="site-header__brand" href="{{ murl('/') }}" aria-label="zintriq" data-close-menu>
+        {% with variant='theme', class='mq-shell-brand__logo zintriq-logo', width=140, height=36 %}
+        {% include 'partials/brand_logo.html' %}
+        {% endwith %}
+      </a>
+      <button type="button" class="site-menu-btn" data-close-menu>{{ _('nav.close_menu') }}</button>
+    </div>
+    <nav class="site-menu__list" aria-label="{{ _('nav.mobile') }}">
+      <a href="{{ murl('/product') }}" data-close-menu{% if _path.endswith('/product') %} aria-current="page"{% endif %}>{{ _('nav.product') }}</a>
+      <a href="{{ murl('/hardware') }}" data-close-menu{% if _path.endswith('/hardware') %} aria-current="page"{% endif %}>{{ _('nav.hardware') }} <span class="badge-soon">{{ _('home.hw.badge') }}</span></a>
+      <a href="{{ murl('/pricing') }}" data-close-menu{% if _path.endswith('/pricing') %} aria-current="page"{% endif %}>{{ _('nav.pricing') }}</a>
+      <a href="{{ murl('/docs') }}" data-close-menu{% if _path.endswith('/docs') %} aria-current="page"{% endif %}>{{ _('nav.docs') }}</a>
+      <a href="{{ murl('/download') }}" data-close-menu{% if _path.endswith('/download') %} aria-current="page"{% endif %}>{{ _('nav.download') }}</a>
+      {% if current_user and not _auth_gate %}
+      <a href="{{ url_for('account') }}" data-close-menu>{{ _('nav.account') }}</a>
       <form method="post" action="{{ url_for('logout') }}">
         <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-        <button type="submit">Sign out</button>
+        <button type="submit">{{ _('nav.logout') }}</button>
+      </form>
+      {% elif current_user and _auth_gate %}
+      <form method="post" action="{{ url_for('logout') }}">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <button type="submit">{{ _('nav.logout') }}</button>
       </form>
       {% else %}
-      <a href="{{ url_for('index') }}#product">Product</a>
-      <a href="{{ url_for('index') }}#solutions">Solutions</a>
-      <a href="{{ url_for('login') }}">Login</a>
-      <a href="{{ url_for('register') }}">Create QR</a>
+      <a href="{{ url_for('login', next=auth_return or None) }}" data-close-menu>{{ _('nav.login') }}</a>
+      <a href="{{ url_for('register', next=auth_return or None) }}" data-close-menu>{{ _('nav.signup') }}</a>
       {% endif %}
+      {% with theme_switch_id='menu' %}{% include 'partials/theme_switch.html' %}{% endwith %}
+      {% include 'partials/lang_switch_btn.html' %}
     </nav>
-  </header>
+    <div class="site-menu__foot">
+      <a class="btn-primary" href="{{ murl('/download') }}" data-close-menu>{{ _('nav.download') }}</a>
+    </div>
+  </div>
+  {% include 'partials/lang_dialog.html' %}
+  {% endblock %}
+  {% if i18n_partial %}
+  <p class="mq-i18n-partial" role="status">
+    <span dir="auto">{{ _('i18n.partial', language=i18n_active_name, fallback=i18n_fallback_name) }}</span>
+    <a href="{{ murl('/translate') }}">{{ _('footer.help_translate') }}</a>
+  </p>
+  {% endif %}
 
   {% with messages = get_flashed_messages(with_categories=true) %}
     {% if messages %}
     <div class="mq-flash-wrap">
       {% for category, message in messages %}
-      <div class="material-feedback mq-flash mq-flash-{{ category }}" role="status">{{ message }}</div>
+      <div class="material-feedback mq-flash mq-flash-{{ category }}" role="status">{{ _(message) }}</div>
       {% endfor %}
     </div>
     {% endif %}
   {% endwith %}
 
-  <main class="material-sheet mq-public-main">{% block content %}{% endblock %}</main>
+  {% include 'partials/region_mismatch.html' %}
+
+  <main class="material-sheet mq-public-main" id="mq-main">{% block content %}{% endblock %}</main>
 
   <footer class="mq-public-footer">
     {% include 'partials/site_footer.html' %}
   </footer>
 
-  <script src="{{ url_for('static', filename='marketing.js') }}"></script>
-  <script type="module" src="{{ url_for('static', filename='i18n/legacy-dom-i18n.js') }}"></script>
+  <script src="{{ url_for('static', filename='js/site-chrome.js') }}?v=14" defer></script>
+  {% block public_boot_scripts %}
+  <script src="{{ url_for('static', filename='marketing.js') }}" defer></script>
+  {% endblock %}
   {% block public_scripts %}{% endblock %}
-  
+
   <script>
   (function() {
     if (window.__zintriq_error_capture_initialized) return;
@@ -151,5 +230,7 @@
     });
   })();
   </script>
+  <script>window.__MQ_T__ = {{ ui_js_messages|default({})|tojson }};</script>
+  <script src="{{ url_for('static', filename='mq-i18n.js') }}" defer></script>
 </body>
 </html>

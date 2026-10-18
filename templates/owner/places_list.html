@@ -1,12 +1,12 @@
 {% extends 'os_base.html' %}
 {% set os_nav = 'stores' %}
-{% block title %}Place directories — Zintriq{% endblock %}
+{% block title %}{{ _('owner.place_directories') }} — Zintriq{% endblock %}
 {% block os_header %}
-<h1 class="os-page-title">Place directories</h1>
-<p class="os-page-subtitle">One QR for malls, food courts, and markets — list every tenant shop.</p>
+<h1 class="os-page-title">{{ _('owner.place_directories') }}</h1>
+<p class="os-page-subtitle">{{ _('owner.places_list_subtitle') }}</p>
 {% endblock %}
 {% block os_actions %}
-<a class="os-btn os-btn-primary" href="{{ url_for('manage_places_new') }}">Create place</a>
+<a class="os-btn os-btn-primary" href="{{ url_for('manage_places_new') }}">{{ _('owner.create_place') }}</a>
 {% endblock %}
 {% block os_content %}
 <section class="os-card os-card-padded place-owner-list">
@@ -18,7 +18,7 @@
         <div class="place-owner-card__body">
           <h2 class="place-owner-card__name">{{ p.name }}</h2>
           {% if p.address %}<p class="place-owner-card__meta">{{ p.address }}</p>{% endif %}
-          <p class="place-owner-card__meta">{{ p.tenant_count }} shop{% if p.tenant_count != 1 %}s{% endif %} · /place/{{ p.slug }}{% if p.pending_applications %} · <em class="place-pending-badge">{{ p.pending_applications }} pending</em>{% endif %}</p>
+          <p class="place-owner-card__meta">{{ _('owner.n_shops', n=p.tenant_count) }} · /place/{{ p.slug }}{% if p.pending_applications %} · <em class="place-pending-badge">{{ _('owner.n_pending', n=p.pending_applications) }}</em>{% endif %}</p>
         </div>
         <span class="place-owner-card__chev" aria-hidden="true">→</span>
       </a>
@@ -27,9 +27,9 @@
   </ul>
   {% else %}
   <div class="mq-empty">
-    <p><strong>No place directories yet</strong></p>
-    <p>Create one for a mall, food hall, or event market — then add tenant store slugs.</p>
-    <a class="os-btn os-btn-primary" href="{{ url_for('manage_places_new') }}">Create place</a>
+    <p><strong>{{ _('owner.no_places_yet') }}</strong></p>
+    <p>{{ _('owner.no_places_hint') }}</p>
+    <a class="os-btn os-btn-primary" href="{{ url_for('manage_places_new') }}">{{ _('owner.create_place') }}</a>
   </div>
   {% endif %}
 </section>

@@ -27,7 +27,12 @@ REPUTATION_PLUGINS = tuple(
     for p in CATALOG_REPUTATION
 )
 
-REMOVED_REPUTATION_SLUGS = ("google_business",)
+REMOVED_REPUTATION_SLUGS = (
+    "google_business",
+    "google_reviews",
+    "google_customer_reviews",
+    "youtube_brand",
+)
 
 CORE_SCHEMA_SQL = """
 CREATE TABLE IF NOT EXISTS surveys (
@@ -137,14 +142,9 @@ def init_feedback_core_tables(conn) -> None:
     _migrate_feedback_records(conn)
     from integration_platform import purge_removed_plugins
     purge_removed_plugins(conn)
-    for slug in REMOVED_REPUTATION_SLUGS:
-        conn.execute(
-            """DELETE FROM user_integration_connections
-               WHERE plugin_id IN (SELECT id FROM integration_plugins WHERE slug=?)""",
-            (slug,),
-        )
-        conn.execute("DELETE FROM integration_plugins WHERE slug=?", (slug,))
     for p in REPUTATION_PLUGINS:
+        if p["slug"] in REMOVED_REPUTATION_SLUGS:
+            continue
         conn.execute(
             """INSERT INTO integration_plugins (slug, name, provider, description, category, status)
                VALUES (?, ?, ?, ?, 'reputation', 'available')
@@ -154,6 +154,13 @@ def init_feedback_core_tables(conn) -> None:
                  updated_at=CURRENT_TIMESTAMP""",
             (p["slug"], p["name"], p["slug"], f"Sync reviews from {p['name']}"),
         )
+    for slug in REMOVED_REPUTATION_SLUGS:
+        conn.execute(
+            """DELETE FROM user_integration_connections
+               WHERE plugin_id IN (SELECT id FROM integration_plugins WHERE slug=?)""",
+            (slug,),
+        )
+        conn.execute("DELETE FROM integration_plugins WHERE slug=?", (slug,))
 
 
 def maybe_create_feedback_request(

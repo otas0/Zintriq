@@ -35,10 +35,10 @@ def _login_required(view):
         from customer_account_platform import current_customer_id
 
         if current_customer_id(session) and not session.get("user_id"):
-            flash("You are signed in as a shopper. Business tools need a separate business sign-in.", "error")
+            flash("You're on a published app surface. Sign in to Zintriq to open Builder.", "error")
             return redirect(url_for("login"))
         if not current_user():
-            flash("Please sign in to manage a storefront.", "error")
+            flash("Please sign in to continue.", "error")
             return redirect(url_for("login", next=request.path))
         return view(*args, **kwargs)
 
@@ -68,7 +68,41 @@ def inject_bos_modules():
 
 
 def _redirect_removed():
-    return redirect(url_for("bos.store"))
+    return redirect("/app/builder")
+
+
+def _primary_store_slug(owner_id: int) -> str | None:
+    from app import db
+
+    with db() as conn:
+        row = conn.execute(
+            """
+            SELECT slug FROM stores
+            WHERE owner_id = ?
+            ORDER BY datetime(updated_at) DESC, id DESC
+            LIMIT 1
+            """,
+            (owner_id,),
+        ).fetchone()
+    return row["slug"] if row else None
+
+
+def _manage_hub_redirect(*, flash_message: str, manage_endpoint: str | None = None):
+    """Send owners to live /manage/* when they have a store; otherwise Builder."""
+    user = _current_user()
+    if not user:
+        return redirect(url_for("universal_builder_home"))
+    slug = _primary_store_slug(user["id"])
+    if slug:
+        flash(flash_message, "info")
+        if manage_endpoint:
+            return redirect(url_for(manage_endpoint, slug=slug))
+        return redirect(url_for("manage_store", slug=slug))
+    flash(
+        "Compose and publish a store surface first — live operations open under Manage.",
+        "info",
+    )
+    return redirect(url_for("universal_builder_home"))
 
 
 @bos_bp.get("")
@@ -78,17 +112,26 @@ def home():
 
 
 @bos_bp.get("/store")
-@bos_bp.get("/store/organize")
-@bos_bp.get("/team")
 @_login_required
-def legacy_store_routes():
-    return redirect("/app/builder")
+def store():
+    return _manage_hub_redirect(
+        flash_message="Live store hub — products, QR, and storefront settings.",
+    )
+
+
+@bos_bp.get("/store/organize")
+@_login_required
+def store_organize():
+    return redirect(url_for("store_groups_manage"))
 
 
 @bos_bp.get("/responses")
 @_login_required
 def responses():
-    return redirect(url_for("bos.store", _anchor="responses"))
+    return _manage_hub_redirect(
+        flash_message="Customer requests and responses live in Manage.",
+        manage_endpoint="manage_store_inquiries",
+    )
 
 
 @bos_bp.get("/customers")
@@ -96,13 +139,18 @@ def responses():
 @bos_bp.get("/feedback")
 @_login_required
 def legacy_response_routes():
-    return redirect(url_for("bos.store", _anchor="responses"))
+    return _manage_hub_redirect(
+        flash_message="Customer responses live in Manage.",
+        manage_endpoint="manage_store_inquiries",
+    )
 
 
 @bos_bp.get("/operations")
 @_login_required
 def operations():
-    return redirect(url_for("bos.store", _anchor="responses"))
+    return _manage_hub_redirect(
+        flash_message="Day-to-day operations open from your live store hub.",
+    )
 
 
 @bos_bp.get("/qr")
@@ -121,39 +169,46 @@ def qr_experiences():
                 builder=bool(request.args.get("builder")),
             )
         return redirect(href)
-    return redirect(url_for("bos.store", _anchor="experiences"))
+    return _manage_hub_redirect(
+        flash_message="Customer QR and experiences live in Manage.",
+        manage_endpoint="manage_qr_hub",
+    )
 
 
 @bos_bp.get("/calendar")
 @bos_bp.get("/booking")
-@bos_bp.get("/check-in")
 @_login_required
 def deferred_operations():
-    return redirect(url_for("bos.store", _anchor="experiences"))
+    return _manage_hub_redirect(
+        flash_message="Calendar and booking tie into your published store — open Manage for live ops.",
+    )
+
+
+@bos_bp.get("/check-in")
+@_login_required
+def check_in():
+    return _manage_hub_redirect(
+        flash_message="Check-in points are managed on your live store.",
+        manage_endpoint="manage_check_in",
+    )
 
 
 @bos_bp.get("/team")
 @_login_required
 def team():
-    return redirect("/app/builder")
+    return redirect(url_for("account_workspaces") + "#team")
 
 
 @bos_bp.get("/settings")
 @_login_required
 def settings():
-    from app import workspace_snapshot
-    owner_id = _current_user()["id"]
-    return render_template(
-        "zintriq/settings.html",
-        page_title="Settings",
-        workspace=workspace_snapshot(owner_id),
-    )
+    return redirect(url_for("account_workspaces"))
 
 
 @bos_bp.get("/workspaces")
 @_login_required
 def workspaces():
-    return redirect(url_for("bos.settings"))
+    return redirect(url_for("account_workspaces"))
 
 
 @bos_bp.get("/organizations")
@@ -171,4 +226,4 @@ def removed_v1_modules():
 @bos_bp.get("/legacy/stores")
 @_login_required
 def legacy_stores_redirect():
-    return redirect(url_for("bos.store"))
+    return redirect("/app/builder")

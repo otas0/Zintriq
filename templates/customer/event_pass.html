@@ -1,5 +1,5 @@
 {% extends 'customer_base.html' %}
-{% block title %}{{ attendee.event_name }} — Event Pass{% endblock %}
+{% block title %}{{ attendee.event_name }} — {{ _('customer.event.pass') }}{% endblock %}
 {% block customer_head %}
 <link rel="stylesheet" href="{{ url_for('static', filename='event-passes.css') }}">
 {% endblock %}
@@ -9,7 +9,7 @@
   <div class="ep-customer-cover" style="background-image:url('{{ attendee.cover_image }}')"></div>
   {% endif %}
   <header class="ep-customer-head">
-    <p class="ep-customer-eyebrow">Event Pass</p>
+    <p class="ep-customer-eyebrow">{{ _('customer.event.pass') }}</p>
     <h1>{{ attendee.event_name }}</h1>
     <p class="ep-customer-meta">
       {% if attendee.event_date %}{{ attendee.event_date }}{% endif %}
@@ -25,21 +25,21 @@
 
   <section class="ep-customer-qr">
     <p class="ep-customer-name">{{ attendee.name }}</p>
-    <img src="{{ pass_image }}" alt="Your event pass QR code">
+    <img src="{{ pass_image }}" alt="{{ _('customer.event.qr_alt') }}">
     <span class="os-tag os-tag-{{ attendee.pass_status }} ep-pass-status">{{ attendee.pass_status|replace('_', ' ') }}</span>
   </section>
 
   <section class="ep-customer-instructions">
-    <h2>Entry instructions</h2>
+    <h2>{{ _('customer.event.entry') }}</h2>
     <ul>
-      <li>Show this QR code at the entrance</li>
-      <li>Keep brightness up for faster scanning</li>
-      <li>Each pass works once for check-in</li>
+      <li>{{ _('customer.event.show_qr') }}</li>
+      <li>{{ _('customer.event.brightness') }}</li>
+      <li>{{ _('customer.event.once') }}</li>
     </ul>
   </section>
 
   {% if attendee.pass_status == 'used' or attendee.checked_in_at %}
-  <p class="ep-customer-checked">✓ Checked in{% if attendee.checked_in_at %} · {{ attendee.checked_in_at[:16] }}{% endif %}</p>
+  <p class="ep-customer-checked">{{ _('customer.event.checked_in') }}{% if attendee.checked_in_at %} · {{ attendee.checked_in_at[:16] }}{% endif %}</p>
   {% endif %}
 </article>
 {% endblock %}

@@ -1,7 +1,39 @@
-/** How-it-works popup — guests: every Home visit; members: first visit (server-tracked). */
+/** How-it-works popup — guests: once per browser; members: first visit (server). */
+
+const GUEST_INTRO_KEY = "mq_hub_intro_v1";
 
 function shouldShowOnboarding(modal) {
-  return modal?.dataset.onboardingOpen === "1";
+  if (!modal || modal.dataset.onboardingOpen !== "1") return false;
+  if (modal.dataset.onboardingMode === "guest") {
+    try {
+      if (localStorage.getItem(GUEST_INTRO_KEY) === "1") return false;
+    } catch {
+      /* private mode — still show once this session via sessionStorage */
+      try {
+        if (sessionStorage.getItem(GUEST_INTRO_KEY) === "1") return false;
+      } catch {
+        /* ignore */
+      }
+    }
+  }
+  return true;
+}
+
+function markGuestIntroSeen() {
+  try {
+    localStorage.setItem(GUEST_INTRO_KEY, "1");
+  } catch {
+    try {
+      sessionStorage.setItem(GUEST_INTRO_KEY, "1");
+    } catch {
+      /* ignore */
+    }
+  }
+  try {
+    document.cookie = "mq_hub_intro=1; Path=/; Max-Age=31536000; SameSite=Lax";
+  } catch {
+    /* ignore */
+  }
 }
 
 function csrfToken() {
@@ -34,6 +66,7 @@ function closeOnboarding(modal) {
   modal.classList.remove("is-open");
   modal.setAttribute("aria-hidden", "true");
   document.body.classList.remove("mq-onboard-open");
+  if (modal.dataset.onboardingMode === "guest") markGuestIntroSeen();
   markMemberIntroSeen(modal);
   modal.dataset.closeTimer = String(
     window.setTimeout(() => {

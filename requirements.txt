@@ -2,3 +2,8 @@ Flask>=3.0
 qrcode[pil]>=7.4
 cryptography>=42.0
 waitress==3.0.2
+argon2-cffi>=23.1
+zxcvbn>=4.4
+phonenumbers>=8.13
+coverage>=7.6
+ruff>=0.9

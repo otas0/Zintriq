@@ -1821,5 +1821,17 @@
   "owner.add_block": "Legg til blocco",
   "owner.add_shop_qr": "Legg til Shop QR",
   "studio.editor.publish": "Publish",
-  "owner.builder": "Builder"
+  "owner.builder": "Builder",
+  "home.hero.kicker": "Arbeidsbenk · på denne datamaskinen",
+  "product.kicker": "Bygg hva som helst i ett rom",
+  "hw.kicker": "Ett mål · samme rom",
+  "dl.kicker": "Installer · så lag",
+  "pricing.kicker": "Hele rommet · hver plan",
+  "docs.kicker": "Korte notater · til appen",
+  "about.kicker": "Metarom · ingen vegger",
+  "contact.kicker": "Skriv · vi svarer",
+  "sec.kicker": "Først her · denne maskinen",
+  "changelog.kicker": "Notater · etter hver utgave",
+  "compare.kicker": "Samme rom · andre verktøy",
+  "translate.kicker": "Språk · du tar dem med"
 }

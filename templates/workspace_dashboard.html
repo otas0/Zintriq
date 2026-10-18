@@ -45,6 +45,7 @@
               <span>{{ _('studio.dash.new') }}</span>
             </button>
             {% if desktop_mode %}
+            <a class="zw-btn zw-btn--secondary" href="{{ studio_base }}/meta">Meta editor</a>
             <button class="zw-btn zw-btn--secondary" id="zw-import-project" type="button">导入</button>
             {% endif %}
           </div>
@@ -57,6 +58,47 @@
           <div class="zw-primitive-strip__item"><strong>Connection</strong><span>{{ _('studio.strip.connection') }}</span></div>
           <div class="zw-primitive-strip__item"><strong>Publish</strong><span>{{ _('studio.strip.publish') }}</span></div>
         </div>
+
+        {% if desktop_mode %}
+        <section class="zw-local-meta" id="zw-local-meta" aria-label="Local drafts">
+          <div class="zw-local-meta__head">
+            <h2 class="zw-local-meta__title">On this machine</h2>
+            <a class="zw-local-meta__new" href="{{ studio_base }}/meta">New Meta draft</a>
+            <label class="zw-local-meta__new">Import site zip
+              <input type="file" id="zw-import-site" accept=".zip,application/zip" hidden>
+            </label>
+          </div>
+          <div class="zw-local-meta__cols">
+            <div>
+              <h3 class="zw-local-meta__label">Drafts</h3>
+              <ul class="zw-local-meta__list" id="zw-draft-list">
+                {% for item in local_drafts|default([]) %}
+                <li>
+                  <a href="{{ studio_base }}/meta/{{ item.slug }}">{{ item.slug }}</a>
+                  {% if item.updated_at %}<span>{{ item.updated_at }}</span>{% endif %}
+                </li>
+                {% else %}
+                <li class="zw-local-meta__empty">No drafts yet</li>
+                {% endfor %}
+              </ul>
+            </div>
+            <div>
+              <h3 class="zw-local-meta__label">Built pages</h3>
+              <ul class="zw-local-meta__list" id="zw-artifact-list">
+                {% for item in local_artifacts|default([]) %}
+                <li>
+                  <a href="{{ item.public_url }}/home">{{ item.slug }}</a>
+                  <a href="{{ studio_base }}/meta/{{ item.slug }}">Edit</a>
+                  <a href="/api/builder-core/meta/sites/{{ item.slug }}/zip">Zip</a>
+                </li>
+                {% else %}
+                <li class="zw-local-meta__empty">No /build pages yet</li>
+                {% endfor %}
+              </ul>
+            </div>
+          </div>
+        </section>
+        {% endif %}
 
         <div class="zw-project-grid" id="zw-project-grid"></div>
 
@@ -72,10 +114,9 @@
             </svg>
           </div>
           <h2 class="zw-empty__title">{{ _('studio.dash.empty_title') }}</h2>
-          <p class="zw-empty__text">{{ _('studio.dash.empty_text') }}</p>
+          <p class="zw-empty__text">{% if desktop_mode %}{{ _('studio.dash.empty_text_desktop') }}{% else %}{{ _('studio.dash.empty_text') }}{% endif %}</p>
           <div class="zw-empty__actions">
             <button class="zw-btn zw-btn--primary zw-btn--large" id="zw-empty-create" type="button">{{ _('studio.dash.new') }}</button>
-            <a class="zw-btn zw-btn--secondary zw-btn--large" href="{{ url_for('account_workspaces') }}">{{ _('bos.team') }}</a>
           </div>
         </div>
       </main>
@@ -86,7 +127,7 @@
   <script>
     window.STUDIO_BOOT = {
       basePath: {{ studio_base|tojson }},
-      communityUrl: "/",
+      communityUrl: {{ (community_url or '/app/community')|tojson }},
       studioMode: true,
       desktopMode: {{ 'true' if desktop_mode else 'false' }}
     };

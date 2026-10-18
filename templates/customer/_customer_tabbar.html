@@ -1,14 +1,11 @@
 <div class="ch-tabbar-wrap">
-  <nav class="ch-tabbar" aria-label="Customer navigation">
+  <nav class="ch-tabbar" aria-label="{{ _('nav.customer_nav') }}">
     <a class="ch-tabbar__item{% if customer_nav_tab == 'home' %} is-active{% endif %}" href="{{ url_for('index') }}">
-      <span class="ch-tabbar__label">Home</span>
-    </a>
-    <a class="ch-tabbar__item{% if customer_nav_tab == 'places' %} is-active{% endif %}" href="{{ url_for('index') }}">
-      <span class="ch-tabbar__label">Places{% if guest_recent_count|default(0) > 0 %}<span class="ch-tabbar__badge">{{ guest_recent_count }}</span>{% endif %}</span>
+      <span class="ch-tabbar__label">{{ _('nav.home') }}</span>
     </a>
     <a class="ch-tabbar__item{% if customer_nav_tab == 'account' %} is-active{% endif %}"
-       href="{{ url_for('customer_account_home') }}">
-      <span class="ch-tabbar__label">Account</span>
+       href="{{ work_url(current_work, 'account') }}">
+      <span class="ch-tabbar__label">{{ _('nav.account') }}</span>
     </a>
   </nav>
 </div>

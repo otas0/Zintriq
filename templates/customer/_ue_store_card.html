@@ -5,7 +5,7 @@
        {% if shop.cover_url %}style="background-image:url('{{ shop.cover_url }}')"{% endif %}>
     {% if shop.is_open is not none %}
     <span class="ch-ue-store__badge ch-ue-store__badge--{% if shop.is_open %}open{% else %}closed{% endif %}">
-      {% if shop.is_open %}Open{% else %}Closed{% endif %}
+      {% if shop.is_open %}{{ _('places.open') }}{% else %}{{ _('places.closed') }}{% endif %}
     </span>
     {% endif %}
     <div class="ch-ue-store__logo">
@@ -26,7 +26,7 @@
       {% endif %}
       {% if shop.is_open is not none %}
       <span class="ch-ue-store__dot" aria-hidden="true">•</span>
-      <span class="ch-ue-store__status">{% if shop.is_open %}Open now{% else %}Closed{% endif %}</span>
+      <span class="ch-ue-store__status">{% if shop.is_open %}{{ _('home.open_now') }}{% else %}{{ _('places.closed') }}{% endif %}</span>
       {% endif %}
       {% if shop.category %}
       <span class="ch-ue-store__dot" aria-hidden="true">•</span>

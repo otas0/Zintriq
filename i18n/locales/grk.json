@@ -1822,5 +1822,17 @@
   "owner.add_block": "Προσθήκη block",
   "owner.add_shop_qr": "Προσθήκη shop QR",
   "studio.editor.publish": "Publish",
-  "owner.builder": "Builder"
+  "owner.builder": "Builder",
+  "home.hero.kicker": "Πάγκος · σε αυτόν τον υπολογιστή",
+  "product.kicker": "Φτιάξε ό,τι θέλεις σε έναν χώρο",
+  "hw.kicker": "Ένας στόχος · ο ίδιος χώρος",
+  "dl.kicker": "Εγκατάσταση · μετά φτιάξε",
+  "pricing.kicker": "Όλος ο χώρος · κάθε πλάνο",
+  "docs.kicker": "Σύντομες σημειώσεις · για την εφαρμογή",
+  "about.kicker": "Μεταχώρος · χωρίς τοίχους",
+  "contact.kicker": "Γράψε · απαντάμε",
+  "sec.kicker": "Πρώτα εδώ · αυτός ο υπολογιστής",
+  "changelog.kicker": "Σημειώσεις · μετά από κάθε έκδοση",
+  "compare.kicker": "Ίδιος χώρος · άλλα εργαλεία",
+  "translate.kicker": "Γλώσσες · εσύ τις φέρνεις"
 }

@@ -1,42 +1,42 @@
 {% extends 'owner_base.html' %}
 {% from 'owner/_feedback_nav.html' import feedback_nav %}
 {% set active_tab = 'insights' %}
-{% block title %}Feedback Overview — {{ store.name }}{% endblock %}
+{% block title %}{{ _('owner.feedback_overview_title') }} — {{ store.name }}{% endblock %}
 {% block os_header %}
-<h1 class="os-page-title">Feedback</h1>
-<p class="os-page-subtitle">What is happening with customer feedback today?</p>
+<h1 class="os-page-title">{{ _('owner.feedback') }}</h1>
+<p class="os-page-subtitle">{{ _('owner.feedback_overview_subtitle') }}</p>
 {% endblock %}
 {% block owner_content %}
 {{ feedback_nav(store, fb_section) }}
 
 <section class="fb-stats-row">
-  <article class="fb-stat"><span class="fb-stat__val">{{ analytics.total }}</span><span class="fb-stat__lbl">Total feedback</span></article>
-  <article class="fb-stat"><span class="fb-stat__val">{{ analytics.average_rating }}</span><span class="fb-stat__lbl">Avg rating</span></article>
-  <article class="fb-stat"><span class="fb-stat__val">{{ analytics.pending_replies }}</span><span class="fb-stat__lbl">Pending replies</span></article>
-  <article class="fb-stat"><span class="fb-stat__val">{{ analytics.reply_rate }}%</span><span class="fb-stat__lbl">Response rate</span></article>
+  <article class="fb-stat"><span class="fb-stat__val">{{ analytics.total }}</span><span class="fb-stat__lbl">{{ _('owner.total_feedback') }}</span></article>
+  <article class="fb-stat"><span class="fb-stat__val">{{ analytics.average_rating }}</span><span class="fb-stat__lbl">{{ _('owner.avg_rating') }}</span></article>
+  <article class="fb-stat"><span class="fb-stat__val">{{ analytics.pending_replies }}</span><span class="fb-stat__lbl">{{ _('owner.pending_replies') }}</span></article>
+  <article class="fb-stat"><span class="fb-stat__val">{{ analytics.reply_rate }}%</span><span class="fb-stat__lbl">{{ _('owner.response_rate') }}</span></article>
 </section>
 
 <div class="fb-overview-grid">
   <section class="os-card os-card-padded fb-panel">
-    <h2 class="fb-panel__title">Recent feedback</h2>
+    <h2 class="fb-panel__title">{{ _('owner.recent_feedback') }}</h2>
     {% if analytics.recent %}
     <ul class="fb-recent-list">
       {% for r in analytics.recent %}
       <li>
         <a href="{{ url_for('manage_feedback_detail', slug=store.slug, feedback_id=r.id) }}">
           {% if r.rating %}<span class="fb-stars-inline">{% for i in range(r.rating) %}★{% endfor %}</span>{% endif %}
-          {{ (r.comment or r.title or 'Feedback')[:60] }}{% if (r.comment or '')|length > 60 %}…{% endif %}
+          {{ (r.comment or r.title or _('owner.feedback'))[:60] }}{% if (r.comment or '')|length > 60 %}…{% endif %}
         </a>
         <span class="fb-meta">{{ r.created_at[:10] if r.created_at else '' }}</span>
       </li>
       {% endfor %}
     </ul>
     {% else %}
-    <p class="fb-empty-hint">No feedback yet. Create a template and publish it to start collecting responses.</p>
+    <p class="fb-empty-hint">{{ _('owner.no_feedback_yet') }}</p>
     {% endif %}
   </section>
   <section class="os-card os-card-padded fb-panel">
-    <h2 class="fb-panel__title">Recent activity</h2>
+    <h2 class="fb-panel__title">{{ _('owner.recent_activity') }}</h2>
     {% if analytics.recent_activity %}
     <ul class="fb-activity-list">
       {% for a in analytics.recent_activity %}
@@ -44,7 +44,7 @@
       {% endfor %}
     </ul>
     {% else %}
-    <p class="fb-empty-hint">Activity will appear here as feedback comes in.</p>
+    <p class="fb-empty-hint">{{ _('owner.activity_empty') }}</p>
     {% endif %}
   </section>
 </div>

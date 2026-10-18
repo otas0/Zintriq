@@ -1,0 +1,18 @@
+{% set tid = theme_switch_id|default('main') %}
+{% set pref = html_theme_pref|default('system') %}
+<div class="theme-switch theme-switch--cycle">
+  <span class="visually-hidden" id="theme-label-{{ tid }}">{{ _('theme.label') }}</span>
+  <button
+    type="button"
+    class="theme-switch__cycle"
+    data-theme-cycle
+    aria-label="{{ _('theme.cycle', current=_('theme.' ~ pref)) }}"
+    data-label-system="{{ _('theme.cycle', current=_('theme.system')) }}"
+    data-label-light="{{ _('theme.cycle', current=_('theme.light')) }}"
+    data-label-dark="{{ _('theme.cycle', current=_('theme.dark')) }}"
+  >
+    <span class="inst-lamp" data-lamp="system" aria-hidden="true"></span>
+    <span class="inst-lamp" data-lamp="light" aria-hidden="true"></span>
+    <span class="inst-lamp" data-lamp="dark" aria-hidden="true"></span>
+  </button>
+</div>

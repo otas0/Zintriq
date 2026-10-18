@@ -1,7 +1,7 @@
 {% if store_profile.reviews %}
-<section class="sf-reviews" id="sf-reviews" aria-label="Customer reviews">
+<section class="sf-reviews" id="sf-reviews" aria-label="{{ _('store.customer_reviews') }}">
   <div class="sf-reviews__head">
-    <h2 class="sf-reviews__title">Reviews</h2>
+    <h2 class="sf-reviews__title">{{ _('store.reviews') }}</h2>
     {% if store_profile.ratings.display %}
     <p class="sf-reviews__summary">{{ store_profile.ratings.display }}</p>
     {% endif %}
@@ -12,7 +12,7 @@
       <div class="sf-reviews__meta">
         <strong class="sf-reviews__name">{{ rev.customer_name }}</strong>
         {% if rev.rating %}
-        <span class="sf-reviews__stars" aria-label="{{ rev.rating }} out of 5">{{ "★" * rev.rating }}{{ "☆" * (5 - rev.rating) }}</span>
+        <span class="sf-reviews__stars" aria-label="{{ _('store.rating_out_of_five', rating=rev.rating) }}">{{ "★" * rev.rating }}{{ "☆" * (5 - rev.rating) }}</span>
         {% endif %}
         {% if rev.platform %}
         <span class="sf-reviews__platform">{{ rev.platform }}</span>

@@ -1822,5 +1822,17 @@
   "owner.add_block": "Agregar bloque",
   "owner.add_shop_qr": "Přidat Shop QR",
   "studio.editor.publish": "Publish",
-  "owner.builder": "Builder"
+  "owner.builder": "Builder",
+        "home.hero.kicker": "Pracovní stůl · na tomto počítači",
+  "product.kicker": "Stav cokoli v jednom prostoru",
+  "hw.kicker": "Jeden cíl · stejný prostor",
+  "dl.kicker": "Nainstaluj · pak tvoř",
+  "pricing.kicker": "Celý prostor · každý plán",
+  "docs.kicker": "Krátké poznámky · pro aplikaci",
+  "about.kicker": "Metaprostor · bez zdí",
+  "contact.kicker": "Napiš · odpovíme",
+  "sec.kicker": "Nejdřív tady · tento počítač",
+  "changelog.kicker": "Poznámky · po každém vydání",
+  "compare.kicker": "Stejný prostor · jiné nástroje",
+  "translate.kicker": "Jazyky · ty je přinášíš"
 }

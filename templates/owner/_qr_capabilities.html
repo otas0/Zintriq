@@ -1,40 +1,40 @@
 {% macro qr_capabilities(store, active) %}
 <section class="os-card os-card-padded ep-capabilities">
-  <h2 class="os-card-title">Customer QR</h2>
-  <p class="os-page-subtitle" style="margin:0 0 12px">Shop, landing pages, and specialized passes — managed in one place.</p>
+  <h2 class="os-card-title">{{ _('bos.customer_qr') }}</h2>
+  <p class="os-page-subtitle" style="margin:0 0 12px">{{ _('owner.qr_capabilities_subtitle') }}</p>
   <div class="ep-cap-grid ep-cap-grid--wide">
     <a class="ep-cap-card{% if active == 'hub' %} is-active{% endif %}" href="{{ url_for('manage_qr_hub', slug=store.slug) }}">
-      <span class="ep-cap-label">Overview</span><span class="ep-cap-desc">All customer QR types</span>
+      <span class="ep-cap-label">{{ _('owner.overview') }}</span><span class="ep-cap-desc">{{ _('owner.all_qr_types') }}</span>
     </a>
     {% if active == 'shop' %}
-    <span class="ep-cap-card is-active"><span class="ep-cap-label">Shop QR</span><span class="ep-cap-desc">Catalog &amp; menu</span></span>
+    <span class="ep-cap-card is-active"><span class="ep-cap-label">{{ _('owner.shop_qr') }}</span><span class="ep-cap-desc">{{ _('owner.catalog_menu') }}</span></span>
     {% else %}
-    <a class="ep-cap-card" href="{{ url_for('manage_qr_codes', slug=store.slug) }}"><span class="ep-cap-label">Shop QR</span><span class="ep-cap-desc">Catalog &amp; menu</span></a>
+    <a class="ep-cap-card" href="{{ url_for('manage_qr_codes', slug=store.slug) }}"><span class="ep-cap-label">{{ _('owner.shop_qr') }}</span><span class="ep-cap-desc">{{ _('owner.catalog_menu') }}</span></a>
     {% endif %}
     {% if active == 'landing' %}
-    <span class="ep-cap-card is-active"><span class="ep-cap-label">Landing QR</span><span class="ep-cap-desc">Intro pages before shop</span></span>
+    <span class="ep-cap-card is-active"><span class="ep-cap-label">{{ _('owner.landing_qr') }}</span><span class="ep-cap-desc">{{ _('owner.intro_pages') }}</span></span>
     {% else %}
-    <a class="ep-cap-card" href="{{ url_for('manage_landing_qr', slug=store.slug) }}"><span class="ep-cap-label">Landing QR</span><span class="ep-cap-desc">Intro pages before shop</span></a>
+    <a class="ep-cap-card" href="{{ url_for('manage_landing_qr', slug=store.slug) }}"><span class="ep-cap-label">{{ _('owner.landing_qr') }}</span><span class="ep-cap-desc">{{ _('owner.intro_pages') }}</span></a>
     {% endif %}
     {% if active == 'event_pass' %}
-    <span class="ep-cap-card is-active"><span class="ep-cap-label">Event Pass</span><span class="ep-cap-desc">Events &amp; check-in</span></span>
+    <span class="ep-cap-card is-active"><span class="ep-cap-label">{{ _('owner.event_pass') }}</span><span class="ep-cap-desc">{{ _('owner.events_checkin') }}</span></span>
     {% else %}
-    <a class="ep-cap-card" href="{{ url_for('manage_event_passes', slug=store.slug) }}"><span class="ep-cap-label">Event Pass</span><span class="ep-cap-desc">Events &amp; check-in</span></a>
+    <a class="ep-cap-card" href="{{ url_for('manage_event_passes', slug=store.slug) }}"><span class="ep-cap-label">{{ _('owner.event_pass') }}</span><span class="ep-cap-desc">{{ _('owner.events_checkin') }}</span></a>
     {% endif %}
     {% if active == 'business_card' %}
-    <span class="ep-cap-card is-active"><span class="ep-cap-label">Business Card</span><span class="ep-cap-desc">Digital contact cards</span></span>
+    <span class="ep-cap-card is-active"><span class="ep-cap-label">{{ _('owner.business_card') }}</span><span class="ep-cap-desc">{{ _('owner.digital_contact') }}</span></span>
     {% else %}
-    <a class="ep-cap-card" href="{{ url_for('manage_business_cards', slug=store.slug) }}"><span class="ep-cap-label">Business Card</span><span class="ep-cap-desc">Digital contact cards</span></a>
+    <a class="ep-cap-card" href="{{ url_for('manage_business_cards', slug=store.slug) }}"><span class="ep-cap-label">{{ _('owner.business_card') }}</span><span class="ep-cap-desc">{{ _('owner.digital_contact') }}</span></a>
     {% endif %}
     {% if active == 'product_info' %}
-    <span class="ep-cap-card is-active"><span class="ep-cap-label">Product QR</span><span class="ep-cap-desc">Product information</span></span>
+    <span class="ep-cap-card is-active"><span class="ep-cap-label">{{ _('owner.product_qr') }}</span><span class="ep-cap-desc">{{ _('owner.product_information') }}</span></span>
     {% else %}
-    <a class="ep-cap-card" href="{{ url_for('manage_product_qr', slug=store.slug) }}"><span class="ep-cap-label">Product QR</span><span class="ep-cap-desc">Product information</span></a>
+    <a class="ep-cap-card" href="{{ url_for('manage_product_qr', slug=store.slug) }}"><span class="ep-cap-label">{{ _('owner.product_qr') }}</span><span class="ep-cap-desc">{{ _('owner.product_information') }}</span></a>
     {% endif %}
     {% if active == 'check_in' %}
-    <span class="ep-cap-card is-active"><span class="ep-cap-label">Check-in</span><span class="ep-cap-desc">Visitor &amp; staff check-in</span></span>
+    <span class="ep-cap-card is-active"><span class="ep-cap-label">{{ _('owner.check_in') }}</span><span class="ep-cap-desc">{{ _('owner.visitor_staff_checkin') }}</span></span>
     {% else %}
-    <a class="ep-cap-card" href="{{ url_for('manage_check_in', slug=store.slug) }}"><span class="ep-cap-label">Check-in</span><span class="ep-cap-desc">Visitor &amp; staff check-in</span></a>
+    <a class="ep-cap-card" href="{{ url_for('manage_check_in', slug=store.slug) }}"><span class="ep-cap-label">{{ _('owner.check_in') }}</span><span class="ep-cap-desc">{{ _('owner.visitor_staff_checkin') }}</span></a>
     {% endif %}
   </div>
 </section>

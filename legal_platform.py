@@ -9,7 +9,7 @@ from flask import abort, render_template
 from jinja2 import TemplateNotFound
 
 LEGAL_DIR = Path(__file__).resolve().parent / "legal"
-LEGAL_CONTACT_EMAIL = os.environ.get("LEGAL_CONTACT_EMAIL", "zintriqcontact@gmail.com").strip()
+LEGAL_CONTACT_EMAIL = os.environ.get("LEGAL_CONTACT_EMAIL", "zintriq@gmail.com").strip()
 
 PAGES = {
     "privacy": "privacy.html",

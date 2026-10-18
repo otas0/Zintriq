@@ -1,7 +1,7 @@
 {% macro storefront_nav(store, section) %}
-<nav class="os-subnav" aria-label="Storefront sections">
-  <a href="{{ url_for('store_settings', slug=store.slug) }}" class="os-subnav__item{% if section == 'settings' %} is-active{% endif %}">Settings</a>
-  <a href="{{ url_for('item_groups_manage', slug=store.slug) }}" class="os-subnav__item{% if section == 'groups' %} is-active{% endif %}">Categories</a>
-  <a href="{{ url_for('manage_store_deals', slug=store.slug) }}" class="os-subnav__item{% if section == 'deals' %} is-active{% endif %}">Deals</a>
+<nav class="os-subnav" aria-label="{{ _('owner.storefront_sections') }}">
+  <a href="{{ url_for('store_settings', slug=store.slug) }}" class="os-subnav__item{% if section == 'settings' %} is-active{% endif %}">{{ _('bos.settings') }}</a>
+  <a href="{{ url_for('item_groups_manage', slug=store.slug) }}" class="os-subnav__item{% if section == 'groups' %} is-active{% endif %}">{{ _('owner.categories') }}</a>
+  <a href="{{ url_for('manage_store_deals', slug=store.slug) }}" class="os-subnav__item{% if section == 'deals' %} is-active{% endif %}">{{ _('owner.deals') }}</a>
 </nav>
 {% endmacro %}

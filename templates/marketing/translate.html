@@ -1,0 +1,22 @@
+{% extends 'marketing_base.html' %}
+{% block title %}{{ _('translate.title') }} — Zintriq{% endblock %}
+{% block content %}
+<article class="page site-page">
+  <section class="page-hero">
+    <div>
+      <p class="page-kicker">{{ _('translate.kicker') }}</p>
+      <h1>{{ _('translate.title') }}</h1>
+      <p class="page-lead site-lead">{{ _('translate.lead') }}</p>
+    </div>
+  </section>
+  <p class="page-note">{{ _('translate.progress', language=i18n_active_name, percent=translate_percent) }}</p>
+  <section class="page-end page-end--paper site-end" data-reveal>
+    <p class="page-actions">
+      <a class="btn-primary" href="{{ murl('/contact') }}">{{ _('translate.start') }}</a>
+      <a class="btn-secondary" href="{{ murl('/contact') }}">{{ _('translate.request') }}</a>
+    </p>
+  </section>
+  <p class="page-note">{{ _('translate.credit') }}</p>
+  <p class="page-note">{{ _('translate.orthography') }}</p>
+</article>
+{% endblock %}

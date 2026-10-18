@@ -40,7 +40,20 @@
 }
 
 .sf-hero__banner--empty {
-  background: linear-gradient(135deg, #ececec 0%, #f7f7f7 50%, #e8e8e8 100%);
+  background:
+    radial-gradient(120% 80% at 12% 20%, var(--color-brand-soft) 0%, transparent 55%),
+    linear-gradient(160deg, var(--module-bg) 0%, var(--canvas-bg) 55%, var(--color-brand-soft) 140%);
+  border-bottom: 1px solid var(--color-border);
+  position: relative;
+}
+
+.sf-hero__banner--empty.sf-hero__banner--hint::after {
+  content: "Add a cover in Store settings";
+  position: absolute;
+  inset: auto var(--space-3) var(--space-2) auto;
+  font-size: var(--font-caption, 12px);
+  color: var(--color-text-muted);
+  letter-spacing: 0.02em;
 }
 
 .sf-hero__logo-wrap {
@@ -67,7 +80,7 @@
 .sf-hero__logo--img {
   object-fit: cover;
   display: block;
-  background: #fff;
+  background: var(--module-bg);
 }
 
 /* ── Two-column body ── */
@@ -231,15 +244,15 @@
   margin-bottom: var(--space-4);
   border-radius: var(--module-radius);
   overflow: hidden;
-  background: #fff5f6;
-  border: 1px solid #f5c6cb;
+  background: var(--color-danger-soft);
+  border: 1px solid color-mix(in srgb, var(--color-danger) 35%, var(--color-border));
 }
 
 .sf-reviews {
   margin: 0 0 var(--space-4);
   padding: 16px;
   border-radius: var(--module-radius);
-  background: #fff;
+  background: var(--module-bg);
   border: 1px solid var(--color-border, #e8eaed);
 }
 .sf-reviews__head {
@@ -280,7 +293,7 @@
   font-size: 13px;
 }
 .sf-reviews__stars {
-  color: #ca8a04;
+  color: var(--color-brand-ink);
   letter-spacing: 1px;
 }
 .sf-reviews__platform {
@@ -303,8 +316,8 @@
   align-items: center;
   gap: var(--space-2);
   padding: 14px 16px 10px;
-  background: #ffeef0;
-  border-bottom: 1px solid #f5c6cb;
+  background: var(--color-danger-soft);
+  border-bottom: 1px solid color-mix(in srgb, var(--color-danger) 35%, var(--color-border));
 }
 
 .sf-deals-bar__title {
@@ -324,7 +337,7 @@
   height: 32px;
   border: 1px solid var(--color-border);
   border-radius: 50%;
-  background: #fff;
+  background: var(--module-bg);
   cursor: pointer;
   font-size: 18px;
   line-height: 1;
@@ -592,8 +605,8 @@
 }
 
 .sf-product-deal__badge {
-  background: #e11900;
-  color: #fff;
+  background: var(--color-danger);
+  color: var(--color-on-primary);
   font-size: 10px;
   font-weight: 700;
   padding: 2px 6px;
@@ -622,7 +635,7 @@
   width: 100%;
 }
 
-@media (min-width: 1100px) {
+@media (min-width: 1024px) {
   .sf-owner-layout.sf-owner-layout--preview .sf-overview {
     max-width: none;
   }
@@ -663,8 +676,8 @@
   border-radius: 999px;
 }
 
-.sf-deals-status--scheduled { background: #fff3e0; color: #e65100; }
-.sf-deals-status--expired { background: #f5f5f5; color: #757575; }
+.sf-deals-status--scheduled { background: var(--color-warning-soft); color: var(--color-brand-ink); }
+.sf-deals-status--expired { background: var(--color-border); color: var(--color-text-muted); }
 
 .sf-product-row .manage-item-main p {
   display: none;
@@ -700,7 +713,7 @@
   bottom: 0;
   z-index: 360;
   width: min(440px, 94vw);
-  background: #fff;
+  background: var(--module-bg);
   border-left: 1px solid var(--color-border, #e5e5e5);
   box-shadow: -8px 0 32px rgba(0, 0, 0, 0.12);
   display: flex;
@@ -720,7 +733,7 @@
   padding: 12px 16px;
   border-bottom: 1px solid var(--color-border, #eee);
   font-size: 13px;
-  background: #fafafa;
+  background: var(--color-surface-2, var(--canvas-bg));
   flex-shrink: 0;
 }
 
@@ -742,7 +755,7 @@
   height: 32px;
   border: 1px solid var(--color-border, #ddd);
   border-radius: 8px;
-  background: #fff;
+  background: var(--module-bg);
   cursor: pointer;
   font-size: 20px;
   line-height: 1;
@@ -752,7 +765,7 @@
   flex: 1;
   width: 100%;
   border: 0;
-  background: #f5f5f5;
+  background: var(--canvas-bg);
 }
 
 /* Legacy split layout — deprecated */
@@ -826,7 +839,7 @@
   position: relative;
   aspect-ratio: 1;
   border-radius: var(--mq-radius-sm);
-  background: #fff;
+  background: var(--module-bg);
   border: 1px solid var(--color-border);
   overflow: hidden;
   display: grid;
@@ -850,8 +863,8 @@
   top: 8px;
   left: 8px;
   z-index: 1;
-  background: #e11900;
-  color: #fff;
+  background: var(--color-danger);
+  color: var(--color-on-primary);
   font-size: 11px;
   font-weight: var(--weight-bold);
   padding: 3px 8px;
@@ -866,7 +879,7 @@
   width: 32px;
   height: 32px;
   border-radius: 50%;
-  background: #fff;
+  background: var(--module-bg);
   border: 1px solid var(--color-border);
   display: grid;
   place-items: center;
@@ -883,8 +896,8 @@
 }
 
 .sf-tile__add--done {
-  background: var(--color-brand, #fc7251);
-  color: #fff;
+  background: var(--color-brand);
+  color: var(--color-on-brand);
   border-color: transparent;
 }
 
@@ -1188,8 +1201,8 @@
   top: 8px;
   left: 8px;
   z-index: 1;
-  background: #e11900;
-  color: #fff;
+  background: var(--color-danger);
+  color: var(--color-on-primary);
   font-size: 11px;
   font-weight: var(--weight-bold);
   padding: 3px 8px;

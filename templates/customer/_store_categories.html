@@ -2,7 +2,7 @@
 {% if show_group_nav and group_nav|length > 1 and store_view == 'shop' %}
 {% set nav_variant = category_nav_variant|default('desktop') %}
 <nav class="sf-categories sf-categories--sticky sf-categories--{{ nav_variant }}"
-     aria-label="Categories"
+     aria-label="{{ _('store.categories') }}"
      id="sf-categories{% if nav_variant == 'mobile' %}-mobile{% endif %}">
   <ul class="sf-categories__list">
     {% for group in group_nav %}

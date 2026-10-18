@@ -49,8 +49,7 @@ SLUG_ICON: dict[str, str] = {
     "truemoney": "truemoney", "momo": "momo", "zalopay": "zalopay", "kakao_pay": "kakaopay",
     "toss": "toss", "naver_pay": "naver", "merpay": "merpay", "affirm": "affirm",
     "amazon_pay": "amazon", "openrice": "openrice", "tripadvisor": "tripadvisor",
-    "yelp": "yelp", "trustpilot": "trustpilot", "google_reviews": "google",
-    "google_customer_reviews": "google", "facebook_reviews": "facebook",
+    "yelp": "yelp", "trustpilot": "trustpilot", "facebook_reviews": "facebook",
     "instagram_business": "instagram", "linkedin_company": "linkedin",
     "booking_com": "bookingdotcom", "agoda": "agoda", "expedia": "expedia",
     "hotels_com": "hotelsdotcom", "hostelworld": "hostelworld", "airbnb": "airbnb",
@@ -60,8 +59,7 @@ SLUG_ICON: dict[str, str] = {
     "holidaycheck": "holidaycheck", "michelin_guide": "michelin", "gurunavi": "gurunavi",
     "kakao_map": "kakao", "naver_place": "naver", "klook": "klook", "kayak": "kayak",
     "skyscanner": "skyscanner", "trivago": "trivago", "traveloka": "traveloka",
-    "tiktok_business": "tiktok", "tiktok_shop": "tiktok", "whatsapp_business": "whatsapp",
-    "youtube_brand": "youtube", "clearpay": "afterpay", "venmo": "venmo", "sofort": "klarna",
+    "tiktok_business": "tiktok", "tiktok_shop": "tiktok", "whatsapp_business": "whatsapp", "clearpay": "afterpay", "venmo": "venmo", "sofort": "klarna",
     "grab_paylater": "grab", "hoolah": "atome", "shopify_payments": "shopify", "shop_pay": "shopify",
     "ideal": "ideal", "bancontact": "bancontact", "giropay": "giropay", "eps": "eps",
     "blik": "blik", "mb_way": "mbway", "bizum": "bizum", "satispay": "satispay",
@@ -72,7 +70,7 @@ SLUG_ICON: dict[str, str] = {
     "worldline": "worldline", "sezzle": "sezzle", "splitit": "splitit", "tabby": "tabby",
     "tamara": "tamara", "scalapay": "scalapay", "phonepe": "phonepe", "paytm": "paytm",
     "dana": "dana", "boost": "boost", "favepay": "fave", "paidy": "paidy",
-    "samsung_pay": "samsungpay", "apple_pay": "applepay", "google_pay": "googlepay",
+    "samsung_pay": "samsungpay", "apple_pay": "applepay",
     "clover": "clover", "lightspeed": "lightspeed", "toast": "toast", "fiserv": "fiserv",
     "pagarme": "pagarme", "pagseguro": "pagseguro", "dlocal": "dlocal", "ebanx": "ebanx",
     "conekta": "conekta", "openpay": "openpay", "kushki": "kushki", "mpesa": "mpesa",
@@ -169,7 +167,7 @@ ALIAS_GROUPS: tuple[frozenset[str], ...] = (
     frozenset({"tap_and_go", "octopus"}),
     frozenset({"payu_india", "payu_europe", "payu_latam"}),
     frozenset({"shopeepay", "shopee_seller"}),
-    frozenset({"google_reviews", "google_customer_reviews"}),
+    frozenset(),  # retired Google plug-ins
     frozenset({"sofort", "klarna"}),
     frozenset({"hoolah", "atome"}),
     frozenset({"venmo", "braintree"}),
@@ -225,10 +223,10 @@ def _fetch_wiki(slug: str) -> bytes | None:
     return None
 
 
-def _fetch_google(domain: str) -> bytes | None:
+def _fetch_ddg_favicon(domain: str) -> bytes | None:
     if not domain:
         return None
-    return fetch(f"https://www.google.com/s2/favicons?domain={urllib.parse.quote(domain)}&sz=128", timeout=12)
+    return fetch(f"https://icons.duckduckgo.com/ip3/{urllib.parse.quote(domain)}.ico", timeout=12)
 
 
 def _bad_logo(data: bytes) -> bool:
@@ -267,10 +265,10 @@ def _try_sources(slug: str, index: dict[str, dict]) -> tuple[bytes | None, str]:
     if data and not _bad_logo(data):
         return data, "wikimedia"
 
-    # 5) Google favicon (unique per domain)
-    data = _fetch_google(domain)
+    # 5) DuckDuckGo favicon (unique per domain)
+    data = _fetch_ddg_favicon(domain)
     if data and kind(data):
-        return data, "google-favicon"
+        return data, "ddg-favicon"
 
     return None, "miss"
 
@@ -301,12 +299,12 @@ def main() -> int:
 
         h = hashlib.md5(data).hexdigest()
         if h in hash_to_slug and not _allowed_dup(slug, hash_to_slug[h]):
-            # collision — force google favicon for uniqueness
+            # collision — force DuckDuckGo favicon for uniqueness
             domain = (PLUGIN_BRANDS.get(slug) or {}).get("domain") or ""
-            data2 = _fetch_google(domain)
+            data2 = _fetch_ddg_favicon(domain)
             if data2 and kind(data2):
                 data = data2
-                source = "google-favicon-dedup"
+                source = "ddg-favicon-dedup"
                 h = hashlib.md5(data).hexdigest()
 
         try:

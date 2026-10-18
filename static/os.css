@@ -9,6 +9,7 @@
   color: var(--mq-text);
   font: 400 var(--mq-text-base)/1.55 var(--mq-font);
   -webkit-font-smoothing: antialiased;
+  accent-color: var(--os-accent, var(--color-brand));
 }
 
 .os-app {
@@ -633,8 +634,8 @@
 }
 
 .os-btn-danger:hover {
-  background: #C93B40;
-  border-color: #C93B40;
+  background: var(--color-danger);
+  border-color: var(--color-danger);
   color: #FFFFFF;
 }
 
@@ -1464,7 +1465,7 @@ body.sf-preview-open {
 
 .button {
   background: var(--os-accent);
-  color: #fff;
+  color: var(--color-on-brand, #111111);
   border-color: transparent;
 }
 
@@ -1477,8 +1478,8 @@ body.sf-preview-open {
 }
 
 .danger-button:hover {
-  background: #C93B40;
-  border-color: #C93B40;
+  background: var(--color-danger);
+  border-color: var(--color-danger);
   color: #FFFFFF;
 }
 
@@ -2028,6 +2029,66 @@ input:focus, textarea:focus, select:focus {
 
   .os-content-head {
     padding-top: calc(52px + env(safe-area-inset-top, 0px));
+    flex-direction: column;
+    align-items: stretch;
+    gap: var(--space-2);
+  }
+
+  .os-content-head__actions {
+    margin-left: 0;
+    width: 100%;
+    flex-wrap: wrap;
+    gap: var(--space-1);
+  }
+
+  .os-content-head__actions .os-tag {
+    order: -1;
+    width: 100%;
+  }
+
+  .os-content-head__actions .os-btn {
+    flex: 1 1 calc(50% - var(--space-1));
+    justify-content: center;
+    min-height: 40px;
+  }
+
+  .os-content-head__actions .os-btn-primary {
+    flex: 1 1 100%;
+    justify-content: center;
+  }
+
+  .os-page-subtitle {
+    line-height: 1.4;
+  }
+
+  .os-page-subtitle .os-tag {
+    vertical-align: middle;
+    margin: 0 2px;
+  }
+
+  /* Manage Products: denser chrome before the list */
+  .sf-overview-toolbar {
+    gap: var(--space-1);
+    margin-bottom: var(--space-2);
+  }
+
+  .sf-overview-toolbar__right {
+    width: 100%;
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    gap: var(--space-1);
+    padding-bottom: 2px;
+    scrollbar-width: none;
+  }
+
+  .sf-overview-toolbar__right::-webkit-scrollbar {
+    display: none;
+  }
+
+  .sf-overview-toolbar__right .os-btn,
+  .sf-overview-toolbar__right .os-tag {
+    flex: 0 0 auto;
   }
 
   .workspace-action-bar {
@@ -2100,6 +2161,24 @@ input:focus, textarea:focus, select:focus {
   .os-topbar { padding: 12px 16px; }
 
   .os-tabs { padding: 0 16px; }
+
+  .os-content-head {
+    padding: calc(48px + env(safe-area-inset-top, 0px)) 16px var(--space-1);
+    gap: var(--space-1);
+  }
+
+  .os-page-title {
+    font-size: 20px;
+  }
+
+  .os-page-subtitle {
+    font-size: 12px;
+  }
+
+  .os-content-head__actions .os-btn {
+    min-height: 36px;
+    font-size: 13px;
+  }
 
   .workspace-toolbar { grid-template-columns: 1fr; }
 }

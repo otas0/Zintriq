@@ -1850,5 +1850,17 @@
   "studio.editor.freeform": "自由画布",
   "owner.all_stores_zintriq": "Zintriq 中的全部店铺 →",
   "aria.close_menu": "关闭菜单",
-  "studio.editor.publish": "Publish"
+  "studio.editor.publish": "Publish",
+  "home.hero.kicker": "工作台 · 就在這台電腦上",
+  "product.kicker": "同一空間裡自由建造",
+  "hw.kicker": "一種目標 · 同一空間",
+  "dl.kicker": "裝上 · 再建造",
+  "pricing.kicker": "全部空間 · 每個方案",
+  "docs.kicker": "短說明 · 給應用看",
+  "about.kicker": "元空間 · 沒有牆",
+  "contact.kicker": "寫信 · 我們會回",
+  "sec.kicker": "本地優先 · 這台電腦",
+  "changelog.kicker": "每次發布 · 記在這裡",
+  "compare.kicker": "同一空間 · 不同工具",
+  "translate.kicker": "語言 · 你來帶過來"
 }

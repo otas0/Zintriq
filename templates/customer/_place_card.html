@@ -13,16 +13,18 @@
     <p class="guest-place-card__meta">
       {% if place.is_open is not none %}
       <span class="guest-place-card__status guest-place-card__status--{% if place.is_open %}open{% else %}closed{% endif %}">
-        {% if place.is_open %}Open{% else %}Closed{% endif %}
+        {% if place.is_open %}{{ _('places.open') }}{% else %}{{ _('places.closed') }}{% endif %}
       </span>
       {% endif %}
       <span>{{ place.hours_line }}</span>
     </p>
     {% endif %}
-    {% if place.description %}<p class="guest-place-card__desc">{{ place.description }}</p>{% endif %}
+    {% if place.description and place.description|trim|lower != (place.name or '')|trim|lower %}
+    <p class="guest-place-card__desc">{{ place.description }}</p>
+    {% endif %}
     <p class="guest-place-card__visited">
-      {% if place.visit_count|default(1) > 1 %}{{ place.visit_count }} visits · {% endif %}
-      Last {{ place.last_visited_at[:16] if place.last_visited_at else '—' }}
+      {% if place.visit_count|default(1) > 1 %}{{ _('places.visits_n', n=place.visit_count) }}{% endif %}
+      {{ _('places.last', when=(place.last_visited_at[:16] if place.last_visited_at else '—')) }}
     </p>
   </div>
   <span class="guest-place-card__chev" aria-hidden="true">→</span>

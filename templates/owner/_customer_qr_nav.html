@@ -1,11 +1,11 @@
 {% macro customer_qr_nav(store, section) %}
-<nav class="os-subnav" aria-label="Customer QR sections">
-  <a href="{{ url_for('manage_qr_hub', slug=store.slug) }}" class="os-subnav__item{% if section == 'hub' %} is-active{% endif %}">Overview</a>
-  <a href="{{ url_for('manage_qr_codes', slug=store.slug) }}" class="os-subnav__item{% if section == 'shop' %} is-active{% endif %}">Shop QR</a>
-  <a href="{{ url_for('manage_landing_qr', slug=store.slug) }}" class="os-subnav__item{% if section == 'landing' %} is-active{% endif %}">Landing QR</a>
-  <a href="{{ url_for('manage_product_qr', slug=store.slug) }}" class="os-subnav__item{% if section == 'product' %} is-active{% endif %}">Product</a>
-  <a href="{{ url_for('manage_event_passes', slug=store.slug) }}" class="os-subnav__item{% if section == 'event' %} is-active{% endif %}">Event Pass</a>
-  <a href="{{ url_for('manage_business_cards', slug=store.slug) }}" class="os-subnav__item{% if section == 'card' %} is-active{% endif %}">Business Card</a>
-  <a href="{{ url_for('manage_check_in', slug=store.slug) }}" class="os-subnav__item{% if section == 'checkin' %} is-active{% endif %}">Check-in</a>
+<nav class="os-subnav" aria-label="{{ _('owner.customer_qr_sections') }}">
+  <a href="{{ url_for('manage_qr_hub', slug=store.slug) }}" class="os-subnav__item{% if section == 'hub' %} is-active{% endif %}">{{ _('owner.overview') }}</a>
+  <a href="{{ url_for('manage_qr_codes', slug=store.slug) }}" class="os-subnav__item{% if section == 'shop' %} is-active{% endif %}">{{ _('owner.shop_qr') }}</a>
+  <a href="{{ url_for('manage_landing_qr', slug=store.slug) }}" class="os-subnav__item{% if section == 'landing' %} is-active{% endif %}">{{ _('owner.landing_qr') }}</a>
+  <a href="{{ url_for('manage_product_qr', slug=store.slug) }}" class="os-subnav__item{% if section == 'product' %} is-active{% endif %}">{{ _('owner.product') }}</a>
+  <a href="{{ url_for('manage_event_passes', slug=store.slug) }}" class="os-subnav__item{% if section == 'event' %} is-active{% endif %}">{{ _('owner.event_pass') }}</a>
+  <a href="{{ url_for('manage_business_cards', slug=store.slug) }}" class="os-subnav__item{% if section == 'card' %} is-active{% endif %}">{{ _('owner.business_card') }}</a>
+  <a href="{{ url_for('manage_check_in', slug=store.slug) }}" class="os-subnav__item{% if section == 'checkin' %} is-active{% endif %}">{{ _('owner.check_in') }}</a>
 </nav>
 {% endmacro %}

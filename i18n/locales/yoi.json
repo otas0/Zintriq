@@ -1843,5 +1843,17 @@
   "owner.all_stores_zintriq": "Zintriq のすべてのストア →",
   "owner.all_stores": "すべてのストア",
   "owner.create_store_lead": "まず基本情報を入力。商品は次のステップで追加できます。",
-  "studio.editor.publish": "Publish"
+  "studio.editor.publish": "Publish",
+  "home.hero.kicker": "作業台 · このパソコンで",
+  "product.kicker": "ひとつの空間で自由に作る",
+  "hw.kicker": "ひとつの対象 · 同じ空間",
+  "dl.kicker": "入れて · 作る",
+  "pricing.kicker": "すべての空間 · どのプランも",
+  "docs.kicker": "短いメモ · アプリ用",
+  "about.kicker": "メタ空間 · 壁はない",
+  "contact.kicker": "書いて · 返信する",
+  "sec.kicker": "まずこのパソコンで",
+  "changelog.kicker": "公開のたびに · ここに記す",
+  "compare.kicker": "同じ空間 · ちがう道具",
+  "translate.kicker": "ことば · あなたが連れてくる"
 }

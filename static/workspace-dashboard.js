@@ -46,7 +46,11 @@
 
     await loadProjects();
     renderProjects();
+    if (boot.desktopMode) {
+      await loadLocalMeta();
+    }
     bindEvents();
+    bindSiteImport();
 
     const actionParam = params.get('action');
     if (actionParam === 'new-composition' || actionParam === 'new-website' || actionParam === 'new-app' || actionParam === 'new-store') {
@@ -81,7 +85,7 @@
             </div>
             <button type="button" class="zw-modal__close" data-install-cancel aria-label="Close">×</button>
           </div>
-          <p class="zw-form-hint" style="margin:0 0 16px">Choose which composition receives <code>${escapeHtml(packageId)}</code>. Community stays on the web; install runs in Studio.</p>
+          <p class="zw-form-hint" style="margin:0 0 16px">Choose which composition receives <code>${escapeHtml(packageId)}</code>. Install runs in Studio.</p>
           <div class="zw-form-group">
             <label class="zw-label" for="zw-install-project">Composition</label>
             <select id="zw-install-project" class="zw-input">
@@ -475,12 +479,6 @@
 
     if (!name) return;
 
-    if (type === 'from-community') {
-      closeModal();
-      window.open((boot.communityUrl || '/'), '_blank', 'noopener');
-      // Still create a blank composition so install has a landing target.
-    }
-
     try {
       const res = await fetch(API_BASE, {
         method: 'POST',
@@ -497,6 +495,11 @@
       if (!res.ok) throw new Error('Failed to create composition');
 
       const data = await res.json();
+      if (type === 'from-community') {
+        closeModal();
+        window.location.assign(boot.communityUrl || '/app/community');
+        return;
+      }
       closeModal();
       await loadProjects();
       renderProjects();
@@ -544,6 +547,72 @@
     if (hours > 0) return `${hours}h ago`;
     if (minutes > 0) return `${minutes}m ago`;
     return 'Just now';
+  }
+
+  async function loadLocalMeta() {
+    const draftList = document.getElementById('zw-draft-list');
+    const artifactList = document.getElementById('zw-artifact-list');
+    if (!draftList || !artifactList) return;
+    try {
+      const res = await fetch('/api/builder-core/meta/index', {
+        headers: studioHeaders(),
+        credentials: 'same-origin',
+      });
+      if (!res.ok) return;
+      const data = await res.json();
+      renderLocalList(draftList, data.drafts || [], function (item) {
+        return `<a href="${studioBase}/meta/${encodeURIComponent(item.slug)}">${escapeHtml(item.slug)}</a>` +
+          (item.updated_at ? `<span>${escapeHtml(item.updated_at)}</span>` : '');
+      }, 'No drafts yet');
+      renderLocalList(artifactList, data.artifacts || [], function (item) {
+        const url = item.public_url || `/build/${item.slug}`;
+        return `<a href="${escapeHtml(url)}/home">${escapeHtml(item.slug)}</a>` +
+          ` <a href="${studioBase}/meta/${encodeURIComponent(item.slug)}">Edit</a>` +
+          ` <a href="/api/builder-core/meta/sites/${encodeURIComponent(item.slug)}/zip">Zip</a>`;
+      }, 'No /build pages yet');
+    } catch (err) {
+      console.error('Local meta index failed', err);
+    }
+  }
+
+  function renderLocalList(listEl, rows, rowHtml, emptyText) {
+    if (!rows.length) {
+      listEl.innerHTML = `<li class="zw-local-meta__empty">${emptyText}</li>`;
+      return;
+    }
+    listEl.innerHTML = rows.map(function (item) {
+      return `<li>${rowHtml(item)}</li>`;
+    }).join('');
+  }
+
+  function bindSiteImport() {
+    const input = document.getElementById('zw-import-site');
+    if (!input) return;
+    input.addEventListener('change', async function () {
+      const file = input.files && input.files[0];
+      input.value = '';
+      if (!file) return;
+      const body = new FormData();
+      body.append('site', file);
+      body.append('csrf_token', getCsrfToken());
+      try {
+        const res = await fetch('/api/builder-core/meta/sites/import', {
+          method: 'POST',
+          headers: studioHeaders(),
+          credentials: 'same-origin',
+          body: body,
+        });
+        const data = await res.json().catch(function () { return {}; });
+        if (!res.ok) {
+          alert(data.error || 'Import failed');
+          return;
+        }
+        await loadLocalMeta();
+        if (data.slug) window.location.href = `${studioBase}/meta/${encodeURIComponent(data.slug)}`;
+      } catch (err) {
+        console.error('Site import failed', err);
+      }
+    });
   }
 
   function capitalize(str) {

@@ -1,13 +1,13 @@
 {% extends 'bos/shell.html' %}
 {% set module_id = 'help' %}
-{% block bos_title %}{{ topic.title }} — Help{% endblock %}
+{% block bos_title %}{{ topic.title }} — {{ _('help.title') }}{% endblock %}
 {% block bos_head %}
 <link rel="stylesheet" href="{{ url_for('static', filename='customer-help.css') }}">
 {% endblock %}
 {% block bos_content %}
 <article class="help-article merchant-page">
   <p class="help-article__back">
-    <a href="{{ url_for('business_help_home') }}">← Help</a>
+    <a href="{{ url_for('business_help_home') }}">{{ _('help.back') }}</a>
   </p>
   <header class="help-article__head">
     <p class="help-article__cat">{{ topic.category|capitalize }}</p>
@@ -17,7 +17,7 @@
 
   {% if topic.steps %}
   <section class="help-article__steps material-module">
-    <h2 class="help-article__steps-title">Steps</h2>
+    <h2 class="help-article__steps-title">{{ _('help.steps') }}</h2>
     <ol class="ch-scan-steps__list">
       {% for step in topic.steps %}
       <li class="ch-scan-steps__item">{{ step }}</li>
@@ -37,9 +37,9 @@
   </div>
   {% endif %}
 
-  <nav class="help-article__related" aria-label="Related topics">
+  <nav class="help-article__related" aria-label="{{ _('help.related_topics') }}">
     {% if related_topics %}
-    <h2 class="help-section__title">Related</h2>
+    <h2 class="help-section__title">{{ _('help.related') }}</h2>
     <ul class="help-topics">
       {% for other in related_topics %}
       <li>

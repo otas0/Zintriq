@@ -1,0 +1,57 @@
+"""Meta-boundary layer: pluggable surfaces of the meta-system."""
+
+from __future__ import annotations
+
+from meta.boundary.errors import BoundaryError
+from meta.boundary.registry import (
+    BOUNDARY_KIND,
+    HARDWARE_MODULE,
+    HARDWARE_MODULE_ID,
+    META_DESKTOP,
+    META_DESKTOP_ID,
+    META_SPACE,
+    META_SPACE_ID,
+    OS_SURFACE,
+    OS_SURFACE_ID,
+    SOFTWARE_PAGE,
+    SOFTWARE_PAGE_ID,
+    WEB_BUILD_TARGET,
+    Boundary,
+    boundary_from_desc,
+    boundary_to_desc,
+    get,
+    install_from_desc,
+    list_boundaries,
+    register,
+    reset_for_tests,
+    space_boundary_ids,
+    space_desc,
+    unused_boundary_id,
+)
+
+__all__ = [
+    "BOUNDARY_KIND",
+    "HARDWARE_MODULE",
+    "HARDWARE_MODULE_ID",
+    "META_DESKTOP",
+    "META_DESKTOP_ID",
+    "META_SPACE",
+    "META_SPACE_ID",
+    "OS_SURFACE",
+    "OS_SURFACE_ID",
+    "SOFTWARE_PAGE",
+    "SOFTWARE_PAGE_ID",
+    "WEB_BUILD_TARGET",
+    "Boundary",
+    "BoundaryError",
+    "boundary_from_desc",
+    "boundary_to_desc",
+    "get",
+    "install_from_desc",
+    "list_boundaries",
+    "register",
+    "reset_for_tests",
+    "space_boundary_ids",
+    "space_desc",
+    "unused_boundary_id",
+]

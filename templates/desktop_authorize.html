@@ -1,0 +1,54 @@
+{% extends 'marketing_base.html' %}
+{% block title %}{{ _('desk.auth.title') }} — Zintriq{% endblock %}
+{% block content %}
+<section class="mq-auth-page">
+  <div class="mq-desk-auth">
+    <p class="page-kicker">{{ _('desk.auth.kicker') }}</p>
+    <h1>{{ _('desk.auth.title') }}</h1>
+    <p class="page-lead mq-auth-lead">{{ _('desk.auth.lead', email=email) }}</p>
+
+    <div class="paper-split">
+      <span class="inst-lamp inst-lamp--brand" aria-hidden="true"></span>
+      <div>
+        <p class="page-kicker">{{ _('desk.auth.account_label') }}</p>
+        <p class="mq-desk-auth__value">{{ email }}</p>
+      </div>
+    </div>
+    <div class="paper-split">
+      <span class="inst-lamp" aria-hidden="true"></span>
+      <div>
+        <p class="page-kicker">{{ _('desk.auth.device_label') }}</p>
+        <p class="mq-desk-auth__value">{{ device_name }}</p>
+        {% if device_os or app_version %}
+        <p class="page-note">{{ _('desk.auth.device_meta', os=device_os or '—', version=app_version or '—') }}</p>
+        {% endif %}
+      </div>
+    </div>
+
+    <p class="mq-desk-auth__access-label" id="desk-auth-access">{{ _('desk.auth.access.title') }}</p>
+    <ul class="paper-list mq-desk-auth__access" aria-labelledby="desk-auth-access">
+      <li>
+        <span class="inst-lamp inst-lamp--brand" aria-hidden="true"></span>
+        <div class="paper-list__body"><p>{{ _('desk.auth.access.projects') }}</p></div>
+      </li>
+      <li>
+        <span class="inst-lamp" aria-hidden="true"></span>
+        <div class="paper-list__body"><p>{{ _('desk.auth.access.publish') }}</p></div>
+      </li>
+      <li>
+        <span class="inst-lamp" aria-hidden="true"></span>
+        <div class="paper-list__body"><p>{{ _('desk.auth.access.workspaces') }}</p></div>
+      </li>
+    </ul>
+
+    <form class="page-actions mq-desk-auth__form" method="post" action="{{ url_for('desktop_authorize_submit') }}">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <input type="hidden" name="resume" value="{{ resume }}">
+      <button class="btn-primary mq-btn mq-btn-primary mq-desk-auth__submit" type="submit" name="decision" value="allow">{{ _('desk.auth.allow') }}</button>
+      <button class="btn-secondary mq-desk-auth__submit" type="submit" name="decision" value="deny">{{ _('desk.auth.deny') }}</button>
+      <button class="btn-ghost mq-desk-auth__switch" type="submit" name="decision" value="switch">{{ _('desk.auth.switch') }}</button>
+    </form>
+    <p class="page-note mq-desk-auth__note">{{ _('desk.auth.warning') }}</p>
+  </div>
+</section>
+{% endblock %}

@@ -1,0 +1,25 @@
+{% extends 'marketing_base.html' %}
+{% block title %}{{ _('changelog.title') }} — Zintriq{% endblock %}
+{% block content %}
+<article class="page site-page">
+  <section class="page-hero">
+    <div>
+      <p class="page-kicker">{{ _('changelog.kicker') }}</p>
+      <h1>{{ _('changelog.title') }}</h1>
+      <p class="page-lead site-lead">{{ _('changelog.empty') }}</p>
+    </div>
+  </section>
+  {% if entries %}
+  <p class="page-note">{{ _('changelog.new') }} · {{ _('changelog.improved') }} · {{ _('changelog.fixed') }}</p>
+  <ul class="paper-log">
+    {% for item in entries %}
+    <li>
+      <span class="inst-lamp" aria-hidden="true"></span>
+      <span class="paper-log__when">{{ item.date }}</span>
+      <span class="paper-log__text"><strong>{{ item.title }}</strong> {{ item.body }}</span>
+    </li>
+    {% endfor %}
+  </ul>
+  {% endif %}
+</article>
+{% endblock %}

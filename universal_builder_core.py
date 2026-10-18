@@ -2495,6 +2495,11 @@ def register_universal_builder_core(app) -> None:
         with db() as conn:
             project, snapshot = published_snapshot(conn, project_slug)
             if not snapshot:
+                from desktop.meta_store import application_page_response
+
+                page = application_page_response(project_slug, document_key)
+                if page is not None:
+                    return page
                 abort(404)
             from work_urls import work_dict, work_from_store
 
@@ -2643,3 +2648,5 @@ def register_universal_builder_core(app) -> None:
     register_marketplace_routes(app, context, owned_project)
     from desktop.transfer_routes import register_transfer_routes
     register_transfer_routes(app, context, owned_project)
+    from desktop.meta_routes import register_meta_routes
+    register_meta_routes(app, context)

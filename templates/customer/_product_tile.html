@@ -14,7 +14,7 @@
       </div>
     </a>
     {% if cartable %}
-    <button type="button" class="sf-tile__add sf-tile__add--btn" data-add-cart="{{ item.id }}" aria-label="Add {{ item.name }} to cart">+</button>
+    <button type="button" class="sf-tile__add sf-tile__add--btn" data-add-cart="{{ item.id }}" aria-label="{{ _('store.add_to_cart', name=item.name) }}">+</button>
     {% endif %}
   </div>
   <a class="sf-tile__body-link" href="{{ href }}">

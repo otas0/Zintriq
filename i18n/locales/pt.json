@@ -1827,5 +1827,17 @@
   "nav.signup": "Cadastrar",
   "studio.editor.publish": "Publish",
   "owner.builder": "Builder",
-  "studio.dash.eyebrow": "Studio"
+  "studio.dash.eyebrow": "Studio",
+  "home.hero.kicker": "Bancada · neste computador",
+  "product.kicker": "Constrói tudo num só espaço",
+  "hw.kicker": "Um alvo · o mesmo espaço",
+  "dl.kicker": "Instala · depois cria",
+  "pricing.kicker": "Todo o espaço · cada plano",
+  "docs.kicker": "Notas curtas · para a app",
+  "about.kicker": "Metaespaço · sem muros",
+  "contact.kicker": "Escreve · respondemos",
+  "sec.kicker": "Primeiro local · este computador",
+  "changelog.kicker": "Notas · após cada versão",
+  "compare.kicker": "O mesmo espaço · outras ferramentas",
+  "translate.kicker": "Línguas · tu as trazes"
 }

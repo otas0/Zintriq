@@ -1,0 +1,32 @@
+---
+description: Zintriq 桌面端迁移的项目规则
+alwaysApply: true
+---
+
+# 目标
+把 Builder 的创作功能装进桌面应用（Electron + 本地 Flask 子进程），阶段 1 同时支持 Windows、macOS、Linux。Web 版必须保持可用。
+
+**Web 是门面，Desktop 是工厂。** 公开站点（营销、下载、账号、文档）不新增任何编辑器、画布或可运行的元系统 UI。创作只在 `ZINTRIQ_DESKTOP=1` 的桌面应用里。门户路径见 `docs/website/web-portal-spec.md`。不把门户重写成 Next.js。
+
+元系统在 `meta/`，是产品核心（描述→模拟→实例化→边界），不是愿景文档。宿主保持 Electron + 本地 Flask；不把栈换成 Tauri/React/Rust。
+
+# 规则
+- 一次只做一个步骤。先给计划（列出会改哪些文件），等我确认再改代码。
+- 不重构与当前步骤无关的代码；不改商家模块（bookings、CRM、feedback）的业务逻辑。
+- 桌面相关代码放在 /desktop；对 Flask 的改动尽量小，用环境变量 ZINTRIQ_DESKTOP=1 控制桌面模式。
+- 数据库路径、上传目录、端口都必须可配置，不能写死。
+- 路径处理必须跨平台（不要写死 / 或 \，不要假设 macOS）。
+- 本地服务只监听 127.0.0.1，并校验启动时生成的随机令牌。
+- Electron 渲染进程：contextIsolation 开启、sandbox 开启、nodeIntegration 关闭，设置 CSP，preload 只暴露窄接口，窗口不跳转到任意网址。
+- 改动前后都运行现有测试；新增功能要有最小冒烟测试。
+- 每个步骤结束时总结：改了哪些文件、怎么在三个平台运行、已知问题。
+
+# 阶段 1 不做
+账号登录、云同步、Community 页面、硬件配对、代码签名与公证、自动更新。
+
+**阶段 1 已于 2026-10-04 验收通过。** 阶段 2 先做账号互通（公开 Flask `/desktop/authorize` + PKCE，现有账号，不是 Auth0）。云同步、发布、社区跳板、签名/公证、自动更新仍按阶段 2 后续切片。硬件配对仍延后。
+
+基本编辑器可用之后：**Work offline** 已落在 Meta 编辑器 — 草稿与产物只写 `ZINTRIQ_DATA_DIR`，不能把云 API 当保存条件。未登录必须仍能本机工作。
+
+# 技术栈
+Flask、SQLite、Jinja2、原生 JavaScript、PWA

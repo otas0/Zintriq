@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import os
 import sqlite3
 import sys
 import tempfile
@@ -66,7 +65,7 @@ class DesktopSchemaTests(unittest.TestCase):
         )
         from builder_kernel.events import prune_kernel_events
 
-        for index in range(KERNEL_EVENTS_MAX_PER_PROJECT + 5):
+        for _index in range(KERNEL_EVENTS_MAX_PER_PROJECT + 5):
             conn.execute(
                 "INSERT INTO builder_kernel_events(project_id,event_id,status) VALUES (1,'core/record.created','ok')"
             )
@@ -154,9 +153,10 @@ class DesktopPackagingGuardTests(unittest.TestCase):
                 f"waitress Adjustments missing {name}",
             )
 
-    def test_app_id_is_placeholder(self):
+    def test_app_id_is_owned_domain(self):
         text = (ROOT / "desktop" / "package.json").read_text(encoding="utf-8")
-        self.assertIn("com.example.zintriq.unreleased", text)
+        self.assertIn("com.zintriq.studio", text)
+        self.assertNotIn("com.example.zintriq.unreleased", text)
 
     def test_check_bundle_rejects_secrets_and_requires_licenses(self):
         script = ROOT / "desktop" / "packaging" / "check_bundle.py"
@@ -164,7 +164,6 @@ class DesktopPackagingGuardTests(unittest.TestCase):
         bad = temp / "bad"
         bad.mkdir()
         (bad / "leak.db").write_bytes(b"sqlite")
-        env = os.environ.copy()
         proc = __import__("subprocess").run(
             [sys.executable, str(script), str(bad)],
             capture_output=True,

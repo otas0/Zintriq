@@ -15,7 +15,7 @@
       <span class="sf-storehead__meta-item">
         {% if hours.is_open is not none %}
         <span class="sf-status sf-status--{% if hours.is_open %}open{% else %}closed{% endif %}">
-          {% if hours.is_open %}Open{% else %}Closed{% endif %}
+          {% if hours.is_open %}{{ _('places.open') }}{% else %}{{ _('places.closed') }}{% endif %}
         </span>
         {% endif %}
         {{ hours.status_line or hours.legacy_text }}
@@ -30,6 +30,6 @@
     </div>
   </div>
   {% if store_profile.contact %}
-  <a class="sf-storehead__info" href="#sf-contact">Info</a>
+  <a class="sf-storehead__info" href="#sf-contact">{{ _('store.info') }}</a>
   {% endif %}
 </div>

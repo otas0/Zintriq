@@ -697,7 +697,7 @@ body.bos-drawer-open .bos-quick-fab { z-index: 50; }
   display: grid; grid-template-columns: 220px 1fr 240px; gap: 16px;
   min-height: 420px; align-items: start;
 }
-@media (max-width: 900px) {
+@media (max-width: 959px) {
   .bos-builder-grid { grid-template-columns: 1fr; }
 }
 .bos-builder-col { min-width: 0; }

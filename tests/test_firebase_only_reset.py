@@ -171,8 +171,10 @@ class FirebaseOnlyPasswordResetTest(unittest.TestCase):
         conn = sqlite3.connect(self.db_path)
         row = conn.execute("SELECT password_hash FROM users WHERE id=?", (uid,)).fetchone()
         conn.close()
-        self.assertTrue(row[0].startswith("pbkdf2:"), "password_hash must now be PBKDF2")
-        self.assertTrue(check_password_hash(row[0], NEW_PASSWORD), "new password must verify")
+        self.assertTrue(row[0].startswith("$argon2") or row[0].startswith("pbkdf2:"), "password_hash must be argon2 or PBKDF2")
+        from password_policy import verify_password
+
+        self.assertTrue(verify_password(row[0], NEW_PASSWORD), "new password must verify")
 
     def test_firebase_account_can_login_after_reset(self):
         """After password reset, a Firebase-only account can login with email/password."""

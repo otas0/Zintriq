@@ -1,59 +1,64 @@
-/* Zintriq — design tokens (never hardcode in components) */
+/* Public + product token bridge.
+   Semantic colors live in css/tokens.css (spec B). This file aliases
+   existing --mq- / --os- / --ub- / 8pt --space-* names so builder and BOS
+   keep working. */
+
+@import url("css/tokens.css");
 
 :root {
-  /* ── Material surfaces ── */
-  --canvas-bg: #FFFFFF;
-  --sheet-bg: #FFFFFF;
-  --sheet-border: #E5E5E5;
-  --panel-bg: #FFFFFF;
-  --panel-border: #E5E5E5;
-  --module-bg: #FFFFFF;
-  --module-border: #E5E5E5;
-  --module-radius: 18px;
-  --overlay-bg: #FFFFFF;
-  --overlay-border: #E5E5E5;
+  --canvas-bg: var(--color-bg);
+  --canvas-bg-accent: var(--color-bg-subtle);
+  --sheet-bg: var(--color-surface);
+  --sheet-border: var(--color-border);
+  --panel-bg: var(--color-surface);
+  --panel-border: var(--color-border);
+  --module-bg: var(--color-surface);
+  --module-border: var(--color-border);
+  --module-radius: var(--radius-lg);
+  --overlay-bg: var(--color-surface);
+  --overlay-border: var(--color-border);
 
-  /* ── Color language (meaning only, not hierarchy) ── */
-  --color-text-primary: #111111;
-  --color-text-secondary: #3D3D3D;
-  --color-text-muted: #6B6B6B;
-  --color-border: #E5E5E5;
-  --color-border-strong: #C8C8C8;
+  --color-text-primary: var(--color-text);
+  --color-text-secondary: var(--color-text-muted);
 
-  --color-accent-orange: #FFD500;
-  --color-accent-orange-hover: #E6C000;
-  --color-accent-yellow: #FFD500;
-  --color-accent-yellow-hover: #E6C000;
+  --color-brand: var(--color-accent-solid);
+  --color-brand-hover: var(--color-accent-solid-hover);
+  --color-brand-ink: var(--color-accent-text);
+  --color-brand-soft: var(--color-accent-subtle-bg);
+  --color-on-brand: var(--color-on-accent);
+
+  --color-accent-yellow: var(--color-brand);
+  --color-accent-yellow-hover: var(--color-brand-hover);
+  --color-accent-orange: var(--color-brand);
+  --color-accent-orange-hover: var(--color-brand-hover);
   --color-accent-lime: #B7F200;
   --color-accent-blue: #3A86FF;
 
-  --color-success: #18A957;
-  --color-success-soft: #E8F8EF;
-  --color-warning: #FFD500;
-  --color-warning-soft: #FFF8D6;
-  --color-danger: #E5484D;
-  --color-danger-soft: #FDECEC;
+  --color-success: var(--color-success-text);
+  --color-success-soft: var(--color-bg-subtle);
+  --color-warning: var(--color-accent-solid);
+  --color-warning-soft: var(--color-accent-subtle-bg);
+  --color-danger: var(--color-danger-text);
+  --color-danger-soft: var(--color-bg-subtle);
   --color-info: #3A86FF;
-  --color-info-soft: #EBF3FF;
+  --color-info-soft: var(--color-bg-subtle);
 
-  /* ── Typography (Geist primary) ── */
-  --font-family: "Geist Sans", "Geist", "Inter", "IBM Plex Sans", system-ui, sans-serif;
-  --font-display: 64px;
-  --font-h1: 48px;
-  --font-h2: 36px;
-  --font-h3: 28px;
-  --font-h4: 22px;
-  --font-body-lg: 18px;
-  --font-body: 16px;
-  --font-small: 14px;
-  --font-caption: 12px;
+  --font-family: var(--font-sans);
+  --font-display: var(--step-4);
+  --font-h1: var(--step-3);
+  --font-h2: var(--step-2);
+  --font-h3: var(--step-1);
+  --font-h4: var(--step-1);
+  --font-body-lg: var(--step-0);
+  --font-body: var(--step-0);
+  --font-small: var(--step--1);
+  --font-caption: var(--step--1);
 
-  --weight-regular: 400;
-  --weight-medium: 500;
-  --weight-semibold: 600;
   --weight-bold: 700;
+  --radius-xl: 20px;
 
-  /* ── 8pt grid ── */
+  /* Legacy 8pt scale for builder / materials (spec --space-* is rem in css/tokens.css;
+     keep these names at 8px steps so existing layouts do not collapse). */
   --space-1: 8px;
   --space-2: 16px;
   --space-3: 24px;
@@ -63,41 +68,39 @@
   --space-7: 56px;
   --space-8: 64px;
 
-  /* ── Layout ── */
   --container-max: 1600px;
   --sidebar-w: 248px;
   --sidebar-w-collapsed: 72px;
-  --header-h: 72px;
   --drawer-w: 480px;
   --tool-h: 44px;
 
-  /* ── Elevation (subtle, stacked — not floating) ── */
   --elevation-none: none;
   --elevation-sheet: 0 1px 0 var(--sheet-border);
   --elevation-panel: inset -1px 0 0 var(--panel-border);
-  --elevation-module: 0 1px 2px rgba(17, 17, 17, 0.04);
-  --elevation-overlay: 0 8px 24px rgba(17, 17, 17, 0.08);
+  --elevation-module: var(--shadow-1);
+  --elevation-overlay: var(--shadow-2);
 
-  /* ── Motion ── */
-  --motion-hover: 120ms cubic-bezier(0.2, 0.8, 0.2, 1);
-  --motion-normal: 220ms cubic-bezier(0.2, 0.8, 0.2, 1);
-  --motion-drawer: 260ms cubic-bezier(0.2, 0.8, 0.2, 1);
-  --motion-smooth: cubic-bezier(0.22, 1, 0.36, 1);
+  --motion-hover: var(--dur-instant) var(--ease-std);
+  --motion-normal: var(--dur-base) var(--ease-std);
+  --motion-drawer: var(--dur-slow) var(--ease-std);
+  --motion-smooth: var(--ease-soft);
 
-  /* ── Responsive breakpoints (reference in media queries) ── */
-  --mq-bp-tablet: 640px;
-  --mq-bp-desktop: 1024px;
-  --mq-bp-sidebar: 960px;
+  --mq-bp-sm: 640px;
+  --mq-bp-md: 768px;
+  --mq-bp-lg: 960px;
+  --mq-bp-xl: 1024px;
+  --mq-bp-2xl: 1280px;
+  --mq-bp-tablet: var(--mq-bp-sm);
+  --mq-bp-desktop: var(--mq-bp-xl);
+  --mq-bp-sidebar: var(--mq-bp-lg);
 
-  /* ── Semantic overlays & focus ── */
-  --color-on-primary: #111111;
-  --color-scrim: rgba(17, 17, 17, 0.45);
-  --color-scrim-light: rgba(17, 17, 17, 0.35);
-  --color-shadow-subtle: rgba(17, 17, 17, 0.04);
-  --focus-ring-color: var(--color-accent-yellow);
+  --color-on-primary: var(--color-on-brand);
+  --color-scrim: oklch(0 0 0 / .45);
+  --color-scrim-light: oklch(0 0 0 / .35);
+  --color-shadow-subtle: oklch(0 0 0 / .04);
+  --focus-ring-color: var(--color-focus);
   --focus-ring: 0 0 0 2px var(--module-bg), 0 0 0 4px var(--focus-ring-color);
 
-  /* ── Component sizing ── */
   --icon-size-sm: 20px;
   --icon-size-md: 24px;
   --table-cell-y: var(--space-1);
@@ -106,7 +109,11 @@
   --card-min: 240px;
   --fab-size: 52px;
 
-  /* ── Legacy aliases (map old vars → materials) ── */
+  --color-muted: var(--color-text-muted);
+  --color-border-subtle: var(--color-border);
+  --color-open: var(--color-success);
+  --color-closed: #9A6700;
+
   --mq-bg: var(--canvas-bg);
   --mq-surface: var(--module-bg);
   --mq-surface-solid: var(--module-bg);
@@ -117,10 +124,10 @@
   --mq-text: var(--color-text-primary);
   --mq-text-secondary: var(--color-text-secondary);
   --mq-text-muted: var(--color-text-muted);
-  --mq-brand: var(--color-accent-yellow);
-  --mq-brand-hover: var(--color-accent-yellow-hover);
-  --mq-brand-soft: #FFF8D6;
-  --mq-brand-muted: var(--color-accent-yellow);
+  --mq-brand: var(--color-brand);
+  --mq-brand-hover: var(--color-brand-hover);
+  --mq-brand-soft: var(--color-brand-soft);
+  --mq-brand-muted: var(--color-brand);
   --mq-success: var(--color-success);
   --mq-success-soft: var(--color-success-soft);
   --mq-warning: var(--color-warning);
@@ -128,31 +135,32 @@
   --mq-danger: var(--color-danger);
   --mq-danger-soft: var(--color-danger-soft);
   --mq-font: var(--font-family);
-  --mq-radius-sm: 10px;
-  --mq-radius: var(--module-radius);
-  --mq-radius-lg: var(--module-radius);
-  --mq-radius-pill: 999px;
+  --mq-radius-sm: var(--radius-sm);
+  --mq-radius-md: var(--radius-md);
+  --mq-radius: var(--radius-lg);
+  --mq-radius-lg: var(--radius-lg);
+  --mq-radius-pill: var(--radius-pill);
   --mq-shadow-sm: var(--elevation-module);
   --mq-shadow: var(--elevation-overlay);
   --mq-shadow-hover: var(--elevation-overlay);
-  --mq-ease: cubic-bezier(0.2, 0.8, 0.2, 1);
+  --mq-ease: var(--ease-std);
   --mq-duration: var(--motion-normal);
   --mq-duration-slow: var(--motion-drawer);
-  --mq-accent: var(--color-accent-yellow);
-  --mq-accent-hover: var(--color-accent-yellow-hover);
-  --mq-accent-soft: var(--mq-brand-soft);
+  --mq-accent: var(--color-brand);
+  --mq-accent-hover: var(--color-brand-hover);
+  --mq-accent-soft: var(--color-brand-soft);
   --mq-space-1: 4px;
-  --mq-space-2: var(--space-1);
+  --mq-space-2: 8px;
   --mq-space-3: 12px;
-  --mq-space-4: var(--space-2);
-  --mq-space-5: var(--space-3);
-  --mq-space-6: var(--space-3);
-  --mq-space-8: var(--space-4);
+  --mq-space-4: 16px;
+  --mq-space-5: 24px;
+  --mq-space-6: 24px;
+  --mq-space-8: 32px;
   --mq-text-base: var(--font-body);
   --mq-text-lg: var(--font-body-lg);
   --mq-text-xl: var(--font-h4);
   --mq-text-2xl: var(--font-h3);
-  --mq-text-hero: clamp(40px, 5vw, var(--font-h1));
+  --mq-text-hero: clamp(40px, 5vw, 3rem);
   --mq-card-pad: var(--space-3);
   --mq-image-h: 160px;
   --mq-content-max: var(--container-max);
@@ -165,9 +173,9 @@
   --os-text: var(--color-text-primary);
   --os-text-secondary: var(--color-text-secondary);
   --os-text-muted: var(--color-text-muted);
-  --os-accent: var(--color-accent-yellow);
-  --os-accent-hover: var(--color-accent-yellow-hover);
-  --os-accent-soft: var(--mq-brand-soft);
+  --os-accent: var(--color-brand);
+  --os-accent-hover: var(--color-brand-hover);
+  --os-accent-soft: var(--color-brand-soft);
   --os-success: var(--color-success);
   --os-success-soft: var(--color-success-soft);
   --os-warning: var(--color-warning);
@@ -176,12 +184,34 @@
   --os-danger-soft: var(--color-danger-soft);
   --os-sidebar-w: var(--sidebar-w);
   --os-topbar-h: var(--header-h);
-  --os-radius: var(--module-radius);
-  --os-radius-sm: var(--mq-radius-sm);
+  --os-radius: var(--radius-lg);
+  --os-radius-sm: var(--radius-sm);
   --os-shadow-sm: var(--elevation-module);
   --os-shadow: var(--elevation-overlay);
   --os-font: var(--font-family);
   --os-transition: var(--motion-normal);
+
+  --ub-yellow: var(--color-brand);
+  --ub-accent: var(--color-brand);
+  --ub-accent-hover: var(--color-brand-hover);
+  --ub-accent-active: var(--color-accent-solid-hover);
+  --ub-ink: var(--color-text-primary);
+  --ub-font-sans: var(--font-family);
+  --ub-font-mono: var(--font-mono);
+  --ub-radius-sm: var(--radius-sm);
+  --ub-radius-md: var(--radius-md);
+  --ub-radius-lg: var(--radius-md);
+  --ub-radius-xl: var(--radius-lg);
+  --ub-radius-2xl: var(--radius-xl);
+  --ub-radius-pill: var(--radius-pill);
+  --ub-space-sm: var(--space-1);
+  --ub-space-md: 12px;
+  --ub-space-lg: var(--space-2);
+  --ub-space-xl: var(--space-3);
+  --ub-space-2xl: var(--space-4);
+  --ub-duration-fast: var(--dur-instant);
+  --ub-duration-normal: 200ms;
+  --ub-ease-standard: var(--mq-ease);
 }
 
 .mq-density-owner {

@@ -1821,5 +1821,17 @@
   "owner.add_block": "Blok toevoegen",
   "owner.add_shop_qr": "Butik-QR toevoegen",
   "studio.editor.publish": "Publish",
-  "owner.builder": "Builder"
+  "owner.builder": "Builder",
+  "home.hero.kicker": "Arbejdsbord · på denne computer",
+  "product.kicker": "Byg hvad som helst i ét rum",
+  "hw.kicker": "Et mål · samme rum",
+  "dl.kicker": "Installer · så byg",
+  "pricing.kicker": "Hele rummet · hver plan",
+  "docs.kicker": "Korte noter · til appen",
+  "about.kicker": "Metarum · ingen mure",
+  "contact.kicker": "Skriv · vi svarer",
+  "sec.kicker": "Først her · denne computer",
+  "changelog.kicker": "Noter · efter hver udgivelse",
+  "compare.kicker": "Samme rum · andre værktøjer",
+  "translate.kicker": "Sprog · du tager dem med"
 }

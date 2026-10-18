@@ -12,7 +12,7 @@
     </div>
     {% endif %}
     <div class="place-directory__hero-body">
-      <p class="mq-hero__eyebrow">Place directory</p>
+      <p class="mq-hero__eyebrow">{{ _('customer.directory.title') }}</p>
       <h1 class="place-directory__title">{{ place.name }}</h1>
       {% if place.description %}<p class="place-directory__desc">{{ place.description }}</p>{% endif %}
       {% if place.address %}<p class="place-directory__address">{{ place.address }}</p>{% endif %}
@@ -21,7 +21,7 @@
 
   {% if tenants %}
   <div class="place-directory__tenants">
-    <h2 class="place-directory__section-title">Shops here</h2>
+    <h2 class="place-directory__section-title">{{ _('customer.directory.shops_here') }}</h2>
     <ul class="place-directory__list">
       {% for tenant in tenants %}
       <li>
@@ -42,7 +42,7 @@
             <p class="place-tenant-card__meta">
               {% if tenant.is_open is not none %}
               <span class="place-tenant-card__status place-tenant-card__status--{% if tenant.is_open %}open{% else %}closed{% endif %}">
-                {% if tenant.is_open %}Open{% else %}Closed{% endif %}
+                {% if tenant.is_open %}{{ _('places.open') }}{% else %}{{ _('places.closed') }}{% endif %}
               </span>
               {% endif %}
               <span>{{ tenant.hours_line }}</span>
@@ -58,20 +58,20 @@
   </div>
   {% else %}
   <div class="mq-empty place-directory__empty">
-    <p><strong>No shops listed yet</strong></p>
-    <p>Tenant stores will appear here when the venue adds them.</p>
+    <p><strong>{{ _('customer.directory.empty_title') }}</strong></p>
+    <p>{{ _('customer.directory.empty_body') }}</p>
   </div>
   {% endif %}
 
   <footer class="place-directory__owner-cta material-module">
-    <p class="place-directory__owner-label">Shop owner?</p>
-    <p class="place-directory__owner-hint">Request to list your storefront in this directory — the venue reviews before you go live.</p>
+    <p class="place-directory__owner-label">{{ _('customer.directory.owner') }}</p>
+    <p class="place-directory__owner-hint">{{ _('customer.directory.apply_hint') }}</p>
     {% if current_user_logged_in and user_has_stores %}
-    <a class="mq-btn mq-btn-primary" href="{{ apply_url }}">Apply to list here</a>
+    <a class="mq-btn mq-btn-primary" href="{{ apply_url }}">{{ _('customer.directory.apply') }}</a>
     {% elif current_user_logged_in %}
-    <a class="mq-btn mq-btn-primary" href="{{ create_store_url }}">Create a store to apply</a>
+    <a class="mq-btn mq-btn-primary" href="{{ create_store_url }}">{{ _('customer.directory.create_store') }}</a>
     {% else %}
-    <a class="mq-btn mq-btn-primary" href="{{ login_apply_url }}">Sign in to apply</a>
+    <a class="mq-btn mq-btn-primary" href="{{ login_apply_url }}">{{ _('customer.directory.sign_in') }}</a>
     {% endif %}
   </footer>
 </section>

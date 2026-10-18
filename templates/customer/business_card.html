@@ -1,5 +1,5 @@
 {% extends 'customer_base.html' %}
-{% block title %}{{ card.name }} — Business Card{% endblock %}
+{% block title %}{{ card.name }} — {{ _('customer.card.title') }}{% endblock %}
 {% block customer_head %}
 <link rel="stylesheet" href="{{ url_for('static', filename='event-passes.css') }}">
 {% endblock %}
@@ -12,7 +12,7 @@
     <div class="qr-card-photo qr-card-photo--empty">{{ card.name[:1] }}</div>
     {% endif %}
     <div>
-      <p class="ep-customer-eyebrow">Business Card</p>
+      <p class="ep-customer-eyebrow">{{ _('customer.card.title') }}</p>
       <h1>{{ card.name }}</h1>
       {% if card.position %}<p class="qr-card-role">{{ card.position }}</p>{% endif %}
       {% if card.company %}<p class="qr-card-company">{{ card.company }}</p>{% endif %}
@@ -23,7 +23,7 @@
   {% if card.biography %}<p class="ep-customer-desc">{{ card.biography }}</p>{% endif %}
 
   <section class="qr-contact-block">
-    <h2>Contact</h2>
+    <h2>{{ _('customer.card.contact') }}</h2>
     <ul class="qr-contact-list">
       {% if card.phone %}<li><a href="tel:{{ card.phone }}">{{ card.phone }}</a></li>{% endif %}
       {% if card.email %}<li><a href="mailto:{{ card.email }}">{{ card.email }}</a></li>{% endif %}
@@ -34,7 +34,7 @@
 
   {% if social %}
   <section class="qr-social-block">
-    <h2>Social</h2>
+    <h2>{{ _('customer.card.social') }}</h2>
     <div class="qr-social-links">
       {% for key, url in social.items() %}
       <a href="{{ url }}" target="_blank" rel="noopener" class="qr-social-link">{{ key|capitalize }}</a>
@@ -44,12 +44,12 @@
   {% endif %}
 
   <section class="qr-card-actions">
-    <a class="mq-btn mq-btn-primary" href="{{ url_for('business_card_vcard', code=card.card_code) }}">Save contact</a>
-    {% if card.website %}<a class="mq-btn mq-btn-ghost" href="{{ card.website }}" target="_blank" rel="noopener">Open website</a>{% endif %}
+    <a class="mq-btn mq-btn-primary" href="{{ url_for('business_card_vcard', code=card.card_code) }}">{{ _('customer.card.save') }}</a>
+    {% if card.website %}<a class="mq-btn mq-btn-ghost" href="{{ card.website }}" target="_blank" rel="noopener">{{ _('customer.card.website') }}</a>{% endif %}
   </section>
 
   <section class="ep-customer-qr">
-    <img src="{{ qr_image }}" alt="QR code for {{ card.name }}">
+    <img src="{{ qr_image }}" alt="{{ _('customer.card.qr_alt', name=card.name) }}">
   </section>
 </article>
 {% endblock %}

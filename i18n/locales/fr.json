@@ -1828,5 +1828,19 @@
   "owner.check_in_points": "Points de check-in",
   "owner.note_optional": "Note (facultatif)",
   "studio.editor.publish": "Publish",
-  "owner.builder": "Builder"
+  "owner.builder": "Builder",
+  "home.hero.kicker": "Établi · sur cet ordinateur",
+  "product.kicker": "Tout construire dans un espace",
+  "hw.kicker": "Une cible · le même espace",
+  "dl.kicker": "Installer · puis faire",
+  "pricing.kicker": "Tout l’espace · chaque offre",
+  "docs.kicker": "Notes courtes · pour l’app",
+  "about.kicker": "Méta-espace · sans murs",
+  "contact.kicker": "Écrire · on répond",
+  "sec.kicker": "D’abord ici · cet ordinateur",
+  "changelog.kicker": "Notes · après chaque version",
+  "compare.kicker": "Même espace · d’autres outils",
+  "translate.kicker": "Langues · vous les apportez",
+  "page.plugins.origin.official": "officiel",
+  "page.plugins.origin.third": "tiers"
 }

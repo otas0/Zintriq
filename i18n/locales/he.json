@@ -1822,5 +1822,17 @@
   "owner.add_block": "הוסף בלוק",
   "owner.add_shop_qr": "הוסף QR לחנות",
   "studio.editor.publish": "Publish",
-  "owner.builder": "Builder"
+  "owner.builder": "Builder",
+  "home.hero.kicker": "ספסל עבודה · על המחשב הזה",
+  "product.kicker": "לבנות הכל במרחב אחד",
+  "hw.kicker": "יעד אחד · אותו מרחב",
+  "dl.kicker": "להתקין · ואז ליצור",
+  "pricing.kicker": "כל המרחב · כל תוכנית",
+  "docs.kicker": "הערות קצרות · לאפליקציה",
+  "about.kicker": "מרחב־על · בלי קירות",
+  "contact.kicker": "כתבו · נשיב",
+  "sec.kicker": "קודם מקומי · המחשב הזה",
+  "changelog.kicker": "הערות · אחרי כל גרסה",
+  "compare.kicker": "אותו מרחב · כלים אחרים",
+  "translate.kicker": "שפות · אתם מביאים אותן"
 }

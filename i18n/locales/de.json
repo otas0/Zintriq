@@ -1844,5 +1844,19 @@
   "invite.title_doc": "Einladung annehmen — Zintriq",
   "legal.privacy.s8_global_label": "Global:",
   "studio.editor.publish": "Publish",
-  "owner.builder": "Builder"
+  "owner.builder": "Builder",
+  "home.hero.kicker": "Werkbank · auf diesem Rechner",
+  "product.kicker": "Alles in einem Raum bauen",
+  "hw.kicker": "Ein Ziel · derselbe Raum",
+  "dl.kicker": "Installieren · dann bauen",
+  "pricing.kicker": "Ganzer Raum · jeder Plan",
+  "docs.kicker": "Kurze Notizen · für die App",
+  "about.kicker": "Metaraum · keine Mauern",
+  "contact.kicker": "Schreiben · wir antworten",
+  "sec.kicker": "Zuerst lokal · dieser Rechner",
+  "changelog.kicker": "Notizen · nach jeder Version",
+  "compare.kicker": "Gleicher Raum · andere Werkzeuge",
+  "translate.kicker": "Sprachen · du bringst sie mit",
+  "page.plugins.origin.official": "offiziell",
+  "page.plugins.origin.third": "dritt"
 }

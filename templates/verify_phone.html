@@ -1,0 +1,30 @@
+{% extends 'marketing_base.html' %}
+{% block title %}{{ _('account.phone.required') }} — Zintriq{% endblock %}
+{% block content %}
+<section class="mq-auth-page">
+  <div class="mq-auth-card">
+    <h1>{{ _('account.phone.required') }}</h1>
+    <form class="mq-auth-form" method="post">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <input type="hidden" name="action" value="send">
+      <div class="mq-field">
+        <label class="mq-label" for="force-phone">{{ _('auth.phone.label') }}</label>
+        <input class="mq-input" id="force-phone" name="phone" type="tel" value="{{ phone or '' }}" required>
+      </div>
+      <button class="mq-btn mq-btn-primary" type="submit">{{ _('auth.phone.send_code') }}</button>
+    </form>
+    {% if code_sent or phone %}
+    <form class="mq-auth-form" method="post">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <input type="hidden" name="action" value="check">
+      <input type="hidden" name="phone" value="{{ phone or '' }}">
+      <div class="mq-field">
+        <label class="mq-label">{{ _('auth.phone.code_label') }}</label>
+        <input class="mq-input" name="code" inputmode="numeric" maxlength="6" required>
+      </div>
+      <button class="mq-btn mq-btn-primary" type="submit">{{ _('account.phone.required') }}</button>
+    </form>
+    {% endif %}
+  </div>
+</section>
+{% endblock %}

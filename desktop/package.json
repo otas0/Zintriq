@@ -2,7 +2,7 @@
   "name": "zintriq-studio",
   "productName": "Zintriq Studio",
   "version": "0.1.0",
-  "description": "Zintriq Studio \u2014 desktop composition app (Data, Interface, Logic, Connection, Publish)",
+  "description": "Zintriq Studio — desktop factory (describe, simulate, instantiate, boundary)",
   "main": "main.js",
   "author": {
     "name": "Zintriq",
@@ -15,24 +15,63 @@
     "start": "electron .",
     "dev": "electron .",
     "smoke": "node scripts/smoke.js",
-    "pack": "node packaging/run-builder.js --dir",
-    "dist": "node packaging/run-builder.js",
-    "dist:mac": "node packaging/run-builder.js --mac",
-    "dist:win": "node packaging/run-builder.js --win",
-    "dist:linux": "node packaging/run-builder.js --linux",
+    "pack": "node packaging/run-builder.js --dir --publish never",
+    "dist": "node packaging/run-builder.js --publish never",
+    "dist:mac": "node packaging/run-builder.js --mac --publish never",
+    "dist:win": "node packaging/run-builder.js --win --publish never",
+    "dist:linux": "node packaging/run-builder.js --linux --publish never",
     "sign:mac-adhoc": "sh packaging/sign_macos_adhoc.sh"
   },
   "build": {
-    "appId": "com.example.zintriq.unreleased",
+    "appId": "com.zintriq.studio",
     "productName": "Zintriq Studio",
     "copyright": "Copyright \u00a9 Zintriq",
     "asar": true,
+    "afterSign": "packaging/notarize.js",
     "protocols": [
       {
         "name": "Zintriq Studio",
         "schemes": [
           "zintriq"
         ]
+      }
+    ],
+    "fileAssociations": [
+      {
+        "ext": "zintriq.json",
+        "name": "Zintriq description",
+        "role": "Editor"
+      },
+      {
+        "ext": "zintriq-app",
+        "name": "Zintriq app pack",
+        "description": "Local Zintriq app pack. Not a store installer.",
+        "role": "Editor",
+        "mimeType": "application/zip"
+      },
+      {
+        "ext": "json",
+        "name": "Zintriq stamp pack",
+        "description": "Local stamp JSON. Not a third-party JS view.",
+        "role": "Editor",
+        "rank": "Alternate",
+        "mimeType": "application/json"
+      },
+      {
+        "ext": "zintriq-plugin.json",
+        "name": "Zintriq plugin stamp",
+        "description": "Official or reviewed stamp. Open in Studio. Not default unzip.",
+        "role": "Editor",
+        "rank": "Alternate",
+        "mimeType": "application/json"
+      },
+      {
+        "ext": "zip",
+        "name": "Zintriq webpage pack",
+        "description": "Zintriq webpage zip or .zintriq-app.zip. Alternate, not default unzip.",
+        "role": "Editor",
+        "rank": "Alternate",
+        "mimeType": "application/zip"
       }
     ],
     "directories": {
@@ -44,8 +83,16 @@
       "preload.js",
       "auth.js",
       "flask_host.js",
-      "transfer_host.js",
+      "app_menu.js",
+      "meta_zip_host.js",
+      "meta_http.js",
+      "navigation.js",
+      "cloud_host.js",
+      "updater.js",
+      "account_origin.js",
+      "host_prefs.js",
       "error.html",
+      "login.html",
       "package.json"
     ],
     "extraResources": [
@@ -60,9 +107,10 @@
     ],
     "mac": {
       "category": "public.app-category.developer-tools",
-      "identity": null,
-      "hardenedRuntime": false,
+      "hardenedRuntime": true,
       "gatekeeperAssess": false,
+      "entitlements": "packaging/entitlements.mac.plist",
+      "entitlementsInherit": "packaging/entitlements.mac.plist",
       "target": [
         "dmg",
         "zip"
@@ -73,7 +121,7 @@
         "nsis",
         "portable"
       ],
-      "signAndEditExecutable": false
+      "signAndEditExecutable": true
     },
     "nsis": {
       "oneClick": false,
@@ -89,13 +137,23 @@
         "deb"
       ],
       "category": "Development",
+      "mimeTypes": ["application/json", "application/zip"],
       "synopsis": "Zintriq Studio",
       "executableArgs": [],
       "maintainer": "Zintriq <support@zintriq.com>"
     },
-    "publish": null
+    "publish": [
+      {
+        "provider": "generic",
+        "url": "https://zintriq.com/desktop/updates"
+      }
+    ]
+  },
+  "dependencies": {
+    "electron-updater": "6.3.9"
   },
   "devDependencies": {
+    "@electron/notarize": "2.5.0",
     "electron": "33.2.0",
     "electron-builder": "25.1.8"
   }

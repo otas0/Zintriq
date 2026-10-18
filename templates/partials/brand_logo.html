@@ -1,10 +1,27 @@
-{# Zintriq wordmark — use variant="light" on light backgrounds, "dark" on dark. #}
+{# Zintriq wordmark — variant = background the logo sits ON.
+   light  → black ink SVG
+   dark   → white ink SVG
+   theme  → emit light+dark; CSS [data-theme] shows the right one
+#}
 {% set _variant = variant|default('light') %}
 {% set _class = class|default('zintriq-logo') %}
-{% set _src = 'brand/zintriq-dark.png' if _variant == 'dark' else 'brand/zintriq-light.png' %}
-<img class="{{ _class }}"
-     src="{{ url_for('static', filename=_src) }}?v=20260821d"
-     alt="zintriq"
-     width="{{ width|default(120) }}"
-     height="{{ height|default(32) }}"
-     decoding="async" />
+{% set _w = width|default(120) %}
+{% set _h = height|default(32) %}
+{% if _variant == 'theme' %}
+  <span class="{{ _class }}-wrap zintriq-logo-theme">
+    <img class="{{ _class }} zintriq-logo--on-light" src="{{ url_for('static', filename='brand/zintriq-on-light.svg') }}?v=20261002s" alt="zintriq" width="{{ _w }}" height="{{ _h }}" decoding="async" fetchpriority="high">
+    <img class="{{ _class }} zintriq-logo--on-dark" src="{{ url_for('static', filename='brand/zintriq-on-dark.svg') }}?v=20261002s" alt="" width="{{ _w }}" height="{{ _h }}" decoding="async" aria-hidden="true">
+  </span>
+{% else %}
+  {% if _variant == 'dark' %}
+    {% set _src = 'brand/zintriq-on-dark.svg' %}
+  {% else %}
+    {% set _src = 'brand/zintriq-on-light.svg' %}
+  {% endif %}
+  <img class="{{ _class }}"
+       src="{{ url_for('static', filename=_src) }}?v=20261002s"
+       alt="zintriq"
+       width="{{ _w }}"
+       height="{{ _h }}"
+       decoding="async" />
+{% endif %}

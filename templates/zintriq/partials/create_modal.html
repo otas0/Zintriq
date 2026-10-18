@@ -28,6 +28,7 @@
               <small>{{ _('studio.modal.blank_sub') }}</small>
             </div>
           </label>
+          {% if not desktop_mode %}
           <label class="zw-type-card">
             <input type="radio" name="type" value="from-community">
             <div class="zw-type-card__content">
@@ -35,6 +36,7 @@
               <small>{{ _('studio.modal.from_community_sub') }}</small>
             </div>
           </label>
+          {% endif %}
         </div>
       </div>
       <div class="zw-modal__actions">

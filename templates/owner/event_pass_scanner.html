@@ -1,9 +1,9 @@
 {% extends 'owner_base.html' %}
 {% set active_tab = 'qr' %}
-{% block title %}Scanner — {{ event.name }}{% endblock %}
+{% block title %}{{ _('owner.scanner') }} — {{ event.name }}{% endblock %}
 {% block os_header %}
-<h1 class="os-page-title">Check-in scanner</h1>
-<p class="os-page-subtitle">{{ event.name }} · {{ stats.checked_in }}/{{ stats.registered }} checked in</p>
+<h1 class="os-page-title">{{ _('owner.check_in_scanner') }}</h1>
+<p class="os-page-subtitle">{{ event.name }} · {{ _('owner.checked_in_of', checked=stats.checked_in, registered=stats.registered) }}</p>
 {% endblock %}
 {% block owner_content %}
 <section class="ep-scanner-layout">
@@ -15,30 +15,30 @@
   </div>
   <div class="ep-scanner-side">
     <div class="ep-scan-result os-card" id="ep-scan-result" data-state="idle">
-      <p class="ep-scan-result__label">Ready to scan</p>
-      <p class="ep-scan-result__msg">Point camera at attendee pass</p>
+      <p class="ep-scan-result__label">{{ _('owner.ready_to_scan') }}</p>
+      <p class="ep-scan-result__msg">{{ _('owner.point_at_attendee_pass') }}</p>
       <p class="ep-scan-result__name"></p>
     </div>
     <div class="ep-scanner-controls os-card os-card-padded">
-      <button type="button" class="os-btn os-btn-primary" id="ep-scanner-start">Start camera</button>
-      <button type="button" class="os-btn os-btn-ghost hidden" id="ep-scanner-flash">Toggle flashlight</button>
-      <button type="button" class="os-btn os-btn-ghost hidden" id="ep-scanner-stop">Stop</button>
+      <button type="button" class="os-btn os-btn-primary" id="ep-scanner-start">{{ _('owner.start_camera') }}</button>
+      <button type="button" class="os-btn os-btn-ghost hidden" id="ep-scanner-flash">{{ _('owner.toggle_flashlight') }}</button>
+      <button type="button" class="os-btn os-btn-ghost hidden" id="ep-scanner-stop">{{ _('owner.stop') }}</button>
       <div class="os-field ep-scan-fallback">
-        <label class="os-label">Scan from photo</label>
+        <label class="os-label">{{ _('owner.scan_from_photo') }}</label>
         <input type="file" class="os-input" id="ep-scan-file" accept="image/*" capture="environment">
-        <p class="ep-scan-hint">Works without camera access — photograph the attendee's QR code.</p>
+        <p class="ep-scan-hint">{{ _('owner.scan_photo_hint') }}</p>
       </div>
       <div class="os-field ep-scan-fallback">
-        <label class="os-label">Manual code entry</label>
+        <label class="os-label">{{ _('owner.manual_code_entry') }}</label>
         <div class="os-actions-row">
-          <input class="os-input" id="ep-manual-code" placeholder="Pass code e.g. 5ycqmhagxw" style="flex:1" autocomplete="off">
-          <button type="button" class="os-btn os-btn-primary" id="ep-manual-submit">Check in</button>
+          <input class="os-input" id="ep-manual-code" placeholder="{{ _('owner.pass_code_placeholder') }}" style="flex:1" autocomplete="off">
+          <button type="button" class="os-btn os-btn-primary" id="ep-manual-submit">{{ _('owner.check_in_action') }}</button>
         </div>
       </div>
     </div>
     <div class="ep-stat-row os-card os-card-padded">
-      <span><strong id="ep-stat-checked">{{ stats.checked_in }}</strong> checked in</span>
-      <span><strong id="ep-stat-remaining">{{ stats.remaining }}</strong> remaining</span>
+      <span><strong id="ep-stat-checked">{{ stats.checked_in }}</strong> {{ _('owner.checked_in') }}</span>
+      <span><strong id="ep-stat-remaining">{{ stats.remaining }}</strong> {{ _('owner.remaining') }}</span>
     </div>
   </div>
 </section>

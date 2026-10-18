@@ -1,6 +1,6 @@
 # Zintriq Studio (desktop)
 
-Electron shell for the composition Studio. Community stays on the website.
+Electron shell for the meta factory. Community lives only in this desktop app.
 
 ## Dev
 
@@ -44,19 +44,26 @@ On Linux, `npm run smoke` runs itself under `xvfb-run`. Ubuntu CI invokes `xvfb-
 
 Desktop Studio can export and import `.zintriq` packages. Checksums prove the bytes were not changed; they do not prove who authored the package. See `docs/project-packages.md`.
 
-Installers, Gatekeeper, AppArmor, `appId`, hashed Python lockfiles, and pack CI are documented in `docs/desktop-packaging.md`. Do not ship public installers until `appId` is a domain you own, reversed.
+`npm run pack` writes an **unsigned** directory build (`--dir --publish never`). That is a local recipe, not a second product binary. Store installers wait until the product is complete and you set `CSC_LINK` / `APPLE_ID`.
+
+If `ZINTRIQ_DATA_DIR/desktop/zintriq/launch.json` exists, Electron reads `/studio`, editors, and loopback-only flags from it. Missing that file keeps the current start path.
+
+Local model files go in `ZINTRIQ_DATA_DIR/models`. GGUF needs `ZINTRIQ_LLAMA_BIN`. A `local-weights` JSON table is enough for fixture inference. `/api/ai`, `/api/ai/chat`, `/api/ai/embed`, and `/api/ai/tools` stay desktop-only. Missing weights return 4xx.
+
+Community lists published descriptions **and** the local plugin store. Install a plugin, build a project from it, then submit another plugin. Engine, World, and AI are publishable forms on that loop. That loop stays on this machine (`127.0.0.1`), not a CDN.
 
 
-## Auth0 (Native + PKCE)
+## Account (Stage 2)
 
-1. Auth0 → Applications → **Native**
-2. Allowed Callback URLs: `zintriq://auth/callback`
-3. Allowed Logout URLs: `zintriq://`
-4. Token Endpoint Auth Method: **None**
-5. Grant: Authorization Code, Refresh Token (`offline_access`)
-6. Set `AUTH0_NATIVE_CLIENT_ID` on the Flask host (and in `.env.desktop.json`)
+Desktop opens the system browser to the public Flask site:
 
-Desktop never embeds the Auth0 client secret. It opens the system browser, receives `zintriq://auth/callback`, then calls `POST /api/studio/auth/pkce/exchange`.
+1. Login opens the **local** website Flask on `http://127.0.0.1:5001` (run `python app.py`, no `ZINTRIQ_DESKTOP=1`). It does not use Cloudflare, `PUBLIC_BASE_URL`, or any public hostname. The Electron child process 404s `/desktop/authorize`.
+2. File → Log in… opens `/desktop/authorize` with Authorization Code + PKCE (`zintriq-desktop`, callback `zintriq://auth/callback`).
+3. After you Allow, the app exchanges the code at `POST /api/desktop/token` on that same origin.
+4. The website verifies the account (`/login` or `/register`, then `/desktop/authorize`). The app stores the session in Electron `session.json` and **does not open Studio until that session is valid**. File → Log out returns to the sign-in gate. The cloud token is **not** sent as `Authorization` to local 127.0.0.1 meta APIs. After sign-in, saves still go to `ZINTRIQ_DATA_DIR` first; cloud sync must not block a local save.
+5. Saving a description also PUTs the draft to the public origin when signed in. File → Sync now pulls. File → Publish… creates `/c/<id>` and opens it in the browser. File → Community lists published descriptions by kind (system, boundary, page, site, machine), shows your account and published work, and can publish the current description. File → Check for updates… on a **signed packaged app** downloads and installs; `electron .` only opens `/download`.
+
+The local Flask process (`ZINTRIQ_DESKTOP=1`) returns 404 for `/desktop/authorize`, `/api/desktop/token`, `/api/desktop/cloud/*`, `/api/desktop/updates`, `/c/<id>`, `/w/<id>`, and `/status`.
 
 ## Build installers (for website download)
 
@@ -81,7 +88,8 @@ The marketing page `/download` reads these URLs.
 | Surface | Owns |
 |---------|------|
 | **Studio (this app)** | Compose Data · Interface · Logic · Connection · Publish |
-| **Community (web)** | Discover / import packages — never embedded in the shell |
+| **Community (this app)** | Discover / import creator packages |
+| **Website** | Marketing, download, account — no Community page |
 | **Workspace / tenant** | Thin isolation boundary only — not a compose module |
 
 Deep links: `zintriq://studio?action=install&package=…` opens Studio with an install handoff.

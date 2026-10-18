@@ -1827,5 +1827,17 @@
   "nav.signup": "Registrarse",
   "studio.editor.publish": "Publish",
   "owner.builder": "Builder",
-  "studio.dash.eyebrow": "Studio"
+  "studio.dash.eyebrow": "Studio",
+  "home.hero.kicker": "Banco de trabajo · en este ordenador",
+  "product.kicker": "Construye lo que quieras en un espacio",
+  "hw.kicker": "Un destino · el mismo espacio",
+  "dl.kicker": "Instala · luego crea",
+  "pricing.kicker": "Todo el espacio · cada plan",
+  "docs.kicker": "Notas cortas · para la app",
+  "about.kicker": "Metaespacio · sin muros",
+  "contact.kicker": "Escribe · respondemos",
+  "sec.kicker": "Primero local · este ordenador",
+  "changelog.kicker": "Notas · tras cada versión",
+  "compare.kicker": "Mismo espacio · otras herramientas",
+  "translate.kicker": "Idiomas · tú los traes"
 }

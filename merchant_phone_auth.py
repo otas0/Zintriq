@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import sqlite3
 
-from flask import jsonify, redirect, request, session, url_for
+from flask import flash, jsonify, redirect, request, session, url_for
 from werkzeug.security import generate_password_hash
 
 from customer_verification import (
@@ -33,7 +33,7 @@ def register_merchant_phone_auth(app, *, db, sign_in_user):
         if audience != "merchant":
             return _json_error("Invalid audience.")
         purpose = (data.get("purpose") or "login").strip().lower()
-        if purpose not in ("signup", "login"):
+        if purpose not in ("signup", "login", "login_device", "reset", "change_phone", "force_phone"):
             purpose = "login"
         phone = normalize_phone(data.get("phone") or "")
         if not phone:
@@ -52,20 +52,25 @@ def register_merchant_phone_auth(app, *, db, sign_in_user):
             migrate_verification_tables(conn)
             existing = find_user_by_contact(conn, "phone", phone)
             if purpose == "signup" and existing:
-                from customer_account_platform import ACCOUNT_KIND_CUSTOMER, user_account_kind
-
-                if user_account_kind(existing) == ACCOUNT_KIND_CUSTOMER:
-                    return _json_error(
-                        "This phone is registered for shopping. Use a different number for business."
-                    )
-                return _json_error("An account already exists for this phone. Sign in instead.")
-            if purpose == "login":
+                return _json_error("This number is already registered. Log in instead.")
+            if purpose in ("login", "login_device"):
                 if not existing:
-                    return _json_error("No business account found for this phone.")
+                    return _json_error("No account found for this phone.")
                 from customer_account_platform import ACCOUNT_KIND_CUSTOMER, user_account_kind
 
                 if user_account_kind(existing) == ACCOUNT_KIND_CUSTOMER:
-                    return _json_error("This phone is a personal account. Use shopper sign-in.")
+                    return _json_error("No account found for this phone.")
+            if purpose == "reset":
+                if existing:
+                    from customer_account_platform import ACCOUNT_KIND_CUSTOMER, user_account_kind
+
+                    if user_account_kind(existing) != ACCOUNT_KIND_CUSTOMER:
+                        ok, message, meta = send_verification_code(
+                            app, conn, channel="phone", target=phone, purpose=purpose
+                        )
+                        if not ok:
+                            return jsonify({"ok": True, "message": "If that account exists, we sent a reset message."})
+                return jsonify({"ok": True, "message": "If that account exists, we sent a reset message."})
 
             ok, message, meta = send_verification_code(
                 app, conn, channel="phone", target=phone, purpose=purpose
@@ -113,7 +118,7 @@ def register_merchant_phone_auth(app, *, db, sign_in_user):
                     user["id"],
                     remember_device=parse_remember_device(data.get("remember_device")),
                 )
-                return jsonify({"ok": True, "redirect": url_for("universal_builder_home")})
+                return jsonify({"ok": True, "redirect": url_for("account")})
 
             set_verified_identity(session, channel="phone", target=phone, mode="new")
             session["merchant_phone_signup"] = True
@@ -131,11 +136,14 @@ def register_merchant_phone_auth(app, *, db, sign_in_user):
         if not verified or verified.get("channel") != "phone":
             return _json_error("Verification expired. Start again.")
 
+        from password_policy import hash_password, password_issues
+
         data = request.get_json(silent=True) or {}
         password = data.get("password") or ""
         confirm = data.get("confirm_password") or ""
-        if len(password) < 12:
-            return _json_error("Use a password with at least 12 characters.")
+        issue = password_issues(password, phone=verified["target"], name=data.get("display_name") or "")
+        if issue:
+            return _json_error(issue)
         if password != confirm:
             return _json_error("Passwords do not match.")
 
@@ -153,7 +161,7 @@ def register_merchant_phone_auth(app, *, db, sign_in_user):
                        VALUES (?, ?, ?, ?)""",
                     (
                         email,
-                        generate_password_hash(password, method="pbkdf2:sha256:600000"),
+                        hash_password(password),
                         "merchant",
                         phone,
                     ),
@@ -167,9 +175,15 @@ def register_merchant_phone_auth(app, *, db, sign_in_user):
                 user_id,
                 remember_device=parse_remember_device(data.get("remember_device")),
             )
+            flash("Welcome to Zintriq.", "success")
+            from auth_redirects import creator_home_url, safe_creator_next
+
+            nxt = safe_creator_next(session.pop("pending_login_next", None))
+            if nxt.startswith("/desktop/authorize"):
+                return jsonify({"ok": True, "redirect": nxt})
             return jsonify({
                 "ok": True,
-                "redirect": url_for("universal_builder_home"),
+                "redirect": url_for("account", prompt="email"),
                 "needs_link_email": True,
             })
         except sqlite3.IntegrityError:

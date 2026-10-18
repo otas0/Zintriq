@@ -2,6 +2,11 @@
 /**
  * Run electron-builder with a resolved Python interpreter available as `python`.
  * Callers do not need a `python` binary on PATH.
+ *
+ * Signing: set CSC_LINK (+ CSC_KEY_PASSWORD) for macOS Developer ID,
+ * WIN_CSC_LINK for Windows Authenticode. Notarize when APPLE_ID,
+ * APPLE_APP_SPECIFIC_PASSWORD, and APPLE_TEAM_ID are set.
+ * ZINTRIQ_SIGN=1 fails the build if those certs are missing.
  */
 const { execSync, spawnSync } = require("child_process");
 const fs = require("fs");
@@ -54,6 +59,24 @@ function writeShim(python, shimDir) {
   fs.writeFileSync(dest, `#!/bin/sh\nexec '${quoted}' "$@"\n`, { mode: 0o755 });
 }
 
+function requireSigning(env) {
+  if (env.ZINTRIQ_SIGN !== "1") return;
+  if (process.platform === "darwin") {
+    if (!env.CSC_LINK && !env.CSC_NAME) {
+      console.error("ZINTRIQ_SIGN=1 requires CSC_LINK or CSC_NAME (Developer ID Application).");
+      process.exit(1);
+    }
+    if (!env.APPLE_ID || !env.APPLE_APP_SPECIFIC_PASSWORD || !env.APPLE_TEAM_ID) {
+      console.error("ZINTRIQ_SIGN=1 on macOS also requires APPLE_ID, APPLE_APP_SPECIFIC_PASSWORD, APPLE_TEAM_ID.");
+      process.exit(1);
+    }
+  }
+  if (process.platform === "win32" && !env.WIN_CSC_LINK && !env.CSC_LINK) {
+    console.error("ZINTRIQ_SIGN=1 requires WIN_CSC_LINK or CSC_LINK (Authenticode P12).");
+    process.exit(1);
+  }
+}
+
 function main() {
   const python = resolvePython();
   if (!python) {
@@ -63,6 +86,10 @@ function main() {
   const shim = fs.mkdtempSync(path.join(os.tmpdir(), "zintriq-python-shim-"));
   writeShim(python, shim);
   const env = { ...process.env, PATH: `${shim}${path.delimiter}${process.env.PATH || ""}` };
+  requireSigning(env);
+  if (!env.CSC_LINK && !env.CSC_NAME && env.CSC_IDENTITY_AUTO_DISCOVERY == null) {
+    env.CSC_IDENTITY_AUTO_DISCOVERY = "false";
+  }
   const args = process.argv.slice(2);
   const builder = path.join(desktopDir, "node_modules", "electron-builder", "cli.js");
   const result = spawnSync(process.execPath, [builder, ...args], {

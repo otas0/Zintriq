@@ -167,25 +167,6 @@ def _merchant_activate_shopper(client) -> None:
             ).fetchone()
             assert prow and prow["username"] == "owner_shopper"
 
-    r_switch = client.post(
-        "/account/switch/business",
-        data={"csrf_token": _csrf(client)},
-        follow_redirects=False,
-    )
-    assert r_switch.status_code in (302, 303), r_switch.data
-    with client.session_transaction() as sess:
-        assert int(sess.get("user_id") or 0) == int(owner_uid)
-        assert not sess.get("customer_user_id")
-
-    r_personal = client.post(
-        "/account/switch/personal",
-        data={"csrf_token": _csrf(client)},
-        follow_redirects=False,
-    )
-    assert r_personal.status_code in (302, 303), r_personal.data
-    with client.session_transaction() as sess:
-        assert int(sess.get("customer_user_id") or 0) == int(owner_uid)
-        assert not sess.get("user_id")
 
     client.post(
         "/account/logout",

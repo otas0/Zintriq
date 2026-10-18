@@ -1,19 +1,19 @@
 {% extends 'owner_base.html' %}
 {% from 'owner/_feedback_nav.html' import feedback_nav %}
 {% set active_tab = 'insights' %}
-{% block title %}Templates — Feedback{% endblock %}
+{% block title %}{{ _('owner.templates') }} — {{ _('owner.feedback') }}{% endblock %}
 {% block os_header %}
-<h1 class="os-page-title">Templates</h1>
-<p class="os-page-subtitle">Reusable feedback experiences — publish through QR, links, and more.</p>
+<h1 class="os-page-title">{{ _('owner.templates') }}</h1>
+<p class="os-page-subtitle">{{ _('owner.templates_subtitle') }}</p>
 {% endblock %}
 {% block os_actions %}
-<a class="os-btn os-btn-primary" href="#fb-create-custom">New template</a>
+<a class="os-btn os-btn-primary" href="#fb-create-custom">{{ _('owner.new_template') }}</a>
 {% endblock %}
 {% block owner_content %}
 {{ feedback_nav(store, fb_section) }}
 
 <section class="fb-library os-card os-card-padded">
-  <h2 class="fb-panel__title">Template library</h2>
+  <h2 class="fb-panel__title">{{ _('owner.template_library') }}</h2>
   <div class="fb-library-grid">
     {% for item in library %}
     <form method="post" class="fb-library-card">
@@ -23,16 +23,16 @@
       <input type="hidden" name="name" value="{{ item.name }} template">
       <h3>{{ item.name }}</h3>
       <p>{{ item.desc }}</p>
-      <button class="os-btn os-btn-ghost os-btn-sm" type="submit">Use template</button>
+      <button class="os-btn os-btn-ghost os-btn-sm" type="submit">{{ _('owner.use_template') }}</button>
     </form>
     {% endfor %}
   </div>
 </section>
 
 <section class="fb-panel os-card os-card-padded" id="fb-create-custom">
-  <h2 class="fb-panel__title">Your templates</h2>
+  <h2 class="fb-panel__title">{{ _('owner.your_templates') }}</h2>
   {% if not templates %}
-  <p class="fb-empty-hint">No templates yet. Pick one from the library above.</p>
+  <p class="fb-empty-hint">{{ _('owner.no_templates_yet') }}</p>
   {% else %}
   <div class="fb-template-list">
     {% for t in templates %}
@@ -42,10 +42,10 @@
         <p class="fb-meta">{{ t.feedback_type|capitalize }} · <span class="os-tag os-tag-{{ t.status }}">{{ t.status }}</span></p>
       </div>
       <div class="row-actions">
-        <a class="os-btn os-btn-ghost os-btn-sm" href="{{ url_for('manage_feedback_builder', slug=store.slug, template_id=t.id) }}">Edit</a>
-        <a class="os-btn os-btn-ghost os-btn-sm" href="{{ url_for('manage_feedback_publish', slug=store.slug, template_id=t.id) }}">Publish</a>
-        <form method="post" class="inline-form"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><input type="hidden" name="action" value="duplicate"><input type="hidden" name="template_id" value="{{ t.id }}"><button class="os-btn os-btn-ghost os-btn-sm" type="submit">Duplicate</button></form>
-        <form method="post" class="inline-form confirm-form" data-confirm="Delete &quot;{{ t.name }}&quot;? Publications will be removed. Existing feedback will be kept."><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><input type="hidden" name="action" value="delete"><input type="hidden" name="template_id" value="{{ t.id }}"><button class="os-btn os-btn-ghost os-btn-sm os-btn-danger" type="submit">Delete</button></form>
+        <a class="os-btn os-btn-ghost os-btn-sm" href="{{ url_for('manage_feedback_builder', slug=store.slug, template_id=t.id) }}">{{ _('bos.edit') }}</a>
+        <a class="os-btn os-btn-ghost os-btn-sm" href="{{ url_for('manage_feedback_publish', slug=store.slug, template_id=t.id) }}">{{ _('bos.publish') }}</a>
+        <form method="post" class="inline-form"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><input type="hidden" name="action" value="duplicate"><input type="hidden" name="template_id" value="{{ t.id }}"><button class="os-btn os-btn-ghost os-btn-sm" type="submit">{{ _('bos.duplicate') }}</button></form>
+        <form method="post" class="inline-form confirm-form" data-confirm="{{ _('owner.delete_template_confirm', name=t.name) }}"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><input type="hidden" name="action" value="delete"><input type="hidden" name="template_id" value="{{ t.id }}"><button class="os-btn os-btn-ghost os-btn-sm os-btn-danger" type="submit">{{ _('bos.delete') }}</button></form>
       </div>
     </article>
     {% endfor %}

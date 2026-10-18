@@ -1,13 +1,13 @@
 {# Deals row — pink header + vertical tiles in horizontal scroll #}
 {% if deals and store_view == 'shop' %}
-<section class="sf-deals-bar" aria-label="Deals">
+<section class="sf-deals-bar" aria-label="{{ _('store.deals') }}">
   <div class="sf-deals-bar__head">
-    <h2 class="sf-deals-bar__title">Deals</h2>
+    <h2 class="sf-deals-bar__title">{{ _('store.deals') }}</h2>
     <div class="sf-deals-bar__nav">
-      <button type="button" class="sf-deals-bar__arrow" id="sf-deals-prev" aria-label="Previous deals">‹</button>
-      <button type="button" class="sf-deals-bar__arrow" id="sf-deals-next" aria-label="Next deals">›</button>
+      <button type="button" class="sf-deals-bar__arrow" id="sf-deals-prev" aria-label="{{ _('store.previous_deals') }}">‹</button>
+      <button type="button" class="sf-deals-bar__arrow" id="sf-deals-next" aria-label="{{ _('store.next_deals') }}">›</button>
     </div>
-    <a class="sf-deals-bar__see-all" href="{{ url_for('store_preview' if preview_mode else 'storefront', slug=store.slug, view='deals') }}">See all →</a>
+    <a class="sf-deals-bar__see-all" href="{{ url_for('store_preview' if preview_mode else 'storefront', slug=store.slug, view='deals') }}">{{ _('store.see_all') }}</a>
   </div>
   <div class="sf-deals-bar__track" id="sf-deals-track">
     {% for deal in deals %}
@@ -27,7 +27,7 @@
           </div>
         </a>
         {% if cartable %}
-        <button type="button" class="sf-tile__add sf-tile__add--btn" data-add-cart="{{ item_id }}" aria-label="Add {{ deal.item_name }} to cart">+</button>
+        <button type="button" class="sf-tile__add sf-tile__add--btn" data-add-cart="{{ item_id }}" aria-label="{{ _('store.add_to_cart', name=deal.item_name) }}">+</button>
         {% endif %}
       </div>
       <a class="sf-tile__body-link" href="{{ href }}">

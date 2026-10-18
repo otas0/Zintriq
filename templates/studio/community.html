@@ -1,0 +1,67 @@
+<!doctype html>
+<html lang="en">
+<head>
+  {% include 'partials/theme_init.html' %}
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="csrf-token" content="{{ csrf_token() }}">
+  <title>Community — Zintriq</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='tokens.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='desktop-app.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='studio/workbench.css') }}">
+</head>
+<body class="da-app" data-open-share="{{ pending_package or '' }}">
+  <header class="da-top">
+    <p class="da-kicker">Zintriq</p>
+    <h1 class="da-title">Community</h1>
+  </header>
+  {% set workbench_surface = 'community' %}
+  {% include 'studio/_workbench_bar.html' %}
+  <main class="da-main" id="da-community">
+    <p class="da-sub">Install, Use, Disable, and Remove stay on this machine. Publish &amp; sync need a signed-in account with a cloud subscription. Local export stays free.</p>
+    <p class="da-status" id="da-status" role="status"></p>
+    <div class="da-actions">
+      <button type="button" class="da-btn da-btn--primary" id="da-save-plugin">Save as plugin</button>
+      <button type="button" class="da-btn" id="da-publish">Publish current description</button>
+      <button type="button" class="da-btn" id="da-reload">Reload</button>
+      <input type="search" class="da-search" id="da-search" placeholder="Search" autocomplete="off">
+    </div>
+    <form class="da-stamp" id="da-stamp" hidden>
+      <label>Name <input id="da-stamp-name" type="text" maxlength="80" autocomplete="off" required></label>
+      <p class="da-stamp-id" id="da-stamp-id" role="status">Will save as community-…</p>
+      <p class="da-stamp-forms" id="da-stamp-chips">
+        <button type="button" data-form="AI">AI</button>
+        <button type="button" data-form="Web">Web</button>
+        <button type="button" data-form="App">App</button>
+      </p>
+      <label>Form <input id="da-stamp-form" type="text" maxlength="128" placeholder="or type a form" autocomplete="off"></label>
+      <button type="submit">Save</button>
+    </form>
+    <nav class="da-filters" aria-label="Description kind">
+      <button type="button" class="da-btn da-filter is-current" data-kind="" aria-pressed="true">All kinds</button>
+      <button type="button" class="da-btn da-filter" data-kind="system" aria-pressed="false">System</button>
+      <button type="button" class="da-btn da-filter" data-kind="boundary" aria-pressed="false">Boundary</button>
+      <button type="button" class="da-btn da-filter" data-kind="page" aria-pressed="false">Page</button>
+      <button type="button" class="da-btn da-filter" data-kind="site" aria-pressed="false">Site</button>
+      <button type="button" class="da-btn da-filter" data-kind="machine" aria-pressed="false">State machine</button>
+    </nav>
+    <section class="da-cols da-cols--community">
+      <div>
+        <h2>Your published descriptions</h2>
+        <ul class="da-list" id="da-mine"></ul>
+      </div>
+      <div>
+        <h2>Catalog</h2>
+        <ul class="da-list" id="da-catalog"></ul>
+      </div>
+      <div id="da-installed-packs">
+        <h2>Plugins</h2>
+        <ul class="da-list" id="da-plugins"></ul>
+      </div>
+    </section>
+  </main>
+  <script src="{{ url_for('static', filename='studio/zintriq.js') }}"></script>
+  <script src="{{ url_for('static', filename='studio/account-chip.js') }}"></script>
+  <script src="{{ url_for('static', filename='studio/community.js') }}"></script>
+</body>
+</html>

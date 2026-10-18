@@ -1,13 +1,13 @@
 {% extends 'owner_base.html' %}
 {% from 'owner/_feedback_nav.html' import feedback_nav %}
 {% set active_tab = 'insights' %}
-{% block title %}Feedback #{{ record.id }}{% endblock %}
+{% block title %}{{ _('owner.feedback') }} #{{ record.id }}{% endblock %}
 {% block os_header %}
-<h1 class="os-page-title">Feedback #{{ record.id }}</h1>
+<h1 class="os-page-title">{{ _('owner.feedback') }} #{{ record.id }}</h1>
 <p class="os-page-subtitle">{% if template %}{{ template.name }}{% else %}{{ record.feedback_type|capitalize }}{% endif %} · {{ record.source_type|replace('_', ' ') }}</p>
 {% endblock %}
 {% block os_actions %}
-<a class="os-btn os-btn-ghost" href="{{ url_for('manage_feedback_inbox', slug=store.slug) }}">← Inbox</a>
+<a class="os-btn os-btn-ghost" href="{{ url_for('manage_feedback_inbox', slug=store.slug) }}">{{ _('owner.back_inbox') }}</a>
 {% endblock %}
 {% block owner_content %}
 {{ feedback_nav(store, fb_section) }}
@@ -36,15 +36,15 @@
     <div class="fb-attachments">{% for url in attachments %}<a href="{{ url }}" target="_blank"><img src="{{ url }}" alt=""></a>{% endfor %}</div>
     {% endif %}
 
-    <p class="fb-meta">{% if record.is_anonymous %}Anonymous submission{% else %}{{ record.customer_name or '' }}{% if record.customer_email %} · {{ record.customer_email }}{% endif %}{% endif %}</p>
+    <p class="fb-meta">{% if record.is_anonymous %}{{ _('owner.anonymous_submission') }}{% else %}{{ record.customer_name or '' }}{% if record.customer_email %} · {{ record.customer_email }}{% endif %}{% endif %}</p>
 
     <div class="fb-reply-box">
-      <h3 class="fb-panel__title">Reply</h3>
+      <h3 class="fb-panel__title">{{ _('owner.reply') }}</h3>
       <form method="post">
         <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
         <input type="hidden" name="action" value="reply">
-        <textarea class="os-textarea" name="owner_reply" rows="3" placeholder="Write a reply…">{{ record.owner_reply or '' }}</textarea>
-        <button class="os-btn os-btn-primary" type="submit" style="margin-top:8px">Save reply</button>
+        <textarea class="os-textarea" name="owner_reply" rows="3" placeholder="{{ _('owner.write_reply') }}">{{ record.owner_reply or '' }}</textarea>
+        <button class="os-btn os-btn-primary" type="submit" style="margin-top:8px">{{ _('owner.save_reply') }}</button>
       </form>
     </div>
 
@@ -52,11 +52,11 @@
       <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
       <input type="hidden" name="action" value="status">
       <select class="os-select" name="status">{% for s in feedback_statuses %}<option value="{{ s }}"{% if record.status == s %} selected{% endif %}>{{ s }}</option>{% endfor %}</select>
-      <button class="os-btn os-btn-ghost" type="submit">Update status</button>
+      <button class="os-btn os-btn-ghost" type="submit">{{ _('owner.update_status') }}</button>
     </form>
   </section>
   <aside class="os-card os-card-padded">
-    <h2 class="fb-panel__title">Activity</h2>
+    <h2 class="fb-panel__title">{{ _('owner.activity') }}</h2>
     <ul class="fb-timeline">{% for a in activity %}<li><strong>{{ a.action|replace('_',' ') }}</strong><span>{{ a.created_at[:16] if a.created_at else '' }}</span></li>{% endfor %}</ul>
   </aside>
 </div>

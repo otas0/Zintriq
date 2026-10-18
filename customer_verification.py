@@ -358,16 +358,24 @@ def register_customer_verification_routes(app, *, db, get_customer, finish_custo
 
     from customer_account_platform import customer_auth_json_fail, customer_auth_json_ok
 
+    from work_account_routes import work_account_route
+    from work_urls import current_work, work_url
+
     def json_or_error(message: str, status: int = 400):
         if customer_auth_wants_json() or request.is_json:
             return {"ok": False, "error": message}, status
-        from flask import flash, redirect, url_for
+        from flask import flash, redirect
 
         flash(message, "error")
-        return redirect(url_for("customer_account_home"))
+        return redirect(work_url(current_work(), "account"))
 
-    @app.post("/account/verify/send")
-    def customer_verify_send():
+    @work_account_route(app, "verify/send", methods=["POST"])
+    def customer_verify_send(work_slug: str):
+        from turnstile_protect import FAIL_MESSAGE as TURNSTILE_FAIL, request_passes_turnstile
+
+        if not request_passes_turnstile():
+            return json_or_error(TURNSTILE_FAIL)
+
         payload = request.get_json(silent=True) or {}
         channel = (payload.get("channel") or request.form.get("channel") or "").strip().lower()
         purpose = (payload.get("purpose") or request.form.get("purpose") or "signup").strip().lower()
@@ -447,8 +455,8 @@ def register_customer_verification_routes(app, *, db, get_customer, finish_custo
         body = {"ok": True, "message": message, **(meta or {})}
         return jsonify(body) if customer_auth_wants_json() or request.is_json else body
 
-    @app.post("/account/verify/check")
-    def customer_verify_check():
+    @work_account_route(app, "verify/check", methods=["POST"])
+    def customer_verify_check(work_slug: str):
         payload = request.get_json(silent=True) or {}
         channel = (payload.get("channel") or request.form.get("channel") or "").strip().lower()
         purpose = (payload.get("purpose") or request.form.get("purpose") or "signup").strip().lower()
@@ -529,11 +537,11 @@ def register_customer_verification_routes(app, *, db, get_customer, finish_custo
             "skip_password": mode in ("activate", "resume"),
         }
         if mode == "activate":
-            body["lead"] = "Pick a username for personal mode. Your business password stays the same."
+            body["lead"] = "Pick a username. Your existing password stays the same."
         return jsonify(body) if customer_auth_wants_json() or request.is_json else body
 
-    @app.get("/account/username/check")
-    def customer_username_check():
+    @work_account_route(app, "username/check", methods=["GET"])
+    def customer_username_check(work_slug: str):
         raw = (request.args.get("q") or "").strip().lower()
         username = validate_username(raw)
         if not username:
@@ -543,8 +551,8 @@ def register_customer_verification_routes(app, *, db, get_customer, finish_custo
             available = username_available(conn, username)
         return {"ok": True, "available": available, "username": username}
 
-    @app.post("/account/onboarding/complete")
-    def customer_onboarding_complete():
+    @work_account_route(app, "onboarding/complete", methods=["POST"])
+    def customer_onboarding_complete(work_slug: str):
         verified = peek_verified_identity(session)
         if not verified:
             return json_or_error("Verification expired. Start again.")
@@ -718,8 +726,8 @@ def register_customer_verification_routes(app, *, db, get_customer, finish_custo
         except sqlite3.IntegrityError:
             return json_or_error("Could not create account. Try a different username.")
 
-    @app.post("/account/link-email/send")
-    def customer_link_email_send():
+    @work_account_route(app, "link-email/send", methods=["POST"])
+    def customer_link_email_send(work_slug: str):
         """Send OTP to link a real email after phone registration (customer or merchant)."""
         from customer_account_platform import current_customer_id
 
@@ -750,8 +758,8 @@ def register_customer_verification_routes(app, *, db, get_customer, finish_custo
             session["pending_link_email"] = email
         return jsonify({"ok": True, "message": message, **(meta or {})})
 
-    @app.post("/account/link-email/check")
-    def customer_link_email_check():
+    @work_account_route(app, "link-email/check", methods=["POST"])
+    def customer_link_email_check(work_slug: str):
         from customer_account_platform import current_customer_id
 
         payload = request.get_json(silent=True) or {}
@@ -805,11 +813,7 @@ def register_customer_verification_routes(app, *, db, get_customer, finish_custo
         session.pop("pending_link_email", None)
         # Merchant vs customer redirect
         if session.get("user_id") and not current_customer_id():
-            try:
-                next_url = url_for("bos.store")
-            except Exception:
-                _log.debug("customer_verification_url_for_failed", exc_info=True, extra={"op": "customer_verification_redirect"})
-                next_url = "/app/stores"
+            next_url = "/app/builder"
         else:
             next_url = _safe_next_url(payload.get("next"))
         return jsonify({"ok": True, "redirect": next_url, "email": email})

@@ -270,7 +270,7 @@
 .qr-checkin-success { padding: var(--space-2); border-radius: var(--mq-radius-md); text-align: center; margin: var(--space-2) 0; }
 .qr-checkin-warning { color: var(--color-warning); font-size: var(--font-caption); margin-top: var(--space-2); }
 
-@media (max-width: 900px) {
+@media (max-width: 959px) {
   .ep-scanner-layout { grid-template-columns: 1fr; }
   .ep-detail-grid { grid-template-columns: 1fr; }
   .ep-qr-panel { position: static; }

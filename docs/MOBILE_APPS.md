@@ -1,15 +1,17 @@
-# Zintriq — Mobile Apps (Android & iOS)
+# Zintriq — Studio apps (desktop path / Android & iOS)
 
-The **website stays as-is** (Flask on port 5001). Native apps are thin Capacitor shells that load the same `/app` UI from your server.
+The **website** keeps Community, marketing, accounts, and published runtimes.  
+**Zintriq Studio** (`/studio`) is the composition shell (Data / Interface / Logic / Connection / Publish). Native Capacitor shells load **Studio only**, not the full `/app` product OS.
 
 ## What you get
 
 | Platform | How |
 |----------|-----|
-| **Website** | `python3 app.py` → http://127.0.0.1:5001 |
-| **PWA** | Install from browser (manifest + service worker) |
-| **Android** | Capacitor → Google Play |
-| **iOS** | Capacitor → App Store |
+| **Website** | `python3 app.py` → http://127.0.0.1:5001 — Community at `/app/community` |
+| **Studio (web entry)** | `/studio` — same APIs; intended desktop/native chrome |
+| **PWA** | Optional install of published surfaces |
+| **Android / iOS** | Capacitor → loads `/studio` |
+| **Account link** | Same user (session or Studio Bearer token `zst_…`) across web Community and Studio |
 
 ## One-time setup
 
@@ -56,7 +58,7 @@ Build and run on device/simulator from the IDE.
 
 ## Architecture
 
-Native Android/iOS apps use a WebView that loads `https://your-domain.com/app` — the same Flask site you already run. No duplicate backend.
+Native apps load `https://your-domain.com/studio`. Community import uses web handoff (`/studio?install=…` or `zintriq://studio?…`) so the marketplace stays in the system browser. Studio API tokens: `POST /api/studio/tokens` (browser session) then `Authorization: Bearer zst_…`.
 
 ## PWA (install from browser)
 

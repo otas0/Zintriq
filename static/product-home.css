@@ -1,0 +1,465 @@
+/* Zintriq product homepage — marketing surface (not Customer/Business App templates) */
+
+.mq-public-main:has(.zh-hero) {
+  padding: 0;
+  max-width: none;
+}
+
+.zh-hero {
+  position: relative;
+  min-height: min(88vh, 820px);
+  display: grid;
+  align-items: center;
+  overflow: hidden;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.02) 0%, var(--canvas-bg) 72%),
+    radial-gradient(90% 70% at 85% 20%, var(--color-brand-soft) 0%, transparent 58%),
+    var(--canvas-bg);
+}
+
+.zh-hero__plane {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+.zh-hero__grid {
+  position: absolute;
+  right: max(4vw, 24px);
+  top: 14%;
+  bottom: 18%;
+  width: min(42vw, 520px);
+  display: grid;
+  grid-template-columns: 1.1fr 0.9fr;
+  grid-template-rows: 1.2fr 0.9fr 1fr;
+  gap: 10px;
+}
+
+.zh-hero__cell {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  justify-content: flex-end;
+  gap: 8px;
+  padding: 20px 22px 22px 24px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  font-size: 13px;
+  font-weight: var(--weight-semibold);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--color-text-primary);
+  background: rgba(255, 255, 255, 0.92);
+  opacity: 1;
+  overflow: visible;
+  box-sizing: border-box;
+}
+
+.zh-hero__cell--data {
+  grid-column: 1;
+  grid-row: 1 / span 2;
+  background: var(--color-brand);
+  border-color: var(--color-brand-hover);
+  color: var(--color-on-brand);
+}
+
+.zh-hero__cell--interface { grid-column: 2; grid-row: 1; }
+.zh-hero__cell--logic { grid-column: 2; grid-row: 2; }
+.zh-hero__cell--connection { grid-column: 1; grid-row: 3; }
+.zh-hero__cell--publish {
+  grid-column: 2;
+  grid-row: 3;
+  background: var(--color-text-primary);
+  border-color: var(--color-text-primary);
+  color: var(--canvas-bg);
+}
+
+.zh-hero__copy {
+  position: relative;
+  z-index: 1;
+  width: min(520px, 100%);
+  margin-top: clamp(-40px, -4vh, 0px);
+  padding: clamp(32px, 6vh, 72px) clamp(20px, 5vw, 64px) clamp(40px, 8vh, 80px);
+  opacity: 1;
+  animation: zh-copy-in 640ms var(--motion-smooth, cubic-bezier(0.22, 1, 0.36, 1)) both;
+}
+
+.zh-hero__brand {
+  margin: 0 0 20px;
+  line-height: 0;
+}
+
+.zh-hero__logo,
+.zh-hero__brand .zintriq-logo {
+  height: clamp(48px, 7vw, 72px);
+  width: auto;
+  max-width: min(280px, 70vw);
+}
+
+.zh-hero__brand .zintriq-logo-theme {
+  display: inline-flex;
+  height: auto;
+  max-width: none;
+}
+
+.zh-hero__title {
+  margin: 0 0 16px;
+  font-size: clamp(36px, 6vw, 64px);
+  line-height: 1.05;
+  letter-spacing: -0.04em;
+  font-weight: var(--weight-bold);
+  color: var(--color-text-primary);
+  max-width: 12ch;
+}
+
+.zh-hero__lead {
+  margin: 0 0 28px;
+  max-width: 34em;
+  font-size: clamp(16px, 2vw, 19px);
+  line-height: 1.5;
+  color: var(--color-text-secondary);
+}
+
+.zh-hero__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.zh-hero__actions .mq-btn {
+  min-height: 48px;
+  padding: 0 22px;
+  font-weight: var(--weight-semibold);
+}
+
+.zh-hero__actions .mq-btn-ghost {
+  border: 1px solid var(--color-border-strong);
+  background: transparent;
+  color: var(--color-text-primary);
+}
+
+.zh-hero__actions .mq-btn-ghost:hover {
+  border-color: var(--color-text-primary);
+}
+
+.zh-section {
+  padding: clamp(64px, 10vh, 112px) 0;
+  border-top: 1px solid var(--color-border);
+}
+
+.zh-section__inner {
+  width: min(1120px, calc(100% - 40px));
+  margin: 0 auto;
+}
+
+.zh-section__title {
+  margin: 0 0 12px;
+  font-size: clamp(28px, 4vw, 40px);
+  line-height: 1.15;
+  letter-spacing: -0.03em;
+  font-weight: var(--weight-bold);
+}
+
+.zh-section__lead {
+  margin: 0 0 40px;
+  max-width: 40em;
+  font-size: 17px;
+  line-height: 1.5;
+  color: var(--color-text-secondary);
+}
+
+.zh-primitive-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 0;
+  border-top: 1px solid var(--color-border);
+}
+
+.zh-primitive {
+  display: grid;
+  grid-template-columns: minmax(120px, 180px) 1fr;
+  gap: 16px 32px;
+  padding: 22px 0;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.zh-primitive__name {
+  margin: 0;
+  font-size: 15px;
+  font-weight: var(--weight-bold);
+  letter-spacing: 0.02em;
+}
+
+.zh-primitive__body {
+  margin: 0;
+  font-size: 16px;
+  line-height: 1.45;
+  color: var(--color-text-secondary);
+}
+
+.zh-entry-row {
+  display: grid;
+  gap: 28px;
+  grid-template-columns: 1fr;
+}
+
+.zh-entry {
+  padding: 0;
+  border: 0;
+  background: none;
+  box-shadow: none;
+  display: block;
+  text-decoration: none;
+  color: inherit;
+}
+
+a.zh-entry:visited {
+  color: inherit;
+}
+
+.zh-entry__name {
+  margin: 0 0 8px;
+  font-size: 22px;
+  letter-spacing: -0.02em;
+  font-weight: var(--weight-bold);
+}
+
+.zh-entry__body {
+  margin: 0 0 14px;
+  font-size: 15px;
+  line-height: 1.5;
+  color: var(--color-text-secondary);
+  max-width: 36em;
+}
+
+.zh-close {
+  background: var(--color-text-primary);
+  color: var(--canvas-bg);
+  border-top: 0;
+}
+
+.zh-close .zh-section__title,
+.zh-close .zh-section__lead {
+  color: inherit;
+}
+
+.zh-close .zh-section__lead {
+  opacity: 0.78;
+}
+
+.zh-close .mq-btn-primary {
+  background: var(--color-brand);
+  color: var(--color-on-brand);
+  border-color: var(--color-text-primary);
+}
+
+.zh-close .zh-hero__actions .mq-btn-ghost,
+.zh-close .mq-btn-ghost {
+  background: transparent;
+  color: var(--canvas-bg);
+  border: 1px solid rgba(255, 255, 255, 0.65);
+}
+
+.zh-close .zh-hero__actions .mq-btn-ghost:hover,
+.zh-close .mq-btn-ghost:hover {
+  background: rgba(255, 255, 255, 0.12);
+  border-color: var(--canvas-bg);
+  color: var(--canvas-bg);
+}
+
+.zh-close__inner {
+  max-width: 720px;
+}
+
+@keyframes zh-copy-in {
+  from {
+    opacity: 0;
+    transform: translate3d(0, 18px, 0);
+  }
+  to {
+    opacity: 1;
+    transform: translate3d(0, 0, 0);
+  }
+}
+
+@keyframes zh-plane-in {
+  from { opacity: 0; transform: translate3d(12px, 0, 0); }
+  to { opacity: 1; transform: none; }
+}
+
+@media (min-width: 1024px) {
+  .zh-hero {
+    align-items: center;
+  }
+
+  .zh-entry-row {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 40px;
+  }
+
+  .zh-hero__grid {
+    width: min(38vw, 480px);
+    right: max(3vw, 20px);
+  }
+}
+
+@media (max-width: 1023px) {
+  .zh-hero {
+    min-height: auto;
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    padding-top: 8px;
+  }
+
+  .zh-hero__plane {
+    position: relative;
+    inset: auto;
+    order: 2;
+    margin: 0 0 8px;
+  }
+
+  .zh-hero__grid {
+    position: relative;
+    right: auto;
+    top: auto;
+    bottom: auto;
+    width: calc(100% - 40px);
+    margin: 0 auto;
+    min-height: 220px;
+    animation: none;
+  }
+
+  .zh-hero__copy {
+    order: 1;
+    width: 100%;
+    margin-top: 0;
+    padding: 20px 20px 12px;
+  }
+
+  .zh-hero__title {
+    max-width: none;
+  }
+
+  .zh-primitive {
+    grid-template-columns: 1fr;
+    gap: 6px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .zh-hero__copy,
+  .zh-hero__grid,
+  .zh-hero__cell {
+    opacity: 1;
+    transform: none;
+    animation: none;
+  }
+}
+
+/* —— RTL hero: mirror plane away from copy; Arabic type safety —— */
+html[dir="rtl"] .zh-hero {
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.02) 0%, var(--canvas-bg) 72%),
+    radial-gradient(90% 70% at 15% 20%, var(--color-brand-soft) 0%, transparent 58%),
+    var(--canvas-bg);
+}
+
+html[dir="rtl"] .zh-hero__grid {
+  right: auto;
+  left: max(4vw, 24px);
+}
+
+html[dir="rtl"] .zh-hero__copy {
+  /* Pin copy to inline-start (right). Do NOT set margin-inline-start:auto
+     — that would shove copy onto the mirrored grid. */
+  margin-inline-start: 0;
+  margin-inline-end: auto;
+  margin-top: 0;
+  z-index: 2;
+  padding-block: clamp(40px, 7vh, 80px);
+}
+
+html[dir="rtl"] .zh-hero__title {
+  max-width: none;
+  line-height: 1.4;
+  letter-spacing: 0;
+  padding-block: 0.12em;
+  overflow: visible;
+}
+
+html[dir="rtl"] .zh-hero__lead {
+  line-height: 1.75;
+  max-width: 36em;
+  text-align: start;
+  /* Mixed Arabic + Latin product tokens */
+  unicode-bidi: isolate;
+}
+
+html[dir="rtl"] .zh-hero__cell {
+  align-items: flex-start;
+  padding-inline: 22px 24px;
+  letter-spacing: 0.02em;
+}
+
+html[dir="rtl"] .zh-hero__actions {
+  justify-content: flex-start;
+}
+
+@keyframes zh-plane-in-rtl {
+  from { opacity: 0; transform: translate3d(-12px, 0, 0); }
+  to { opacity: 1; transform: none; }
+}
+
+html[dir="rtl"] .zh-hero__grid {
+  animation-name: zh-plane-in-rtl;
+}
+
+@media (min-width: 1024px) {
+  html[dir="rtl"] .zh-hero__grid {
+    left: max(3vw, 20px);
+    right: auto;
+    width: min(38vw, 480px);
+  }
+
+  html[dir="rtl"] .zh-hero__copy {
+    width: min(540px, 48vw);
+    padding-inline: clamp(24px, 5vw, 72px) clamp(20px, 4vw, 48px);
+  }
+}
+
+@media (max-width: 1023px) {
+  html[dir="rtl"] .zh-hero__grid {
+    left: auto;
+    right: auto;
+  }
+
+  html[dir="rtl"] .zh-hero__copy {
+    margin-inline: 0;
+    width: 100%;
+  }
+}
+
+/* Arabic-specific: taller display type, no tight tracking */
+html[lang^="ar"] .zh-hero__title {
+  font-family: "SF Arabic", "Segoe UI", "Geeza Pro", "Noto Naskh Arabic",
+    "Noto Sans Arabic", system-ui, sans-serif;
+  font-weight: 700;
+  line-height: 1.45;
+  letter-spacing: 0 !important;
+}
+
+html[lang^="ar"] .zh-hero__lead,
+html[lang^="ar"] .zh-stack__meta {
+  font-family: "SF Arabic", "Segoe UI", "Geeza Pro", "Noto Sans Arabic",
+    system-ui, sans-serif;
+}
+
+html[lang^="ar"] .zh-hero__lead .zh-bidi-ltr,
+html[lang="he"] .zh-hero__lead .zh-bidi-ltr {
+  direction: ltr;
+  unicode-bidi: isolate;
+  display: inline;
+}

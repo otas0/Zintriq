@@ -1,0 +1,47 @@
+{% extends 'marketing_base.html' %}
+{% block title %}
+  {% if share %}{{ share.title }} — Zintriq
+  {% else %}{{ _('share_page.unavailable') }} — Zintriq{% endif %}
+{% endblock %}
+{% block content %}
+<article class="page site-page">
+  {% if share %}
+  <section class="page-hero">
+    <div>
+      <p class="page-kicker">{{ _('share_page.by', name=share.email, type=share.kind) }}</p>
+      <h1>{{ share.title }}</h1>
+      <p class="page-actions">
+        <a class="btn-primary" href="{{ open_url }}">{{ _('share_page.open') }}</a>
+        <a class="btn-secondary" href="{{ work_url }}">{{ _('share_page.view') }}</a>
+        <a class="btn-secondary" href="{{ url_for('marketing_download') }}">{{ _('share_page.download') }}</a>
+      </p>
+      <p class="page-note">{{ _('share_page.no_app') }}</p>
+      <p class="page-note">{{ _('share_page.mobile') }}</p>
+      {% if request.args.get('reported') %}
+      <p class="page-note">{{ _('share_page.reported') }}</p>
+      {% endif %}
+      <form method="post" action="{{ url_for('community_share_report', public_id=share.public_id) }}">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <input type="hidden" name="reason" value="other">
+        <button class="btn-ghost" type="submit">{{ _('share_page.report') }}</button>
+      </form>
+    </div>
+  </section>
+  {% elif unpublished %}
+  <section class="page-hero">
+    <div>
+      <h1>{{ _('hosted.unpublished.title') }}</h1>
+      <p class="page-lead">{{ _('hosted.unpublished.body') }}{% if unpublished_title %} · {{ unpublished_title }}{% endif %}</p>
+      <p class="page-actions"><a class="btn-secondary" href="{{ url_for('marketing_download') }}">{{ _('share_page.download') }}</a></p>
+    </div>
+  </section>
+  {% else %}
+  <section class="page-hero">
+    <div>
+      <h1>{{ _('share_page.unavailable') }}</h1>
+      <p class="page-actions"><a class="btn-secondary" href="{{ url_for('marketing_download') }}">{{ _('share_page.download') }}</a></p>
+    </div>
+  </section>
+  {% endif %}
+</article>
+{% endblock %}

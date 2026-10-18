@@ -105,7 +105,7 @@ SHARED_MODULES: tuple[LayerModule, ...] = (
 
 EXTENSION_MODULES: tuple[LayerModule, ...] = (
     LayerModule("integrations", "Integrations", "extension", (), maturity="planned"),
-    LayerModule("marketplace", "Marketplace", "extension", (), maturity="planned"),
+    LayerModule("marketplace", "Community", "extension", (), maturity="planned"),
     LayerModule("ai_copilot", "AI Copilot", "extension", (), maturity="planned"),
 )
 

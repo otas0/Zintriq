@@ -1,5 +1,5 @@
 /**
- * Desktop smoke: Electron starts Flask, Builder pages return 200, a second
+ * Desktop smoke: Electron starts Flask, the factory opens, a second
  * instance exits, and killing Electron lets Flask exit on its own.
  */
 
@@ -17,7 +17,7 @@ if (process.platform === "linux" && process.env.ZINTRIQ_SMOKE_XVFB !== "1" && !p
   process.exit(result.status == null ? 1 : result.status);
 }
 
-const { smokeUserDataDir } = require("../flask_host");
+const { probe: probeInstalledAssocs } = require("./assoc-os");
 
 function packagedApp() {
   return process.env.ZINTRIQ_SMOKE_APP || "";
@@ -69,6 +69,8 @@ const userData = resolveUserData();
 const sessionFile = path.join(userData, "smoke-session.json");
 const blockedFile = path.join(userData, "logs", "smoke-blocked.txt");
 const overallMs = Number(process.env.ZINTRIQ_SMOKE_TIMEOUT_MS || 300000);
+/** Cold start: Electron spawn → Flask session loaded. Product gate is 3000ms. */
+const coldMsLimit = Number(process.env.ZINTRIQ_SMOKE_COLD_MS || 3000);
 const SECRET_NAMES = new Set(["smoke-session.json", "secret_key", "zintriq.db", "zintriq.db-wal", "zintriq.db-shm"]);
 
 function sleep(ms) {
@@ -84,10 +86,10 @@ function pidAlive(pid) {
   }
 }
 
-function launch() {
+function launch(extraArgs) {
   const env = { ...process.env, ZINTRIQ_SMOKE: "1", ZINTRIQ_SMOKE_USER_DATA: userData };
   if (packagedApp()) env.ZINTRIQ_PACKAGED = "1";
-  return spawn(electronPath, electronArgs(), {
+  return spawn(electronPath, electronArgs().concat(extraArgs || []), {
     cwd: desktopDir,
     env,
     stdio: ["ignore", "pipe", "pipe"],
@@ -123,10 +125,12 @@ async function waitForSession(child, readLog) {
   throw new Error(`等待 smoke session 超时\n${readLog()}`);
 }
 
-async function openBuilderPages(port, token) {
+async function openFactory(port, token) {
   const studio = await request(port, token, "GET", "/studio");
   if (studio.status !== 200) throw new Error(`/studio 返回 ${studio.status}`);
   const html = studio.body.toString("utf8");
+  if (!/da-factory/i.test(html)) throw new Error("Studio 首页不是工厂");
+  if (/universal-builder\.js/i.test(html)) throw new Error("工厂页仍加载旧编辑器");
   const csrfMatch = html.match(/csrf-token" content="([^"]+)"/);
   const csrf = csrfMatch ? csrfMatch[1] : "";
   const setCookie = studio.headers["set-cookie"];
@@ -136,36 +140,69 @@ async function openBuilderPages(port, token) {
       ? String(setCookie).split(";")[0]
       : "";
   const auth = { Cookie: cookie, "X-CSRF-Token": csrf };
-  const list = await request(port, token, "GET", "/api/builder-core/projects", null, auth);
-  if (list.status !== 200) throw new Error(`/api/builder-core/projects 返回 ${list.status}`);
-  let projects = [];
-  try {
-    projects = JSON.parse(list.body.toString("utf8")).projects || [];
-  } catch {
-    throw new Error("projects JSON 无法解析");
+  const meta = await request(port, token, "GET", "/studio/meta", null, auth);
+  if (meta.status !== 200) throw new Error(`/studio/meta 返回 ${meta.status}`);
+  if (!/me-code/i.test(meta.body.toString("utf8"))) throw new Error("描述页缺少编辑器");
+  if (!/studio\/editor-views\.js/i.test(meta.body.toString("utf8"))) {
+    throw new Error("描述页缺少视图插件");
   }
-  let projectId = projects[0] && projects[0].id;
-  if (!projectId) {
-    const created = await request(
-      port,
-      token,
-      "POST",
-      "/api/builder-core/projects",
-      JSON.stringify({ name: "Smoke Project", csrf_token: csrf }),
-      auth
-    );
-    if (created.status !== 201 && created.status !== 200) {
-      throw new Error(`创建项目返回 ${created.status}`);
-    }
-    const payload = JSON.parse(created.body.toString("utf8"));
-    projectId = payload.id || (payload.project && payload.project.id);
+  if (!/data-editor-view="code"/i.test(meta.body.toString("utf8"))) {
+    throw new Error("描述页缺少 Code 视图");
   }
-  const editor = await request(port, token, "GET", `/studio/p/${projectId}`, null, auth);
-  if (editor.status !== 200) throw new Error(`/studio/p/${projectId} 返回 ${editor.status}`);
-  if (!/universal-builder\.js/i.test(editor.body.toString("utf8"))) {
-    throw new Error("编辑器页面未包含 Builder 脚本");
+  if (!/id="me-graph"/i.test(meta.body.toString("utf8"))) {
+    throw new Error("描述页缺少 Graph 视图");
   }
-  return { csrf, cookie, auth, projectId };
+  if (!/id="me-diagram"/i.test(meta.body.toString("utf8"))) {
+    throw new Error("描述页缺少 Diagram 插件");
+  }
+  if (!/studio\/editors\/runtimes\.js/i.test(meta.body.toString("utf8"))) {
+    throw new Error("描述页未加载编辑器运行时");
+  }
+  const panes = ["scene", "shader", "quantum", "map", "bitmap", "diagram", "text"];
+  for (const pane of panes) {
+    const view = await request(port, token, "GET", "/studio/meta?pane=" + pane, null, auth);
+    if (view.status !== 200) throw new Error("/studio/meta?pane=" + pane + " 返回 " + view.status);
+  }
+  if (!/id="me-plugin-host"/i.test(meta.body.toString("utf8"))) {
+    throw new Error("描述页缺少插件宿主");
+  }
+  if (!/id="me-uir"/i.test(meta.body.toString("utf8"))) {
+    throw new Error("描述页缺少 UIR 视图");
+  }
+  if (/universal-builder\.js/i.test(meta.body.toString("utf8"))) {
+    throw new Error("描述页仍加载旧编辑器");
+  }
+  const sim = await request(port, token, "GET", "/studio/simulate", null, auth);
+  if (sim.status !== 200) throw new Error(`/studio/simulate 返回 ${sim.status}`);
+  if (!/data-meta-view="simulate"/i.test(sim.body.toString("utf8"))) {
+    throw new Error("模拟页缺少 workbench 面");
+  }
+  const inst = await request(port, token, "GET", "/studio/instantiate", null, auth);
+  if (!/id="me-hw-flash"/i.test(inst.body.toString("utf8"))) {
+    throw new Error("实例化页缺少 ESP32 烧录");
+  }
+  if (!/data-meta-view="instantiate"/i.test(inst.body.toString("utf8"))) {
+    throw new Error("实例化页缺少 workbench 面");
+  }
+  if (!/id="me-artifact"/i.test(inst.body.toString("utf8"))) {
+    throw new Error("实例化页缺少产物面板");
+  }
+  if (!/id="me-sim-empty"/i.test(sim.body.toString("utf8"))) {
+    throw new Error("模拟页缺少空状态");
+  }
+  const retired = await request(port, token, "GET", "/studio/p/1", null, auth);
+  if (![301, 302, 303, 404].includes(retired.status)) {
+    throw new Error(`/studio/p/1 仍打开旧编辑器 (${retired.status})`);
+  }
+  const space = await request(port, token, "GET", "/studio/space", null, auth);
+  if (space.status !== 200) throw new Error(`/studio/space 返回 ${space.status}`);
+  if (!/data-meta-view="space"/i.test(space.body.toString("utf8"))) {
+    throw new Error("空间页缺少 workbench 面");
+  }
+  if (!/id="me-space-doc"/i.test(space.body.toString("utf8"))) {
+    throw new Error("空间页缺少文档面");
+  }
+  return { csrf, cookie, auth };
 }
 
 function request(port, token, method, urlPath, body, extraHeaders) {
@@ -232,154 +269,131 @@ async function postJson(port, token, urlPath, data, auth) {
   return request(port, token, "POST", urlPath, JSON.stringify(payload), auth);
 }
 
-async function patchJson(port, token, urlPath, data, auth) {
-  const payload = { ...(data || {}) };
-  if (auth && auth["X-CSRF-Token"] && payload.csrf_token == null) payload.csrf_token = auth["X-CSRF-Token"];
-  return request(port, token, "PATCH", urlPath, JSON.stringify(payload), auth);
-}
+const SMOKE_SITE = {
+  fields: {
+    kind: { form: "atom", type: "string", value: "software.site" },
+    pages: {
+      form: "sequence",
+      items: [
+        {
+          fields: {
+            body: { form: "sequence", items: [{ form: "atom", type: "string", value: "Welcome." }] },
+            key: { form: "atom", type: "string", value: "home" },
+            title: { form: "atom", type: "string", value: "Home" },
+          },
+          form: "struct",
+        },
+        {
+          fields: {
+            body: {
+              form: "sequence",
+              items: [{ form: "atom", type: "string", value: "About this system." }],
+            },
+            key: { form: "atom", type: "string", value: "about" },
+            title: { form: "atom", type: "string", value: "About" },
+          },
+          form: "struct",
+        },
+      ],
+    },
+    title: { form: "atom", type: "string", value: "Smoke" },
+  },
+  form: "struct",
+};
 
-function countProject(detail) {
-  const documents = detail.documents || [];
-  const pages = documents.filter((item) => item.type !== "workflow");
-  const workflows = documents.filter((item) => item.type === "workflow");
-  const models = detail.data_models || [];
-  const components = detail.component_definitions || [];
+function zipImportBody(zipBuffer, csrf, slug) {
+  const boundary = "----zintriqsmoke" + Date.now();
+  const head =
+    `--${boundary}\r\n` +
+    `Content-Disposition: form-data; name="csrf_token"\r\n\r\n${csrf}\r\n` +
+    `--${boundary}\r\n` +
+    `Content-Disposition: form-data; name="slug"\r\n\r\n${slug}\r\n` +
+    `--${boundary}\r\n` +
+    `Content-Disposition: form-data; name="site"; filename="site.zip"\r\n` +
+    `Content-Type: application/zip\r\n\r\n`;
+  const tail = `\r\n--${boundary}--\r\n`;
   return {
-    pages: pages.length,
-    workflows: workflows.length,
-    disabledWorkflows: workflows.filter((item) => item.status === "disabled").length,
-    models: Array.isArray(models) ? models.length : 0,
-    components: Array.isArray(components) ? components.length : 0,
+    body: Buffer.concat([Buffer.from(head), zipBuffer, Buffer.from(tail)]),
+    contentType: `multipart/form-data; boundary=${boundary}`,
   };
 }
 
-async function projectDetail(port, token, projectId, auth) {
-  const res = await request(port, token, "GET", `/api/builder-core/projects/${projectId}/bootstrap`, null, auth);
-  if (res.status !== 200) throw new Error(`bootstrap 返回 ${res.status}`);
-  return jsonBody(res);
-}
-
-async function seedTransferProject(port, token, auth) {
-  const created = await postJson(port, token, "/api/builder-core/projects", { name: "Transfer Source" }, auth);
-  if (created.status !== 201 && created.status !== 200) {
-    throw new Error(`创建导出项目返回 ${created.status} ${created.body.toString("utf8").slice(0, 200)}`);
-  }
-  const project = jsonBody(created);
-  const projectId = project.id || (project.project && project.project.id);
-  const page = await postJson(
-    port,
-    token,
-    `/api/builder-core/projects/${projectId}/documents`,
-    { name: "Home Page", key: "home-page", type: "page", route: "/home-page" },
-    auth
-  );
-  if (page.status !== 201) throw new Error(`创建页面返回 ${page.status} ${page.body.toString("utf8").slice(0, 200)}`);
-  const pageId = jsonBody(page).id;
-  const node = await postJson(
-    port,
-    token,
-    `/api/builder-core/projects/${projectId}/nodes`,
-    { document_id: pageId, component_type: "text", key: "smoke-text", props: { body: "hello" } },
-    auth
-  );
-  if (node.status !== 201) throw new Error(`创建节点返回 ${node.status} ${node.body.toString("utf8").slice(0, 200)}`);
-  const nodeKey = jsonBody(node).key;
-  const component = await postJson(
-    port,
-    token,
-    `/api/builder-core/projects/${projectId}/components/from-node`,
-    { document_id: pageId, node_key: nodeKey, name: "Smoke Component" },
-    auth
-  );
-  if (component.status !== 201) {
-    throw new Error(`创建组件返回 ${component.status} ${component.body.toString("utf8").slice(0, 200)}`);
-  }
-  const model = await postJson(
-    port,
-    token,
-    `/api/builder-core/projects/${projectId}/data-models`,
-    { name: "Items", key: "items", schema: { type: "object", properties: { title: { type: "string" } } } },
-    auth
-  );
-  if (model.status !== 201) throw new Error(`创建集合返回 ${model.status} ${model.body.toString("utf8").slice(0, 200)}`);
-  const workflow = await postJson(
-    port,
-    token,
-    `/api/builder-core/projects/${projectId}/documents`,
-    { name: "On Submit", key: "on-submit", type: "workflow", route: "/on-submit" },
-    auth
-  );
-  if (workflow.status !== 201) {
-    throw new Error(`创建工作流返回 ${workflow.status} ${workflow.body.toString("utf8").slice(0, 200)}`);
-  }
-  const detail = await projectDetail(port, token, projectId, auth);
-  return { projectId, counts: countProject(detail), name: detail.name };
-}
-
 async function roundTripPackage(port, token, auth) {
-  const source = await seedTransferProject(port, token, auth);
-  const exported = await request(
+  const created = await postJson(
     port,
     token,
-    "POST",
-    `/api/builder-core/transfer/export/${source.projectId}`,
-    JSON.stringify({ csrf_token: auth["X-CSRF-Token"] }),
+    "/api/builder-core/meta/instantiate",
+    { slug: "smoke-source", description: SMOKE_SITE },
     auth
   );
+  if (created.status !== 201) {
+    throw new Error(`实例化返回 ${created.status} ${created.body.toString("utf8").slice(0, 200)}`);
+  }
+  const exported = await request(port, token, "GET", "/api/builder-core/meta/sites/smoke-source/zip", null, auth);
   if (exported.status !== 200) {
-    throw new Error(`导出返回 ${exported.status} ${exported.body.toString("utf8").slice(0, 200)}`);
+    throw new Error(`导出 zip 返回 ${exported.status} ${exported.body.toString("utf8").slice(0, 200)}`);
   }
   if (exported.body.length < 32) throw new Error("导出包过小");
-  const zipHeaders = { ...auth, "Content-Type": "application/zip" };
-  const preview = await request(port, token, "POST", "/api/builder-core/transfer/preview", exported.body, zipHeaders);
-  if (preview.status !== 200) {
-    throw new Error(`预览返回 ${preview.status} ${preview.body.toString("utf8").slice(0, 200)}`);
+  const removed = await postJson(
+    port,
+    token,
+    "/api/builder-core/meta/sites/smoke-source/remove",
+    {},
+    auth
+  );
+  if (removed.status !== 200) {
+    throw new Error(`删除站点返回 ${removed.status} ${removed.body.toString("utf8").slice(0, 200)}`);
   }
-  const before = jsonBody(await request(port, token, "GET", "/api/builder-core/projects", null, auth));
-  const beforeCount = (before.projects || []).length;
-  const commit = await request(port, token, "POST", "/api/builder-core/transfer/commit", exported.body, zipHeaders);
-  if (commit.status !== 200 && commit.status !== 201) {
+  const before = jsonBody(await request(port, token, "GET", "/api/builder-core/meta/index", null, auth));
+  const beforeCount = (before.artifacts || []).length;
+  const pack = zipImportBody(exported.body, auth["X-CSRF-Token"], "smoke-imported");
+  const commit = await request(port, token, "POST", "/api/builder-core/meta/sites/import", pack.body, {
+    ...auth,
+    "Content-Type": pack.contentType,
+  });
+  if (commit.status !== 201 && commit.status !== 200) {
     throw new Error(`导入返回 ${commit.status} ${commit.body.toString("utf8").slice(0, 200)}`);
   }
   const imported = jsonBody(commit);
-  const importedId = imported.id || imported.project_id || (imported.project && imported.project.id);
-  if (!importedId) throw new Error("导入未返回项目 id");
-  const after = jsonBody(await request(port, token, "GET", "/api/builder-core/projects", null, auth));
-  const afterCount = (after.projects || []).length;
+  if (imported.slug !== "smoke-imported") throw new Error(`导入 slug 为 ${imported.slug}`);
+  const after = jsonBody(await request(port, token, "GET", "/api/builder-core/meta/index", null, auth));
+  const afterCount = (after.artifacts || []).length;
   if (afterCount !== beforeCount + 1) {
-    throw new Error(`导入后项目数 ${afterCount}，期望 ${beforeCount + 1}`);
+    throw new Error(`导入后产物数 ${afterCount}，期望 ${beforeCount + 1}`);
   }
-  const detail = await projectDetail(port, token, importedId, auth);
-  const counts = countProject(detail);
-  if (counts.pages !== source.counts.pages) {
-    throw new Error(`导入页面数 ${counts.pages}，期望 ${source.counts.pages}`);
-  }
-  if (counts.models !== source.counts.models) {
-    throw new Error(`导入集合数 ${counts.models}，期望 ${source.counts.models}`);
-  }
-  if (counts.components !== source.counts.components) {
-    throw new Error(`导入组件数 ${counts.components}，期望 ${source.counts.components}`);
-  }
-  if (counts.workflows !== source.counts.workflows) {
-    throw new Error(`导入工作流数 ${counts.workflows}，期望 ${source.counts.workflows}`);
-  }
-  if (counts.workflows && counts.disabledWorkflows !== counts.workflows) {
-    throw new Error("导入后工作流必须全部停用");
+  const page = await request(port, token, "GET", "/build/smoke-imported/home", null, auth);
+  if (page.status !== 200) throw new Error(`导入后 /build 返回 ${page.status}`);
+  const html = page.body.toString("utf8");
+  if (!/Welcome/.test(html)) throw new Error("导入后页面缺少正文");
+  if (!/data-boundary="software\.(page|site)"/.test(html) && !/data-page-kind="software\.(page|site)"/.test(html)) {
+    throw new Error("导入后页面缺少 software 边界");
   }
   assertNoBlocked();
-  return { persistName: "Restart Marker", persistId: importedId };
+  return { persistName: "Restart Marker", persistSlug: "smoke-imported" };
 }
 
-async function renameForPersistence(port, token, auth, projectId, name) {
-  const res = await patchJson(port, token, `/api/builder-core/projects/${projectId}`, { name }, auth);
-  if (res.status !== 200) throw new Error(`重命名返回 ${res.status}`);
+async function renameForPersistence(port, token, auth, slug, name) {
+  const res = await postJson(
+    port,
+    token,
+    "/api/builder-core/meta/drafts",
+    { slug, code: JSON.stringify({ marker: name, form: "atom", type: "string", value: name }) },
+    auth
+  );
+  if (res.status !== 200) throw new Error(`保存草稿返回 ${res.status}`);
 }
 
-async function assertProjectName(port, token, auth, projectId, name) {
+async function assertProjectName(port, token, auth, slug, name) {
   const studio = await request(port, token, "GET", "/studio");
   if (studio.status !== 200) throw new Error(`重启后 /studio 返回 ${studio.status}`);
-  const detail = await projectDetail(port, token, projectId, auth);
-  if (detail.name !== name) throw new Error(`重启后项目名为 ${detail.name}，期望 ${name}`);
+  const html = studio.body.toString("utf8");
+  if (!html.includes(slug)) throw new Error(`重启后工厂未列出 ${slug}`);
+  const draft = await request(port, token, "GET", `/api/builder-core/meta/drafts/${slug}`, null, auth);
+  if (draft.status !== 200) throw new Error(`重启后草稿返回 ${draft.status}`);
+  const body = jsonBody(draft);
+  if (!String(body.code || "").includes(name)) {
+    throw new Error(`重启后草稿不含 ${name}`);
+  }
 }
 
 async function stopApp(child, flaskPid, mode) {
@@ -464,6 +478,110 @@ function killPid(pid) {
   }
 }
 
+function assertAssocManifest() {
+  const pkg = JSON.parse(fs.readFileSync(path.join(desktopDir, "package.json"), "utf8"));
+  const assocs = ((pkg.build || {}).fileAssociations || []).filter((row) => row && row.rank === "Alternate");
+  const exts = assocs.map((row) => row.ext);
+  if (!exts.includes("zintriq-plugin.json") || !exts.includes("zip")) {
+    throw new Error("fileAssociations must mark zintriq-plugin.json and zip Alternate");
+  }
+  const install = process.env.ZINTRIQ_SMOKE_INSTALL_DIR || "";
+  if (process.platform === "darwin" && install) {
+    const plist = fs.readFileSync(path.join(install, "Contents/Info.plist"), "utf8");
+    if (!plist.includes("zintriq-plugin.json")) throw new Error("mac Info.plist missing zintriq-plugin.json");
+    if (!plist.includes("Alternate") && !plist.includes("LSHandlerRank")) throw new Error("mac Info.plist missing Alternate rank");
+  }
+  if (process.platform === "linux" && install) {
+    const desktopFiles = [];
+    function walk(dir, depth) {
+      if (depth > 4 || !fs.existsSync(dir)) return;
+      for (const name of fs.readdirSync(dir)) {
+        const full = path.join(dir, name);
+        let stat;
+        try {
+          stat = fs.statSync(full);
+        } catch {
+          continue;
+        }
+        if (stat.isDirectory()) walk(full, depth + 1);
+        else if (name.endsWith(".desktop")) desktopFiles.push(full);
+      }
+    }
+    walk(install, 0);
+    const text = desktopFiles.map((file) => fs.readFileSync(file, "utf8")).join("\n");
+    if (text && !/json|zip/i.test(text)) throw new Error("linux .desktop missing json/zip mime");
+  }
+  probeInstalledAssocs();
+}
+
+async function assertModesScrollLayout(port, token, auth) {
+  const pane = "scene";
+  const scroll = 240;
+  const res = await postJson(
+    port,
+    token,
+    "/api/builder-core/meta/layout",
+    { modesScroll: scroll, pane: pane, version: 8 },
+    auth
+  );
+  if (res.status !== 200) {
+    throw new Error(`layout save ${res.status}: ${res.body.toString("utf8").slice(0, 200)}`);
+  }
+  const body = jsonBody(res);
+  if (Number(body.modesScroll) !== scroll) {
+    throw new Error(`modesScroll roundtrip ${body.modesScroll} on ${process.platform}`);
+  }
+  if (String(body.pane || "") !== pane) {
+    throw new Error(`pane roundtrip ${body.pane} on ${process.platform}`);
+  }
+  const layoutPath = path.join(userData, "workbench-layout.json");
+  const deadline = Date.now() + 5000;
+  while (Date.now() < deadline && !fs.existsSync(layoutPath)) {
+    await sleep(50);
+  }
+  if (!fs.existsSync(layoutPath)) {
+    throw new Error(`workbench-layout.json missing on ${process.platform}`);
+  }
+  const disk = JSON.parse(fs.readFileSync(layoutPath, "utf8"));
+  if (Number(disk.modesScroll) !== scroll) {
+    throw new Error(`disk modesScroll ${disk.modesScroll} on ${process.platform}`);
+  }
+  if (String(disk.pane || "") !== pane) {
+    throw new Error(`disk pane ${disk.pane} on ${process.platform}`);
+  }
+  console.log(`modesScroll layout ok platform=${process.platform} scroll=${scroll} pane=${pane}`);
+}
+
+async function assertAssocOpen() {
+  assertAssocManifest();
+  if (!packagedApp()) return;
+  const fixture = path.join(userData, "assoc-open.zintriq-plugin.json");
+  fs.writeFileSync(
+    fixture,
+    JSON.stringify({
+      id: "assoc-open-pack",
+      name: "Assoc open",
+      form: "view",
+      document: { form: "struct", fields: { kind: { form: "atom", type: "string", value: "scene", has_value: true } } },
+    })
+  );
+  const child = launch([fixture]);
+  const code = await waitForExit(child, 20000);
+  if (code !== 0) throw new Error(`assoc second instance exit ${code}`);
+  const deadline = Date.now() + 20000;
+  while (Date.now() < deadline) {
+    const folder = path.join(userData, "plugins");
+    if (fs.existsSync(folder)) {
+      const names = fs.readdirSync(folder).join(" ");
+      if (/assoc-open|assoc_open|Assoc/i.test(names) || names.includes(".json")) return;
+    }
+    const last = path.join(userData, "last-open.json");
+    if (fs.existsSync(last) && fs.readFileSync(last, "utf8").includes("assoc")) return;
+    await sleep(250);
+  }
+  throw new Error("assoc open did not import .zintriq-plugin.json");
+}
+
 function assertWritableOnlyUserData() {
   const marker = path.join(userData, "smoke-write-check.txt");
   fs.writeFileSync(marker, "ok", { encoding: "utf8" });
@@ -480,6 +598,7 @@ function assertWritableOnlyUserData() {
 async function main() {
   fs.rmSync(sessionFile, { force: true });
   fs.rmSync(blockedFile, { force: true });
+  const coldStartedAt = Date.now();
   let current = launch();
   const readFirst = collect(current);
   let flaskPid = 0;
@@ -493,38 +612,45 @@ async function main() {
   if (typeof overallTimer.unref === "function") overallTimer.unref();
   try {
     let session = await waitForSession(current, readFirst);
+    const coldMs = Date.now() - coldStartedAt;
+    console.log(`cold start ${coldMs}ms (limit ${coldMsLimit}ms)`);
+    if (coldMs > coldMsLimit) {
+      throw new Error(`cold start ${coldMs}ms exceeds ${coldMsLimit}ms`);
+    }
     flaskPid = Number(session.flaskPid);
     if (readFirst().includes(session.token)) throw new Error("Electron 输出含有令牌");
     await sleep(1500);
     assertNoBlocked();
-    const opened = await openBuilderPages(session.port, session.token);
+    const opened = await openFactory(session.port, session.token);
+    await assertModesScrollLayout(session.port, session.token, opened.auth);
+    await assertAssocOpen();
     assertLogsHideToken(session.token, session.logPath);
     assertWritableOnlyUserData();
     const persist = await roundTripPackage(session.port, session.token, opened.auth);
-    await renameForPersistence(session.port, session.token, opened.auth, persist.persistId, persist.persistName);
+    await renameForPersistence(session.port, session.token, opened.auth, persist.persistSlug, persist.persistName);
 
     const second = launch();
     const readSecond = collect(second);
     const code = await waitForExit(second, 20000);
     if (code !== 0) throw new Error(`第二个实例退出码 ${code}\n${readSecond()}`);
     if (current.exitCode !== null) throw new Error("第一个实例被第二个实例带走了");
-    await openBuilderPages(session.port, session.token);
+    await openFactory(session.port, session.token);
 
     await stopApp(current, flaskPid, "term");
     const again = await relaunch();
     current = again.child;
     session = again.session;
     flaskPid = Number(session.flaskPid);
-    const afterTerm = await openBuilderPages(session.port, session.token);
-    await assertProjectName(session.port, session.token, afterTerm.auth, persist.persistId, persist.persistName);
+    const afterTerm = await openFactory(session.port, session.token);
+    await assertProjectName(session.port, session.token, afterTerm.auth, persist.persistSlug, persist.persistName);
 
     await stopApp(current, flaskPid, "kill");
     const third = await relaunch();
     current = third.child;
     session = third.session;
     flaskPid = Number(session.flaskPid);
-    const afterKill = await openBuilderPages(session.port, session.token);
-    await assertProjectName(session.port, session.token, afterKill.auth, persist.persistId, persist.persistName);
+    const afterKill = await openFactory(session.port, session.token);
+    await assertProjectName(session.port, session.token, afterKill.auth, persist.persistSlug, persist.persistName);
 
     await stopApp(current, flaskPid, "kill");
     console.log("smoke ok");

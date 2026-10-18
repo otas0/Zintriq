@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import base64
+import gzip
 import hashlib
 import hmac
 import io
@@ -30,11 +31,7 @@ DATABASE = BASE_DIR / "marketqr.db"
 UPLOAD_DIR = BASE_DIR / "static" / "uploads"
 
 
-def _load_local_env() -> None:
-    """Load KEY=VALUE lines from .env.local without overwriting existing env."""
-    if is_frozen():
-        return
-    path = Path(__file__).resolve().parent / ".env.local"
+def _load_env_file(path: Path, *, overwrite: bool) -> None:
     if not path.is_file():
         return
     for line in path.read_text(encoding="utf-8").splitlines():
@@ -43,7 +40,20 @@ def _load_local_env() -> None:
             continue
         key, _, value = line.partition("=")
         key, value = key.strip(), value.strip().strip("'\"")
+        if not key:
+            continue
+        if not overwrite and key in os.environ:
+            continue
         os.environ[key] = value
+
+
+def _load_local_env() -> None:
+    """Load KEY=VALUE from .env then .env.local. .env.local wins. Skip if frozen."""
+    if is_frozen():
+        return
+    root = Path(__file__).resolve().parent
+    _load_env_file(root / ".env", overwrite=False)
+    _load_env_file(root / ".env.local", overwrite=True)
 
 
 _load_local_env()
@@ -536,6 +546,8 @@ def init_db() -> None:
         init_mvp_schema(conn)
         from customer_account_platform import migrate_customer_account_tables
         migrate_customer_account_tables(conn)
+        from creator_auth import migrate_creator_auth
+        migrate_creator_auth(conn)
 
 
 def csrf_token() -> str:
@@ -545,22 +557,49 @@ def csrf_token() -> str:
 
 
 def current_user():
+    bearer = getattr(g, "studio_bearer_user", None) if has_app_context() else None
+    if bearer:
+        return {
+            "id": bearer["id"],
+            "email": bearer["email"],
+            "auth": bearer.get("auth") or "studio_token",
+        }
     if not session.get("user_id"):
         return None
     from customer_account_platform import is_shopper_only_user
 
     with db() as conn:
-        row = conn.execute(
-            "SELECT id, email, account_kind FROM users WHERE id = ?",
-            (session["user_id"],),
-        ).fetchone()
+        try:
+            row = conn.execute(
+                "SELECT id, email, account_kind, session_version, phone FROM users WHERE id = ?",
+                (session["user_id"],),
+            ).fetchone()
+        except sqlite3.OperationalError:
+            row = conn.execute(
+                "SELECT id, email, account_kind FROM users WHERE id = ?",
+                (session["user_id"],),
+            ).fetchone()
         if not row:
             session.pop("user_id", None)
+            return None
+        stored = 1
+        if row is not None and "session_version" in row.keys():
+            stored = int(row["session_version"] or 1)
+        got = session.get("session_version")
+        if got is None:
+            session["session_version"] = stored
+        elif int(got) != stored:
+            session.pop("user_id", None)
+            session.pop("session_version", None)
             return None
         if is_shopper_only_user(conn, row):
             session.pop("user_id", None)
             return None
-    return {"id": row["id"], "email": row["email"]}
+    return {
+        "id": row["id"],
+        "email": row["email"],
+        "phone": row["phone"] if "phone" in row.keys() else None,
+    }
 
 
 def _preserve_guest_session_keys(flask_session) -> dict:
@@ -588,6 +627,13 @@ def inject_desktop_mode():
 
 
 @app.context_processor
+def inject_turnstile():
+    from turnstile_protect import turnstile_site_key
+
+    return {"turnstile_site_key": turnstile_site_key()}
+
+
+@app.context_processor
 def inject_globals():
     path = request.path
     if path.startswith("/app"):
@@ -603,7 +649,7 @@ def inject_globals():
         "current_user": user,
         "active_app_nav": active_app_nav,
         "owner_stores_nav": owner_stores_nav,
-        "can_switch_to_personal": _can_switch_to_personal(user),
+        "can_switch_to_personal": False,
     }
 
 
@@ -614,6 +660,19 @@ def _can_switch_to_personal(user) -> bool:
 
     with db() as conn:
         return user_can_use_personal_mode(conn, int(user["id"]))
+
+
+@app.context_processor
+def inject_work_urls():
+    from flask import g
+    from work_urls import current_work, work_base_path, work_url
+
+    work = current_work()
+    return {
+        "current_work": work,
+        "work_url": work_url,
+        "work_base_path": work_base_path(work) if work else "",
+    }
 
 
 @app.context_processor
@@ -815,6 +874,49 @@ def sync_customer_remember_cookie(response):
 
 
 @app.after_request
+def gzip_text_responses(response):
+    """Gzip HTML/CSS/JS/SVG/JSON when the client accepts it (Lighthouse / CrUX)."""
+    if response.status_code < 200 or response.status_code >= 300:
+        return response
+    if response.headers.get("Content-Encoding"):
+        return response
+    accept = (request.headers.get("Accept-Encoding") or "").lower()
+    if "gzip" not in accept:
+        return response
+    ctype = (response.mimetype or "").split(";")[0].strip().lower()
+    if ctype not in (
+        "text/html",
+        "text/css",
+        "text/plain",
+        "text/javascript",
+        "application/javascript",
+        "application/json",
+        "image/svg+xml",
+        "application/xml",
+    ):
+        return response
+    if response.direct_passthrough:
+        response.direct_passthrough = False
+    data = response.get_data()
+    if not data or len(data) < 512:
+        return response
+    compressed = gzip.compress(data, compresslevel=5)
+    if len(compressed) >= len(data):
+        return response
+    response.set_data(compressed)
+    response.headers["Content-Encoding"] = "gzip"
+    response.headers["Content-Length"] = str(len(compressed))
+    response.headers.pop("Content-Disposition", None)
+    vary = response.headers.get("Vary")
+    if vary:
+        if "Accept-Encoding" not in vary:
+            response.headers["Vary"] = vary + ", Accept-Encoding"
+    else:
+        response.headers["Vary"] = "Accept-Encoding"
+    return response
+
+
+@app.after_request
 def observability_access_log(response):
     """Log one line per request with method, path, status, duration, request_id."""
     from flask import g
@@ -887,13 +989,13 @@ def login_required(view):
         if cid and not session.get("user_id"):
             with db() as conn:
                 if user_can_use_business_mode(conn, int(cid)):
-                    flash("Switch to Business mode to manage your store.", "info")
+                    flash("Please sign in.", "error")
                     return redirect(url_for("login"))
-            flash("You are signed in to personal mode. Business tools need a business sign-in.", "error")
+            flash("Please sign in.", "error")
             return redirect(url_for("login"))
         user = current_user()
         if not user:
-            flash("Please sign in to manage a storefront.", "error")
+            flash("Please sign in.", "error")
             return redirect(url_for("login", next=request.path))
         try:
             with db() as conn:
@@ -918,9 +1020,17 @@ def protect_forms():
         return
     if request.path.startswith("/api/integrations/webhooks/"):
         return
+    if request.path == "/webhooks/stripe-billing":
+        return
     if request.path == "/api/studio/auth/pkce/exchange":
         return
+    if request.path == "/api/desktop/token":
+        return
+    if request.path.startswith("/api/desktop/cloud/"):
+        return
     if desktop_enabled() and request.path.startswith("/api/builder-core/transfer/"):
+        return
+    if desktop_enabled() and request.path == "/api/builder-core/meta/sites/import":
         return
     from studio_platform import request_has_studio_bearer
 
@@ -994,6 +1104,10 @@ def storefront_render_context(
     view: str = "shop",
     group_in_url: bool = False,
 ):
+    from flask import g
+    from work_urls import work_from_store
+
+    g.work = work_from_store(store)
     from storefront_platform import active_deals_for_storefront, build_store_profile, category_label, deals_map_for_items
     from checkout_platform import list_store_payment_providers, store_checkout_enabled, platform_fee_rate, store_has_cartable_items
 
@@ -1902,13 +2016,11 @@ def lan_ip() -> str | None:
 
 @app.route("/")
 def index():
-    from customer_account_platform import current_customer_id
-
     if current_user():
-        return redirect(url_for("universal_builder_home"))
-    if current_customer_id(session):
-        return redirect(url_for("universal_builder_home"))
-    return render_template("index.html")
+        from auth_redirects import creator_home_url
+
+        return redirect(creator_home_url())
+    return render_template("marketing/home.html")
 
 
 @app.get("/discover")
@@ -2039,12 +2151,25 @@ def sign_in_user(user_id: int, *, remember_device: bool = True):
     apply_remember_device(session, remember_device)
     session["user_id"] = user_id
     csrf_token()
+    try:
+        from creator_auth import attach_session_version
+
+        with db() as conn:
+            attach_session_version(conn, user_id)
+    except Exception:
+        pass
 
 
 @app.route("/register", methods=["GET", "POST"])
 def register():
+    from auth_redirects import creator_home_url, safe_creator_next
+
+    nxt = request.args.get("next")
+    if nxt:
+        session["pending_login_next"] = safe_creator_next(nxt)
     if current_user():
-        return redirect(url_for("universal_builder_home"))
+        dest = session.pop("pending_login_next", "") or creator_home_url()
+        return redirect(dest)
     if request.method == "POST":
         email, password, confirm = request.form.get("email", "").strip().lower(), request.form.get("password", ""), request.form.get("confirm_password", "")
         if not request.form.get("legal_consent"):
@@ -2071,7 +2196,10 @@ def register():
                         ),
                     )
                 sign_in_user(cursor.lastrowid, remember_device=parse_remember_device(request.form.get("remember_device")))
-                return redirect(url_for("universal_builder_home"))
+                from auth_redirects import creator_home_url
+
+                flash("Welcome.", "success")
+                return redirect(creator_home_url())
             except sqlite3.IntegrityError:
                 with db() as conn:
                     existing = conn.execute(
@@ -2091,31 +2219,9 @@ def register():
 
 @app.route("/login", methods=["GET", "POST"])
 def login():
-    if current_user():
-        return redirect(url_for("universal_builder_home"))
-    if request.method == "POST":
-        from customer_verification import find_user_by_login
+    from creator_auth import handle_creator_login
 
-        identifier = (request.form.get("email") or "").strip()
-        with db() as conn:
-            user = find_user_by_login(conn, identifier)
-        if user and check_password_hash(user["password_hash"], request.form.get("password", "")):
-            from customer_account_platform import ACCOUNT_KIND_CUSTOMER, user_account_kind
-            from session_remember import parse_remember_device
-
-            remember = parse_remember_device(request.form.get("remember_device"))
-            if user_account_kind(user) == ACCOUNT_KIND_CUSTOMER:
-                flash("This is a personal account. Use the builder to manage your projects.", "error")
-                return redirect(url_for("login"))
-            if user["two_factor_secret"]:
-                session["pending_2fa_user_id"] = user["id"]
-                session["pending_remember_device"] = remember
-                return redirect(url_for("two_factor_login"))
-            sign_in_user(user["id"], remember_device=remember)
-            destination = request.args.get("next", "")
-            return redirect(destination if destination.startswith("/") and not destination.startswith("//") else url_for("universal_builder_home"))
-        flash("Phone/email or password is incorrect.", "error")
-    return render_template("login.html")
+    return handle_creator_login(app, db=db, sign_in_user=sign_in_user, current_user=current_user)
 
 
 @app.route("/login/2fa", methods=["GET", "POST"])
@@ -2133,24 +2239,50 @@ def two_factor_login():
             from session_remember import parse_remember_device
 
             remember = parse_remember_device(session.pop("pending_remember_device", True))
+            issue_device = session.pop("pending_issue_device", False)
             sign_in_user(user["id"], remember_device=remember)
             session.pop("pending_2fa_user_id", None)
-            return redirect(url_for("universal_builder_home"))
+            from auth_redirects import creator_home_url
+
+            resp = redirect(creator_home_url())
+            if issue_device:
+                from creator_auth import set_trusted_device_cookie
+
+                with db() as conn:
+                    set_trusted_device_cookie(app, resp, conn, user["id"])
+            return resp
         flash("That verification code is not valid. Try the newest code in your app.", "error")
     return render_template("two_factor_login.html")
 
 
 @app.route("/forgot-password", methods=["GET", "POST"])
 def forgot_password():
+    from creator_auth import FORGOT_NEUTRAL, migrate_creator_auth
+    from customer_account_platform import ACCOUNT_KIND_CUSTOMER, user_account_kind
+    from customer_verification import (
+        find_user_by_contact,
+        is_synthetic_customer_email,
+        normalize_email,
+        normalize_phone,
+        send_verification_code,
+    )
+
     if request.method == "POST":
-        email = request.form.get("email", "").strip().lower()
+        phone = normalize_phone(request.form.get("phone") or "")
+        email = normalize_email(request.form.get("email") or "")
         with db() as conn:
-            user = conn.execute("SELECT id FROM users WHERE email = ?", (email,)).fetchone()
-        if user:
-            token = create_auth_token(user["id"], "reset")
-            _log.warning("dev_password_reset_link token_prefix=%s", token[:8])
-        flash("If that email has an account, a reset link has been sent. In local development, check the Flask terminal for the link.", "success")
-        return redirect(url_for("login"))
+            migrate_creator_auth(conn)
+            if phone:
+                user = find_user_by_contact(conn, "phone", phone)
+                if user and user_account_kind(user) != ACCOUNT_KIND_CUSTOMER:
+                    send_verification_code(app, conn, channel="phone", target=phone, purpose="reset")
+            elif email and not is_synthetic_customer_email(email):
+                user = conn.execute("SELECT id FROM users WHERE email = ?", (email,)).fetchone()
+                if user:
+                    token = create_auth_token(user["id"], "reset")
+                    _log.warning("dev_password_reset_link token_prefix=%s", token[:8])
+        flash(FORGOT_NEUTRAL, "success")
+        return redirect(url_for("forgot_password" if phone else "login"))
     return render_template("forgot_password.html")
 
 
@@ -2158,15 +2290,45 @@ def forgot_password():
 def reset_password(token: str):
     if request.method == "POST":
         password, confirm = request.form.get("password", ""), request.form.get("confirm_password", "")
-        if len(password) < 12 or password != confirm:
-            flash("Use matching passwords with at least 12 characters.", "error")
+        from password_policy import hash_password, password_issues
+
+        if password != confirm:
+            flash("Your passwords do not match.", "error")
         else:
-            auth_token = consume_auth_token(token, "reset")
+            with db() as conn:
+                auth_token = conn.execute(
+                    "SELECT * FROM auth_tokens WHERE token_hash = ? AND purpose = ? AND expires_at > CURRENT_TIMESTAMP",
+                    (hash_token(token), "reset"),
+                ).fetchone()
             if not auth_token:
                 flash("This reset link is invalid or expired. Request a new one.", "error")
                 return redirect(url_for("forgot_password"))
             with db() as conn:
-                conn.execute("UPDATE users SET password_hash = ? WHERE id = ?", (generate_password_hash(password, method="pbkdf2:sha256:600000"), auth_token["user_id"]))
+                try:
+                    row = conn.execute(
+                        "SELECT email, phone FROM users WHERE id = ?",
+                        (auth_token["user_id"],),
+                    ).fetchone()
+                except sqlite3.OperationalError:
+                    row = conn.execute("SELECT email FROM users WHERE id = ?", (auth_token["user_id"],)).fetchone()
+                issue = password_issues(
+                    password,
+                    email=(row["email"] if row else ""),
+                    phone=(row["phone"] if row and "phone" in row.keys() else ""),
+                )
+                if issue:
+                    flash(issue, "error")
+                    return render_template("reset_password.html", token=token)
+            consume_auth_token(token, "reset")
+            with db() as conn:
+                conn.execute(
+                    "UPDATE users SET password_hash = ? WHERE id = ?",
+                    (hash_password(password), auth_token["user_id"]),
+                )
+                from creator_auth import invalidate_sessions, migrate_creator_auth
+
+                migrate_creator_auth(conn)
+                invalidate_sessions(conn, auth_token["user_id"])
             flash("Password changed. You can now sign in.", "success")
             return redirect(url_for("login"))
     return render_template("reset_password.html", token=token)
@@ -2199,7 +2361,9 @@ def magic_signin(token: str):
         session["pending_remember_device"] = True
         return redirect(url_for("two_factor_login"))
     sign_in_user(user["id"], remember_device=True)
-    return redirect(url_for("universal_builder_home"))
+    from auth_redirects import creator_home_url
+
+    return redirect(creator_home_url())
 
 
 @app.post("/logout")
@@ -2216,27 +2380,37 @@ def logout():
 
         session["customer_user_id"] = customer_id
         apply_remember_device(session, remember)
-    flash("You have been signed out of your business account.", "success")
-    return redirect(url_for("index") if customer_id else url_for("index"))
+    return redirect(url_for("index"))
 
 
-@app.route("/app/account", methods=["GET", "POST"])
+@app.get("/app/account")
+def account_legacy_redirect():
+    return redirect("/account", code=302)
+
+
+@app.route("/account", methods=["GET", "POST"])
 @login_required
 def account():
     user = current_user()
+    zintriq_subscription = None
     with db() as conn:
-        record = conn.execute("SELECT id, email, two_factor_secret FROM users WHERE id = ?", (user["id"],)).fetchone()
+        try:
+            record = conn.execute(
+                "SELECT id, email, phone, two_factor_secret, email_verified_at FROM users WHERE id = ?",
+                (user["id"],),
+            ).fetchone()
+        except sqlite3.OperationalError:
+            record = conn.execute(
+                "SELECT id, email, two_factor_secret FROM users WHERE id = ?",
+                (user["id"],),
+            ).fetchone()
+        from billing_platform import ensure_schema, subscription_for_user
+        from desktop_account import list_desktop_devices
+
+        ensure_schema(conn)
+        zintriq_subscription = subscription_for_user(conn, user["id"])
+        desktop_devices = list_desktop_devices(conn, user["id"])
     if request.method == "POST":
-        email = request.form.get("email", "").strip().lower()
-        if "@" not in email or len(email) > 254:
-            flash("Enter a valid email address.", "error")
-        else:
-            try:
-                with db() as conn:
-                    conn.execute("UPDATE users SET email = ? WHERE id = ?", (email, user["id"]))
-                flash("Your account information has been updated.", "success")
-            except sqlite3.IntegrityError:
-                flash("That email is already being used by another account.", "error")
         return redirect(url_for("account"))
     verified_at = session.get("delete_account_verified_at")
     show_delete_confirm = bool(verified_at and time.time() - verified_at <= 300)
@@ -2247,9 +2421,12 @@ def account():
         module_id="account",
         page_title="Account",
         user=record,
+        prompt_email=request.args.get("prompt") == "email",
         two_factor_enabled=bool(record["two_factor_secret"]),
         show_delete_confirm=show_delete_confirm,
         workspace=workspace_snapshot(user["id"]),
+        zintriq_subscription=zintriq_subscription,
+        desktop_devices=desktop_devices,
     )
 
 
@@ -2292,6 +2469,8 @@ def disable_two_factor():
 @app.post("/account/change-password")
 @login_required
 def change_password():
+    from password_policy import hash_password, password_issues, verify_password
+
     user = current_user()
     current = request.form.get("current_password", "")
     password = request.form.get("password", "")
@@ -2306,7 +2485,7 @@ def change_password():
 
     two_factor_enabled = bool(stored["two_factor_secret"])
 
-    if not check_password_hash(stored["password_hash"], current):
+    if not verify_password(stored["password_hash"], current):
         flash("Your current password is incorrect.", "error")
         return redirect(url_for("account"))
 
@@ -2318,23 +2497,29 @@ def change_password():
             flash("That authentication code was incorrect.", "error")
             return redirect(url_for("account"))
 
-    if len(password) < 12:
-        flash("Use a password with at least 12 characters.", "error")
-        return redirect(url_for("account"))
     if password != confirm:
         flash("Your new passwords do not match.", "error")
         return redirect(url_for("account"))
-    if check_password_hash(stored["password_hash"], password):
+    issue = password_issues(password, email=user.get("email") or "", phone=user.get("phone") or "")
+    if issue:
+        flash(issue, "error")
+        return redirect(url_for("account"))
+    if verify_password(stored["password_hash"], password):
         flash("Your new password must be different from your current password.", "error")
         return redirect(url_for("account"))
 
     with db() as conn:
         conn.execute(
             "UPDATE users SET password_hash = ? WHERE id = ?",
-            (generate_password_hash(password, method="pbkdf2:sha256:600000"), user["id"]),
+            (hash_password(password), user["id"]),
         )
-    flash("Your password has been changed.", "success")
-    return redirect(url_for("account"))
+        from creator_auth import invalidate_sessions, migrate_creator_auth
+
+        migrate_creator_auth(conn)
+        invalidate_sessions(conn, user["id"])
+    session.clear()
+    flash("Your password has been changed. Sign in again.", "success")
+    return redirect(url_for("login"))
 
 
 @app.post("/account/delete")
@@ -3427,7 +3612,7 @@ def qr_entry(code: str):
                    WHERE e.entry_type='qr' AND e.entry_key=? AND e.status='active'""",
                 (code,),
             ).fetchone()
-        if entry:
+        if entry and desktop_enabled():
             return redirect(f"/build/{entry['slug']}/{entry['document_key']}?from=qr")
     except sqlite3.OperationalError:
         # Supports databases that have not run the additive Builder migration yet.
@@ -4917,6 +5102,12 @@ register_universal_builder_core(app)
 from studio_platform import register_studio_platform
 register_studio_platform(app)
 
+from desktop_account import register_desktop_account
+register_desktop_account(app)
+
+from desktop_cloud import register_desktop_cloud
+register_desktop_cloud(app)
+
 from qr_customer_data import register_qr_customer_data
 register_qr_customer_data(app)
 
@@ -4989,18 +5180,74 @@ register_legal_platform(app)
 from i18n_platform import register_i18n_platform
 register_i18n_platform(app)
 
+from site_pages import register_site_pages
+register_site_pages(app)
+
 from merchant_phone_auth import register_merchant_phone_auth
 register_merchant_phone_auth(app, db=db, sign_in_user=sign_in_user)
 
+from creator_auth import register_creator_auth
+register_creator_auth(
+    app,
+    db=db,
+    sign_in_user=sign_in_user,
+    login_required=login_required,
+    current_user=current_user,
+    create_auth_token=create_auth_token,
+)
+
 from site_retired import register_retired_routes
 register_retired_routes(app)
+
+
+def _desktop_error_page(code: int, title: str, body: str):
+    return (
+        render_template(
+            "errors/desktop.html",
+            error_title=title,
+            error_body=body,
+        ),
+        code,
+    )
 
 
 @app.errorhandler(404)
 def not_found_page(e):
     if request.path.startswith("/api/"):
         return jsonify({"error": "Not found"}), 404
+    if desktop_enabled():
+        return _desktop_error_page(
+            404,
+            "Not in Studio",
+            "This path is not part of the desktop application.",
+        )
     return render_template("errors/404.html"), 404
+
+
+@app.errorhandler(403)
+def forbidden_page(e):
+    if request.path.startswith("/api/"):
+        return jsonify({"error": "Forbidden"}), 403
+    if desktop_enabled():
+        return _desktop_error_page(
+            403,
+            "Not allowed",
+            "Studio cannot open this path.",
+        )
+    return render_template("errors/403.html"), 403
+
+
+@app.errorhandler(500)
+def server_error_page(e):
+    if request.path.startswith("/api/"):
+        return jsonify({"error": "Server error"}), 500
+    if desktop_enabled():
+        return _desktop_error_page(
+            500,
+            "Studio hit an error",
+            "The local application failed this request. Stay in Studio; this is not the website.",
+        )
+    return render_template("errors/500.html"), 500
 
 
 if __name__ == "__main__":

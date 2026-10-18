@@ -28,11 +28,19 @@ jobs:
     timeout-minutes: 90
     env:
       CSC_IDENTITY_AUTO_DISCOVERY: "false"
+      CSC_LINK: ${{ secrets.CSC_LINK }}
+      CSC_KEY_PASSWORD: ${{ secrets.CSC_KEY_PASSWORD }}
+      WIN_CSC_LINK: ${{ secrets.WIN_CSC_LINK }}
+      WIN_CSC_KEY_PASSWORD: ${{ secrets.WIN_CSC_KEY_PASSWORD }}
+      APPLE_ID: ${{ secrets.APPLE_ID }}
+      APPLE_APP_SPECIFIC_PASSWORD: ${{ secrets.APPLE_APP_SPECIFIC_PASSWORD }}
+      APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
       electron_config_cache: ${{ github.workspace }}/.electron-cache
       ZINTRIQ_SMOKE_USER_DATA: ${{ github.workspace }}/.ci-pack-smoke-user
       ZINTRIQ_SMOKE_LOG_DIR: ${{ github.workspace }}/ci-logs
       ZINTRIQ_SMOKE_TOKEN_FILE: ${{ github.workspace }}/.ci-desktop-token
       ZINTRIQ_SMOKE_TIMEOUT_MS: "300000"
+      ZINTRIQ_SMOKE_COLD_MS: "12000"
       SMOKE_LOG: ${{ github.workspace }}/smoke.txt
     strategy:
       fail-fast: false
@@ -120,7 +128,7 @@ jobs:
         run: npm run dist
 
       - name: Ad-hoc sign macOS CI app
-        if: runner.os == 'macOS'
+        if: runner.os == 'macOS' && env.APPLE_ID == ''
         run: |
           app=$(find "$GITHUB_WORKSPACE/desktop/release" -name '*.app' -maxdepth 3 | head -n 1)
           test -n "$app"
@@ -214,6 +222,28 @@ jobs:
           npm run smoke *>&1 | Tee-Object -FilePath $env:SMOKE_LOG
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
+      - name: NSIS HKCU Alternate assoc
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = "Stop"
+          $setup = Get-ChildItem desktop/release/*Setup*.exe | Select-Object -First 1
+          if (-not $setup) { throw "missing NSIS setup" }
+          $dest = Join-Path $env:RUNNER_TEMP "zintriq-nsis"
+          if (Test-Path $dest) { Remove-Item -Recurse -Force $dest }
+          New-Item -ItemType Directory -Path $dest | Out-Null
+          Start-Process -FilePath $setup.FullName -ArgumentList "/S","/D=$dest" -Wait
+          $env:ZINTRIQ_SMOKE_NSIS = "1"
+          $env:ZINTRIQ_SMOKE_APP = Join-Path $dest "Zintriq Studio.exe"
+          if (-not (Test-Path $env:ZINTRIQ_SMOKE_APP)) {
+            $found = Get-ChildItem -Recurse $dest -Filter "Zintriq Studio.exe" | Select-Object -First 1
+            if (-not $found) { throw "NSIS install missing Zintriq Studio.exe" }
+            $env:ZINTRIQ_SMOKE_APP = $found.FullName
+          }
+          $env:ZINTRIQ_SMOKE_INSTALL_DIR = Split-Path $env:ZINTRIQ_SMOKE_APP
+          node desktop/scripts/assoc-os.js
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
       - name: Linux AppImage and deb extract
         if: runner.os == 'Linux'
         run: |
@@ -225,6 +255,18 @@ jobs:
           APPIMAGE_EXTRACT_AND_RUN=1 "$img" --version || true
           dpkg-deb -I "$deb"
           echo "AppArmor userns: see docs/desktop-packaging.md. Official builds never pass --no-sandbox."
+          extract="${RUNNER_TEMP}/zintriq-deb"
+          rm -rf "$extract"
+          mkdir -p "$extract"
+          dpkg-deb -x "$deb" "$extract"
+          mkdir -p "$HOME/.local/share/applications"
+          find "$extract" -name '*.desktop' -exec cp {} "$HOME/.local/share/applications/" \;
+          update-desktop-database "$HOME/.local/share/applications" || true
+          export ZINTRIQ_SMOKE_LINUX_MIME=1
+          export ZINTRIQ_SMOKE_INSTALL_DIR="$extract"
+          node desktop/scripts/assoc-os.js
+          xdg-mime query default application/json || true
+          xdg-mime query default application/zip || true
 
       - name: Check bundle contents
         shell: bash
@@ -252,6 +294,8 @@ jobs:
             desktop/release/*.exe
             desktop/release/*.AppImage
             desktop/release/*.deb
+            desktop/release/latest*.yml
+            desktop/release/*.blockmap
             desktop/release/SHA256SUMS
             desktop/release/sbom.cdx.json
             desktop/resources/notices/**

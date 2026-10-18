@@ -17,7 +17,7 @@ class BosModule:
 
 # Zintriq module registry — MVP navigation
 BOS_MODULES: tuple[BosModule, ...] = (
-    BosModule("store", "Stores", "▣", "bos.store", "Storefronts, customer QR, and responses"),
+    BosModule("store", "Stores", "▣", "bos.store", "Live store hub at /manage — products, QR, settings"),
     BosModule("team", "Team", "◈", "bos.team", "Invite members and manage access"),
     BosModule("settings", "Settings", "⚙", "bos.settings", "Workspace configuration"),
     # Legacy module ids — redirect into Store
@@ -28,7 +28,7 @@ BOS_MODULES: tuple[BosModule, ...] = (
     BosModule("interactions", "Responses", "✎", "bos.responses", "Legacy alias"),
     BosModule("feedback", "Responses", "✎", "bos.responses", "Legacy alias"),
     BosModule("operations", "Operations", "◎", "bos.operations", "Deferred — bookings & check-ins"),
-    BosModule("checkin", "Check-in", "✓", "bos.check_in", "Deferred"),
+    BosModule("checkin", "Check-in", "✓", "bos.check_in", "Live check-in under Manage"),
     BosModule("booking", "Booking", "◷", "bos.booking", "Deferred"),
     BosModule("calendar", "Calendar", "📅", "bos.calendar", "Deferred"),
 )

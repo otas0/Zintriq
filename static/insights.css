@@ -129,7 +129,7 @@
   white-space: pre-wrap;
 }
 
-@media (max-width: 720px) {
+@media (max-width: 768px) {
   .ins-funnel__arrow { display: none; }
   .ins-detail-grid { grid-template-columns: 1fr; }
 }
@@ -331,7 +331,7 @@
   color: #059669;
 }
 
-@media (max-width: 720px) {
+@media (max-width: 768px) {
   .ins-inbox-toolbar {
     grid-template-columns: 1fr;
   }

@@ -1821,5 +1821,17 @@
   "owner.add_block": "Aggiungi blocco",
   "owner.add_shop_qr": "Aggiungi Shop QR",
   "studio.editor.publish": "Publish",
-  "owner.builder": "Builder"
+  "owner.builder": "Builder",
+  "home.hero.kicker": "Banco · su questo computer",
+  "product.kicker": "Costruisci tutto in uno spazio",
+  "hw.kicker": "Un bersaglio · lo stesso spazio",
+  "dl.kicker": "Installa · poi crea",
+  "pricing.kicker": "Tutto lo spazio · ogni piano",
+  "docs.kicker": "Note brevi · per l’app",
+  "about.kicker": "Metaspazio · senza muri",
+  "contact.kicker": "Scrivi · rispondiamo",
+  "sec.kicker": "Prima in locale · questo computer",
+  "changelog.kicker": "Note · dopo ogni versione",
+  "compare.kicker": "Stesso spazio · altri strumenti",
+  "translate.kicker": "Lingue · le porti tu"
 }

@@ -1,0 +1,33 @@
+{% extends 'marketing_base.html' %}
+{% block title %}{{ _('checkout.title') }} — Zintriq{% endblock %}
+{% block content %}
+<article class="page site-page">
+  {% if state == 'cancel' %}
+  <section class="page-hero">
+    <div>
+      <h1>{{ _('checkout.cancel') }}</h1>
+      <p class="page-lead">{{ _('checkout.secure') }}</p>
+    </div>
+  </section>
+  <section class="page-end page-end--paper">
+    <p class="page-actions">
+      <a class="btn-primary" href="{{ murl('/pricing') }}">{{ _('nav.pricing') }}</a>
+      <a class="btn-secondary" href="{{ murl('/contact') }}">{{ _('nav.contact') }}</a>
+    </p>
+  </section>
+  {% else %}
+  <section class="page-hero">
+    <div>
+      <h1>{{ _('checkout.done') }}</h1>
+      <p class="page-lead">{{ _('checkout.secure') }}</p>
+    </div>
+  </section>
+  <section class="page-end page-end--paper">
+    <p class="page-actions">
+      <a class="btn-primary" href="{{ url_for('account') }}">{{ _('nav.account') }}</a>
+      <a class="btn-secondary" href="{{ murl('/download') }}">{{ _('checkout.done.open') }}</a>
+    </p>
+  </section>
+  {% endif %}
+</article>
+{% endblock %}
