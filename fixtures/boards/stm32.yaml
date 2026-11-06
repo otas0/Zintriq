@@ -1,0 +1,24 @@
+id: stm32
+name: STM32 Nucleo-F401RE
+mcuFamily: stm32
+toolchain:
+  compiler: g++
+  flags:
+    - -std=c++17
+    - -Wall
+    - -fsyntax-only
+pins:
+  LED: PA5
+  BUTTON: PC13
+  UART2_TX: PA2
+  UART2_RX: PA3
+peripherals:
+  - name: uart2
+    kind: uart
+    pins:
+      - UART2_TX
+      - UART2_RX
+  - name: gpio_bank_a
+    kind: gpio
+    pins:
+      - LED

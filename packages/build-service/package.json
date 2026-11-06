@@ -1,0 +1,29 @@
+{
+  "name": "@zintriq/build-service",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "vitest run",
+    "lint": "tsc -p tsconfig.json --noEmit",
+    "test:integration": "ZINTRIQ_INTEGRATION=1 vitest run src/compile.integration.test.ts"
+  },
+  "dependencies": {
+    "@zintriq/protocol": "workspace:*"
+  },
+  "devDependencies": {
+    "@types/node": "^22.15.21",
+    "typescript": "catalog:",
+    "vitest": "catalog:"
+  }
+}
