@@ -55,7 +55,9 @@ jobs:
         with:
           python-version: ${{ matrix.python }}
           cache: pip
-          cache-dependency-path: requirements.txt
+          cache-dependency-path: |
+            requirements.txt
+            requirements-desktop.lock.txt
 
       - name: Set up Node
         uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
@@ -70,14 +72,16 @@ jobs:
       - name: Install Python deps (Windows)
         if: runner.os == 'Windows'
         run: |
+          .\.venv\Scripts\python.exe -m pip install -U pip
           .\.venv\Scripts\python.exe -m pip install -r requirements.txt
-          .\.venv\Scripts\python.exe -m pip install -r requirements-desktop.in
+          .\.venv\Scripts\python.exe -m pip install --require-hashes -r requirements-desktop.lock.txt
 
       - name: Install Python deps (Unix)
         if: runner.os != 'Windows'
         run: |
+          .venv/bin/python -m pip install -U pip
           .venv/bin/python -m pip install -r requirements.txt
-          .venv/bin/python -m pip install -r requirements-desktop.in
+          .venv/bin/python -m pip install --require-hashes -r requirements-desktop.lock.txt
 
       - name: License gate and notices
         shell: bash

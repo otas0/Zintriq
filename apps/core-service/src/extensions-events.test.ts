@@ -1,4 +1,4 @@
-import { mkdirSync, rmSync, writeFileSync } from "node:fs";
+import { mkdirSync, rmSync, unlinkSync, writeFileSync } from "node:fs";
 import { createConnection } from "node:net";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -19,6 +19,39 @@ function writeManifest(id: string) {
     }),
     "utf8",
   );
+}
+
+function waitForExtensionChange(
+  baseUrl: string,
+  trigger: () => void,
+): Promise<{ added: string[]; removed: string[] }> {
+  return new Promise((resolve, reject) => {
+    const timer = setTimeout(() => reject(new Error("SSE timeout")), 8_000);
+    const url = new URL("/extensions/events", baseUrl);
+    const socket = createConnection({ host: url.hostname, port: Number(url.port) }, () => {
+      socket.write(`GET ${url.pathname} HTTP/1.1\r\nHost: ${url.host}\r\nAccept: text/event-stream\r\n\r\n`);
+    });
+    let buffer = "";
+    let triggered = false;
+    socket.on("data", (chunk) => {
+      buffer += chunk.toString("utf8");
+      if (buffer.includes('"type":"connected"') && !triggered) {
+        triggered = true;
+        trigger();
+      }
+      const match = /data: ({"type":"extensions-changed"[^\n]+})\n/.exec(buffer);
+      if (match?.[1]) {
+        clearTimeout(timer);
+        const payload = JSON.parse(match[1]) as { added: string[]; removed: string[] };
+        socket.destroy();
+        resolve(payload);
+      }
+    });
+    socket.on("error", (err) => {
+      clearTimeout(timer);
+      reject(err);
+    });
+  });
 }
 
 describe("GET /extensions/events diff", () => {
@@ -46,34 +79,16 @@ describe("GET /extensions/events diff", () => {
   });
 
   it("emits added when a temporary manifest appears", async () => {
-    await new Promise<void>((resolve, reject) => {
-      const timer = setTimeout(() => reject(new Error("SSE timeout")), 8_000);
-      const url = new URL("/extensions/events", baseUrl);
-      const socket = createConnection({ host: url.hostname, port: Number(url.port) }, () => {
-        socket.write(`GET ${url.pathname} HTTP/1.1\r\nHost: ${url.host}\r\nAccept: text/event-stream\r\n\r\n`);
-      });
-      let buffer = "";
-      let wroteBeta = false;
-      socket.on("data", (chunk) => {
-        buffer += chunk.toString("utf8");
-        if (buffer.includes('"type":"connected"') && !wroteBeta) {
-          wroteBeta = true;
-          writeManifest("beta");
-        }
-        const match = /data: ({"type":"extensions-changed"[^\n]+})\n/.exec(buffer);
-        if (match?.[1]) {
-          clearTimeout(timer);
-          const payload = JSON.parse(match[1]) as { added: string[]; removed: string[] };
-          expect(payload.added).toContain("beta");
-          expect(payload.removed).toEqual([]);
-          socket.destroy();
-          resolve();
-        }
-      });
-      socket.on("error", (err) => {
-        clearTimeout(timer);
-        reject(err);
-      });
+    const payload = await waitForExtensionChange(baseUrl, () => writeManifest("beta"));
+    expect(payload.added).toContain("beta");
+    expect(payload.removed).toEqual([]);
+  });
+
+  it("emits removed when a temporary manifest disappears", async () => {
+    const payload = await waitForExtensionChange(baseUrl, () => {
+      unlinkSync(join(dir, "beta.json"));
     });
+    expect(payload.removed).toContain("beta");
+    expect(payload.added).toEqual([]);
   });
 });
