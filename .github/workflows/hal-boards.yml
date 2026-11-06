@@ -8,6 +8,7 @@ on:
       - "packages/protocol/**"
       - ".github/workflows/hal-boards.yml"
   push:
+    branches: [main]
     paths:
       - "fixtures/boards/**"
       - "packages/hal-registry/**"
@@ -32,6 +33,7 @@ jobs:
           node-version: 22
           cache: pnpm
       - run: pnpm install
+      - run: pnpm --filter @zintriq/protocol build
       - name: Validate boards against Zod + schema fixture
         run: pnpm --filter @zintriq/hal-registry test
       - name: Assert board.schema.json present

@@ -9,6 +9,7 @@ on:
       - "desktop/package-lock.json"
       - ".github/workflows/desktop-e2e.yml"
   push:
+    branches: [main]
     paths:
       - "apps/desktop/**"
       - "desktop/package.json"
