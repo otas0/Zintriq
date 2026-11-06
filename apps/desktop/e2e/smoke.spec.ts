@@ -1,4 +1,4 @@
-import { _electron as electron, expect, test } from "@playwright/test";
+import { _electron as electron, expect, test, type Page } from "@playwright/test";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -31,16 +31,22 @@ const boards = [
   { id: "stm32", name: "STM32", mcuFamily: "stm32" },
 ];
 
-test("editor, board select, LSP mock, and capability deny", async () => {
-  const app = await electron.launch({
-    executablePath: electronBin,
-    args: [path.join(here, "electron-main.cjs")],
-    env: {
-      ...process.env,
-      ZINTRIQ_UI_URL: "http://localhost:5173",
-    },
-  });
-  const page = await app.firstWindow();
+const auditEntries = [
+  {
+    timestamp: "2026-01-01T00:00:00.000Z",
+    extensionId: "locked",
+    capability: "fs.read",
+    action: "denied",
+  },
+  {
+    timestamp: "2026-01-01T00:00:01.000Z",
+    extensionId: "other",
+    capability: "net",
+    action: "denied",
+  },
+];
+
+async function mockCore(page: Page, opts?: { failBuild?: boolean }) {
   await page.route("http://127.0.0.1:4317/**", async (route) => {
     const url = new URL(route.request().url());
     if (route.request().method() === "GET" && url.pathname === "/health") {
@@ -67,11 +73,30 @@ test("editor, board select, LSP mock, and capability deny", async () => {
       });
       return;
     }
+    if (route.request().method() === "GET" && url.pathname === "/extensions/events") {
+      await route.fulfill({
+        status: 200,
+        contentType: "text/event-stream",
+        body: `data: ${JSON.stringify({ type: "connected" })}\n\n`,
+      });
+      return;
+    }
     if (route.request().method() === "GET" && url.pathname === "/audit") {
+      const extensionId = url.searchParams.get("extensionId") ?? "";
+      const entries = extensionId
+        ? auditEntries.filter((entry) => entry.extensionId === extensionId)
+        : auditEntries;
       await route.fulfill({
         status: 200,
         contentType: "application/json",
-        body: JSON.stringify({ entries: [], total: 0, extensionsDir: "/tmp/fixtures/extensions" }),
+        body: JSON.stringify({
+          entries,
+          total: entries.length,
+          limit: 20,
+          offset: 0,
+          extensionsDir: "/tmp/fixtures/extensions",
+          ...(extensionId ? { extensionId } : {}),
+        }),
       });
       return;
     }
@@ -96,6 +121,26 @@ test("editor, board select, LSP mock, and capability deny", async () => {
       return;
     }
     if (route.request().method() === "POST" && url.pathname === "/build") {
+      if (opts?.failBuild) {
+        await route.fulfill({
+          status: 200,
+          contentType: "application/json",
+          body: JSON.stringify({
+            status: "failed",
+            durationMs: 9,
+            diagnostics: [
+              {
+                file: "src/util.cpp",
+                line: 2,
+                column: 1,
+                severity: "error",
+                message: "expected ';'",
+              },
+            ],
+          }),
+        });
+        return;
+      }
       await route.fulfill({
         status: 200,
         contentType: "application/json",
@@ -109,6 +154,24 @@ test("editor, board select, LSP mock, and capability deny", async () => {
       body: JSON.stringify({ code: "NOT_FOUND", message: "not found" }),
     });
   });
+}
+
+async function launchUi() {
+  const app = await electron.launch({
+    executablePath: electronBin,
+    args: [path.join(here, "electron-main.cjs")],
+    env: {
+      ...process.env,
+      ZINTRIQ_UI_URL: "http://localhost:5173",
+    },
+  });
+  const page = await app.firstWindow();
+  return { app, page };
+}
+
+test("editor, board select, LSP mock, and capability deny", async () => {
+  const { app, page } = await launchUi();
+  await mockCore(page);
   await page.reload();
   await expect(page.locator(".monaco-editor")).toBeVisible({ timeout: 20_000 });
   await expect(page.getByLabel("开发板").locator("option")).toHaveCount(3);
@@ -126,5 +189,29 @@ test("editor, board select, LSP mock, and capability deny", async () => {
   await expect(page.getByTestId("extension-output")).toHaveText("6");
   await page.getByRole("button", { name: "运行 Locked" }).click();
   await expect(page.getByTestId("extension-output")).toHaveText("扩展未声明该能力");
+  await app.close();
+});
+
+test("cross-file diagnostic jump and audit filter", async () => {
+  const { app, page } = await launchUi();
+  await mockCore(page, { failBuild: true });
+  await page.reload();
+  await expect(page.locator(".monaco-editor")).toBeVisible({ timeout: 20_000 });
+
+  page.once("dialog", (dialog) => void dialog.accept("src/util.cpp"));
+  await page.getByRole("button", { name: "新建文件" }).click();
+  await expect(page.locator('[data-testid="file-tree-item"][data-path="src/util.cpp"]')).toBeVisible();
+  await page.locator('[data-testid="file-tree-item"][data-path="main.cpp"]').click();
+
+  await page.getByRole("button", { name: "构建检查" }).click();
+  await expect(page.getByTestId("build-badge")).toHaveText("failed");
+  await page.getByTestId("first-diagnostic").click();
+  await expect(page.locator('[data-testid="file-tree-item"][data-path="src/util.cpp"][data-active="true"]')).toBeVisible();
+
+  await page.getByTestId("audit-filter").fill("locked");
+  await page.getByTestId("refresh-audit").click();
+  await expect(page.getByTestId("audit-entry")).toHaveCount(1);
+  await expect(page.getByTestId("audit-panel")).toContainText("locked");
+  await expect(page.getByTestId("audit-panel")).not.toContainText(" other ");
   await app.close();
 });

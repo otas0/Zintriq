@@ -156,10 +156,18 @@ describe("core-service", () => {
       entries: { extensionId: string }[];
       total: number;
       extensionId: string;
+      limit: number;
+      offset: number;
     };
     expect(filteredBody.extensionId).toBe("fixture-no-fs");
     expect(filteredBody.entries.every((entry) => entry.extensionId === "fixture-no-fs")).toBe(true);
     expect(filteredBody.total).toBeGreaterThan(0);
+    expect(filteredBody.limit).toBe(10);
+    expect(filteredBody.offset).toBe(0);
+
+    const paged = await app.inject({ method: "GET", url: "/audit?limit=1&offset=0" });
+    expect(paged.json()).toMatchObject({ limit: 1, offset: 0 });
+    expect((paged.json() as { entries: unknown[] }).entries.length).toBeLessThanOrEqual(1);
 
     const empty = await app.inject({
       method: "GET",

@@ -1,4 +1,4 @@
-import { readdirSync, readFileSync } from "node:fs";
+import { readdirSync, readFileSync, watch, type FSWatcher } from "node:fs";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import cors from "@fastify/cors";
@@ -167,15 +167,67 @@ export async function buildApp(options: BuildAppOptions = {}): Promise<FastifyIn
     extensionsDir: EXTENSIONS_DIR,
   }));
 
+  /** SSE: fs.watch on extensionsDir pushes { type: "extensions-changed" }. */
+  app.get("/extensions/events", (request, reply) => {
+    reply.hijack();
+    const origin = request.headers.origin;
+    const allowOrigin =
+      typeof origin === "string" && ALLOWED_ORIGINS.includes(origin) ? origin : ALLOWED_ORIGINS[0];
+    reply.raw.writeHead(200, {
+      "Content-Type": "text/event-stream",
+      "Cache-Control": "no-cache",
+      Connection: "keep-alive",
+      "Access-Control-Allow-Origin": allowOrigin ?? "*",
+    });
+    reply.raw.write(`data: ${JSON.stringify({ type: "connected", extensionsDir: EXTENSIONS_DIR })}\n\n`);
+
+    let watcher: FSWatcher | undefined;
+    let debounce: ReturnType<typeof setTimeout> | undefined;
+    const notify = () => {
+      reply.raw.write(
+        `data: ${JSON.stringify({
+          type: "extensions-changed",
+          extensionsDir: EXTENSIONS_DIR,
+          at: new Date().toISOString(),
+        })}\n\n`,
+      );
+    };
+    try {
+      watcher = watch(EXTENSIONS_DIR, { persistent: false }, () => {
+        if (debounce) clearTimeout(debounce);
+        debounce = setTimeout(notify, 50);
+      });
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err);
+      reply.raw.write(`data: ${JSON.stringify({ type: "error", message })}\n\n`);
+    }
+
+    const heartbeat = setInterval(() => {
+      reply.raw.write(`: ping\n\n`);
+    }, 25_000);
+
+    request.raw.on("close", () => {
+      clearInterval(heartbeat);
+      if (debounce) clearTimeout(debounce);
+      watcher?.close();
+    });
+  });
+
   app.get("/audit", async (request) => {
-    const query = request.query as { limit?: string; extensionId?: string };
-    const parsed = Number(query.limit ?? 50);
-    const limit = Number.isFinite(parsed) ? Math.min(Math.max(Math.trunc(parsed), 1), 500) : 50;
+    const query = request.query as { limit?: string; offset?: string; extensionId?: string };
+    const parsedLimit = Number(query.limit ?? 50);
+    const limit = Number.isFinite(parsedLimit) ? Math.min(Math.max(Math.trunc(parsedLimit), 1), 500) : 50;
+    const parsedOffset = Number(query.offset ?? 0);
+    const offset = Number.isFinite(parsedOffset) ? Math.max(Math.trunc(parsedOffset), 0) : 0;
     const extensionId = typeof query.extensionId === "string" ? query.extensionId.trim() : "";
     const all = getAuditLog().filter((entry) => (extensionId ? entry.extensionId === extensionId : true));
+    const end = Math.max(0, all.length - offset);
+    const start = Math.max(0, end - limit);
     return {
-      entries: all.slice(-limit),
+      entries: all.slice(start, end),
       total: all.length,
+      limit,
+      offset,
       extensionsDir: EXTENSIONS_DIR,
       ...(extensionId ? { extensionId } : {}),
     };

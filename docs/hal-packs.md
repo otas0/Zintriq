@@ -25,9 +25,12 @@ pins:
   LED: GPIO2
   BTN: GPIO0
 peripherals:
-  - uart0
-  - gpio
+  - name: uart0
+    kind: uart
+    pins: [BTN]
 ```
+
+机器校验：对照 `fixtures/boards/board.schema.json`，并跑 `pnpm --filter @zintriq/hal-registry test`（含全部 YAML 的 Zod 校验）。
 
 ## 截图 / curl 检查清单（PR 必贴）
 

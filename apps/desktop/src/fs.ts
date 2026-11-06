@@ -8,6 +8,8 @@ export type ProjectFile = {
 export type ProjectRoot = {
   name: string;
   dir?: FileSystemDirectoryHandle;
+  /** Absolute directory path when opened via Tauri dialog. */
+  tauriPath?: string;
 };
 
 const TEXT_EXTS = new Set([".c", ".cc", ".cpp", ".h", ".hpp", ".py", ".md", ".txt", ".json", ".yaml", ".yml"]);
@@ -29,7 +31,7 @@ export function canUseDirectoryPicker(): boolean {
 export function folderOpenHint(): string {
   if (isTauriRuntime()) return "";
   if (canUseDirectoryPicker()) return "";
-  return "当前浏览器不支持打开文件夹。请用 Chromium，或改用「导入文件」；Tauri 桌面版走系统目录对话框。";
+  return "当前浏览器不支持打开文件夹。请用 Chromium，或改用「导入文件 / 导入文件夹」；Tauri 桌面版走系统目录对话框。";
 }
 
 async function readTextFile(handle: FileSystemFileHandle): Promise<string> {
@@ -73,7 +75,7 @@ async function openViaTauriDialog(): Promise<{ root: ProjectRoot; files: Project
   }
   const dirPath = selected;
   const name = dirPath.split(/[/\\]/).filter(Boolean).pop() ?? "project";
-  const { readDir, readTextFile: readPath } = await import("@tauri-apps/plugin-fs");
+  const { readDir, readTextFile: readPath, writeTextFile, mkdir } = await import("@tauri-apps/plugin-fs");
   const files: ProjectFile[] = [];
 
   async function walk(rel: string): Promise<void> {
@@ -95,9 +97,16 @@ async function openViaTauriDialog(): Promise<{ root: ProjectRoot; files: Project
   await walk("");
   files.sort((a, b) => a.path.localeCompare(b.path));
   if (files.length === 0) {
-    files.push({ path: "main.cpp", content: "int main(){return 0;}\n", dirty: true });
+    const content = "int main(){return 0;}\n";
+    try {
+      await writeTextFile(`${dirPath}/main.cpp`, content);
+    } catch {
+      await mkdir(dirPath, { recursive: true }).catch(() => undefined);
+      await writeTextFile(`${dirPath}/main.cpp`, content);
+    }
+    files.push({ path: "main.cpp", content, dirty: false });
   }
-  return { root: { name }, files };
+  return { root: { name, tauriPath: dirPath }, files };
 }
 
 export async function openProjectFolder(): Promise<{ root: ProjectRoot; files: ProjectFile[] }> {
@@ -123,7 +132,7 @@ export async function openProjectFolder(): Promise<{ root: ProjectRoot; files: P
   return { root: { name: dir.name, dir }, files };
 }
 
-/** Single-file / multi-file import for browsers without a directory picker. */
+/** Single-file / multi-file / webkitdirectory import for browsers without a directory picker. */
 export async function importProjectFiles(fileList: FileList | File[]): Promise<{
   root: ProjectRoot;
   files: ProjectFile[];
@@ -143,10 +152,23 @@ export async function importProjectFiles(fileList: FileList | File[]): Promise<{
   }
   files.sort((a, b) => a.path.localeCompare(b.path));
   const top = files[0]?.path.split("/")[0] ?? "import";
-  const name = files.every((f) => f.path.startsWith(`${top}/`)) || files.some((f) => f.path.includes("/"))
-    ? top
-    : "import";
+  const name =
+    files.every((f) => f.path.startsWith(`${top}/`)) || files.some((f) => f.path.includes("/"))
+      ? top
+      : "import";
   return { root: { name }, files };
+}
+
+async function ensureTauriParent(dirPath: string, relative: string): Promise<void> {
+  const { mkdir } = await import("@tauri-apps/plugin-fs");
+  const parts = relative.split("/").filter(Boolean);
+  parts.pop();
+  if (parts.length === 0) return;
+  let cursor = dirPath;
+  for (const part of parts) {
+    cursor = `${cursor}/${part}`;
+    await mkdir(cursor, { recursive: true }).catch(() => undefined);
+  }
 }
 
 export async function createProjectFile(
@@ -154,6 +176,12 @@ export async function createProjectFile(
   path: string,
   content = "",
 ): Promise<ProjectFile> {
+  if (root.tauriPath) {
+    await ensureTauriParent(root.tauriPath, path);
+    const { writeTextFile } = await import("@tauri-apps/plugin-fs");
+    await writeTextFile(`${root.tauriPath}/${path}`, content);
+    return { path, content, dirty: false };
+  }
   if (!root.dir) {
     return { path, content, dirty: true };
   }
@@ -171,15 +199,21 @@ export async function createProjectFile(
   return { path, content, dirty: false, handle };
 }
 
-export async function saveProjectFile(file: ProjectFile): Promise<ProjectFile> {
+export async function saveProjectFile(file: ProjectFile, root?: ProjectRoot): Promise<ProjectFile> {
   if (file.handle) {
     const writable = await file.handle.createWritable();
     await writable.write(file.content);
     await writable.close();
     return { ...file, dirty: false };
   }
+  if (root?.tauriPath) {
+    await ensureTauriParent(root.tauriPath, file.path);
+    const { writeTextFile } = await import("@tauri-apps/plugin-fs");
+    await writeTextFile(`${root.tauriPath}/${file.path}`, file.content);
+    return { ...file, dirty: false };
+  }
   if (isTauriRuntime()) {
-    throw new Error("Tauri 会话请通过「打开文件夹」绑定目录后再保存；当前文件仅在内存中。");
+    throw new Error("请先用「打开文件夹」绑定目录后再保存。");
   }
   const blob = new Blob([file.content], { type: "text/plain" });
   const url = URL.createObjectURL(blob);

@@ -55,7 +55,7 @@ curl -s -X POST http://127.0.0.1:4317/extensions/fixture-no-fs/run \
   -d '{}'
 ```
 
-`GET /health` returns `{ "status": "ok", "version", "uptimeMs" }`. `GET /boards` returns the board list. `POST /build` returns `{ "status", "diagnostics", "durationMs" }`. `GET /extensions` returns `{ "extensions", "extensionsDir" }` and re-reads manifests from disk on every request. `GET /audit?limit=50&extensionId=` returns the capability-denied audit tail (optional `extensionId` filter) plus `extensionsDir`. Errors return `{ "code", "message", "details?" }`.
+`GET /health` returns `{ "status": "ok", "version", "uptimeMs" }`. `GET /boards` returns the board list. `POST /build` returns `{ "status", "diagnostics", "durationMs" }`. `GET /extensions` returns `{ "extensions", "extensionsDir" }` (not a bare array — see `docs/ADR/0005-extensions-list-shape.md`) and re-reads manifests from disk on every request. `GET /extensions/events` is an SSE stream that pushes when `fs.watch` sees directory changes. `GET /audit?limit=50&offset=0&extensionId=` returns the capability-denied audit page plus `extensionsDir`. Errors return `{ "code", "message", "details?" }`.
 
 Extension directory:
 

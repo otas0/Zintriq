@@ -1,0 +1,48 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://zintriq.dev/schemas/board.schema.json",
+  "title": "Zintriq HAL board",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["id", "name", "mcuFamily", "toolchain", "pins"],
+  "properties": {
+    "id": { "type": "string", "minLength": 1 },
+    "name": { "type": "string", "minLength": 1 },
+    "mcuFamily": { "type": "string", "enum": ["esp32", "stm32", "rp2040"] },
+    "toolchain": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["compiler"],
+      "properties": {
+        "compiler": { "type": "string", "minLength": 1 },
+        "flags": {
+          "type": "array",
+          "items": { "type": "string" },
+          "default": []
+        }
+      }
+    },
+    "pins": {
+      "type": "object",
+      "additionalProperties": { "type": "string", "minLength": 1 }
+    },
+    "peripherals": {
+      "type": "array",
+      "default": [],
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["name", "kind"],
+        "properties": {
+          "name": { "type": "string", "minLength": 1 },
+          "kind": { "type": "string", "minLength": 1 },
+          "pins": {
+            "type": "array",
+            "items": { "type": "string", "minLength": 1 },
+            "default": []
+          }
+        }
+      }
+    }
+  }
+}

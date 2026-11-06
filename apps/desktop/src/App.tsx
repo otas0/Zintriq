@@ -3,6 +3,7 @@ import type { editor as MonacoEditor } from "monaco-editor";
 import { useEffect, useRef, useState } from "react";
 import {
   ApiError,
+  CORE_URL,
   fetchJson,
   formatApiError,
   type AuditResponse,
@@ -25,7 +26,7 @@ import {
   type ProjectFile,
   type ProjectRoot,
 } from "./fs.js";
-import { connectMockLsp, probeClangdSidecar, type LspClient } from "./lsp-session.js";
+import { connectClangdSidecar, connectMockLsp, type LspClient } from "./lsp-session.js";
 import { badgeLabel, planDiagnosticJump } from "./model.js";
 
 const STARTER = "int main(){return 0;}\n";
@@ -48,6 +49,7 @@ export function App() {
   const pendingJump = useRef<Diagnostic | null>(null);
   const lspRef = useRef<LspClient | null>(null);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
+  const folderInputRef = useRef<HTMLInputElement | null>(null);
 
   const [root, setRoot] = useState<ProjectRoot>({ name: "memory" });
   const [files, setFiles] = useState<ProjectFile[]>([{ path: "main.cpp", content: STARTER, dirty: false }]);
@@ -74,12 +76,24 @@ export function App() {
   const [audit, setAudit] = useState<AuditResponse | null>(null);
   const [auditFilter, setAuditFilter] = useState("");
   const [auditError, setAuditError] = useState("");
+  const [auditOffset, setAuditOffset] = useState(0);
+  const auditPageSize = 20;
   const folderHint = folderOpenHint();
 
   const active = files.find((file) => file.path === activePath) ?? files[0];
 
   useEffect(() => {
     let cancelled = false;
+    let source: EventSource | undefined;
+
+    async function loadExtensions() {
+      const extensionData = await fetchJson<ExtensionsResponse>("/extensions");
+      if (cancelled) return;
+      setExtensions(extensionData.extensions);
+      setExtensionsDir(extensionData.extensionsDir);
+      setExtensionError("");
+    }
+
     (async () => {
       try {
         await fetchJson<HealthResponse>("/health");
@@ -102,17 +116,12 @@ export function App() {
         if (!cancelled) setBoardError(formatApiError(err));
       }
       try {
-        const extensionData = await fetchJson<ExtensionsResponse>("/extensions");
-        if (!cancelled) {
-          setExtensions(extensionData.extensions);
-          setExtensionsDir(extensionData.extensionsDir);
-          setExtensionError("");
-        }
+        await loadExtensions();
       } catch (err) {
         if (!cancelled) setExtensionError(formatApiError(err));
       }
       try {
-        const auditData = await fetchJson<AuditResponse>("/audit?limit=20");
+        const auditData = await fetchJson<AuditResponse>("/audit?limit=20&offset=0");
         if (!cancelled) {
           setAudit(auditData);
           setAuditError("");
@@ -120,9 +129,28 @@ export function App() {
       } catch (err) {
         if (!cancelled) setAuditError(formatApiError(err));
       }
+
+      try {
+        source = new EventSource(`${CORE_URL}/extensions/events`);
+        source.onmessage = (event) => {
+          try {
+            const payload = JSON.parse(event.data) as { type?: string };
+            if (payload.type === "extensions-changed") {
+              void loadExtensions().catch((err) => {
+                if (!cancelled) setExtensionError(formatApiError(err));
+              });
+            }
+          } catch {
+            /* ignore malformed SSE */
+          }
+        };
+      } catch {
+        /* EventSource unavailable */
+      }
     })();
     return () => {
       cancelled = true;
+      source?.close();
       lspRef.current?.dispose();
       lspRef.current = null;
     };
@@ -193,7 +221,7 @@ export function App() {
   async function onSave() {
     if (!active) return;
     try {
-      const saved = await saveProjectFile(active);
+      const saved = await saveProjectFile(active, root);
       setFiles((current) => current.map((file) => (file.path === saved.path ? saved : file)));
     } catch (err) {
       setRequestError(formatApiError(err));
@@ -284,16 +312,32 @@ export function App() {
     }
   }
 
-  async function refreshAudit() {
+  async function refreshAudit(nextOffset = auditOffset) {
     try {
-      const q = new URLSearchParams({ limit: "20" });
+      const q = new URLSearchParams({
+        limit: String(auditPageSize),
+        offset: String(nextOffset),
+      });
       if (auditFilter.trim()) q.set("extensionId", auditFilter.trim());
       const data = await fetchJson<AuditResponse>(`/audit?${q.toString()}`);
       setAudit(data);
+      setAuditOffset(nextOffset);
       setAuditError("");
     } catch (err) {
       setAuditError(formatApiError(err));
     }
+  }
+
+  function exportAuditJson() {
+    const blob = new Blob([JSON.stringify(audit ?? { entries: [], total: 0 }, null, 2)], {
+      type: "application/json",
+    });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "zintriq-audit.json";
+    a.click();
+    URL.revokeObjectURL(url);
   }
 
   async function connectLsp() {
@@ -318,15 +362,14 @@ export function App() {
   }
 
   async function connectClangd() {
-    const probe = await probeClangdSidecar();
-    if (!probe.available) {
+    lspRef.current?.dispose();
+    const session = await connectClangdSidecar(`file:///${root.name}`, "cpp");
+    if (!session.available || !session.client) {
       setLspStatus(lspStatus === "mock" ? "mock" : "error");
-      setLspNote(probe.message);
+      setLspNote(session.message);
       return;
     }
     try {
-      lspRef.current?.dispose();
-      const session = await connectMockLsp(`file:///${root.name}`, "cpp");
       lspRef.current = session.client;
       setLspDiags([]);
       session.client.onDiagnostics((event) => {
@@ -336,7 +379,7 @@ export function App() {
         session.client.didOpen(`file:///${active.path}`, active.content);
       }
       setLspStatus("clangd");
-      setLspNote(probe.message);
+      setLspNote(session.message);
     } catch (err) {
       setLspStatus("error");
       setLspNote(formatApiError(err));
@@ -362,12 +405,29 @@ export function App() {
         <button type="button" onClick={() => fileInputRef.current?.click()}>
           导入文件
         </button>
+        <button type="button" onClick={() => folderInputRef.current?.click()}>
+          导入文件夹
+        </button>
         <input
           ref={fileInputRef}
           type="file"
           multiple
           hidden
           data-testid="import-files"
+          onChange={(event) => void onImportFiles(event.target.files)}
+        />
+        <input
+          ref={(node) => {
+            folderInputRef.current = node;
+            if (node) {
+              node.setAttribute("webkitdirectory", "");
+              node.setAttribute("directory", "");
+            }
+          }}
+          type="file"
+          multiple
+          hidden
+          data-testid="import-folder"
           onChange={(event) => void onImportFiles(event.target.files)}
         />
         <button type="button" onClick={() => void onNewFile()}>
@@ -439,6 +499,9 @@ export function App() {
               key={file.path}
               type="button"
               className={file.path === activePath ? "active" : ""}
+              data-testid="file-tree-item"
+              data-active={file.path === activePath ? "true" : "false"}
+              data-path={file.path}
               onClick={() => setActivePath(file.path)}
             >
               {file.path}
@@ -539,14 +602,36 @@ export function App() {
               placeholder="可选过滤"
             />
           </label>
-          <button type="button" data-testid="refresh-audit" onClick={() => void refreshAudit()}>
+          <button type="button" data-testid="refresh-audit" onClick={() => void refreshAudit(0)}>
             刷新审计
           </button>
+          <button
+            type="button"
+            data-testid="audit-prev"
+            disabled={auditOffset + auditPageSize >= (audit?.total ?? 0)}
+            onClick={() => void refreshAudit(auditOffset + auditPageSize)}
+          >
+            更早
+          </button>
+          <button
+            type="button"
+            data-testid="audit-next"
+            disabled={auditOffset === 0}
+            onClick={() => void refreshAudit(Math.max(0, auditOffset - auditPageSize))}
+          >
+            更新
+          </button>
+          <button type="button" data-testid="export-audit" onClick={exportAuditJson}>
+            导出 JSON
+          </button>
+          <p data-testid="audit-page" className="meta">
+            offset {auditOffset} / total {audit?.total ?? 0}
+          </p>
           {auditError ? <p className="err">{auditError}</p> : null}
           <div data-testid="audit-panel" className="audit-panel">
             {audit?.entries.length ? (
               audit.entries.map((entry, index) => (
-                <p key={`${entry.timestamp}:${entry.extensionId}:${index}`}>
+                <p key={`${entry.timestamp}:${entry.extensionId}:${index}`} data-testid="audit-entry">
                   {entry.timestamp} {entry.extensionId} {entry.capability} {entry.action}
                 </p>
               ))

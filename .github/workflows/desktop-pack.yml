@@ -1,16 +1,10 @@
 name: Desktop pack
 
+# Opt-in / release only: do not auto-run on every main push (typed merges would otherwise trip desktop/**).
 on:
   workflow_dispatch:
   push:
-    branches: [main]
     tags: ["v*"]
-    paths:
-      - "desktop/**"
-      - "app.py"
-      - "requirements.txt"
-      - ".github/workflows/desktop.yml"
-      - ".github/workflows/desktop-pack.yml"
 
 permissions:
   contents: read

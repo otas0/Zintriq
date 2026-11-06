@@ -1,18 +1,8 @@
 name: Desktop
 
+# Opt-in only: typed MVP CI is ci.yml. Avoid auto-running on main merges of apps/*.
 on:
   workflow_dispatch:
-  push:
-    branches: [main]
-    paths:
-      - "desktop/**"
-      - "app.py"
-      - "editor/**"
-      - "templates/editor.html"
-      - "static/editor/**"
-      - "tests/test_editor_app.py"
-      - "requirements.txt"
-      - ".github/workflows/desktop.yml"
 
 permissions:
   contents: read

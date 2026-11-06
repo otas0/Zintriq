@@ -48,6 +48,8 @@ export type AuditEntry = {
 export type AuditResponse = {
   entries: AuditEntry[];
   total: number;
+  limit?: number;
+  offset?: number;
   extensionsDir: string;
   extensionId?: string;
 };

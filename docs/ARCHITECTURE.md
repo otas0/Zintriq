@@ -35,8 +35,9 @@ Desktop talks only to these core-service routes:
 - `GET /health`
 - `GET /boards`
 - `POST /build`
-- `GET /extensions` → `{ extensions, extensionsDir }`
-- `GET /audit?limit=&extensionId=`
+- `GET /extensions` → `{ extensions, extensionsDir }` (ADR 0005)
+- `GET /extensions/events` → SSE (`extensions-changed` via `fs.watch`)
+- `GET /audit?limit=&offset=&extensionId=`
 - `POST /extensions/:id/run`
 
 Errors use `{ "code", "message", "details?" }`.
