@@ -3,6 +3,8 @@
 .env.local
 .DS_Store
 node_modules/
+dist/
+.pnpm-store/
 mobile/node_modules/
 mobile/android/
 mobile/ios/
@@ -41,3 +43,10 @@ ci-logs/
 desktop/release/
 desktop/packaging/build/
 desktop/resources/zintriq-server/
+desktop/resources/server/
+apps/desktop/test-results/
+apps/desktop/playwright-report/
+apps/**/dist/
+packages/**/dist/
+.venv/
+*.wasm.bak
