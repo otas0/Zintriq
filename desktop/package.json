@@ -28,6 +28,7 @@
     "productName": "Zintriq Editor",
     "copyright": "Copyright © Zintriq",
     "asar": true,
+    "npmRebuild": false,
     "asarUnpack": [
       "**/node_modules/node-pty/**"
     ],

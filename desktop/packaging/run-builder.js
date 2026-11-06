@@ -86,8 +86,22 @@ function main() {
   const shim = fs.mkdtempSync(path.join(os.tmpdir(), "python-shim-"));
   writeShim(python, shim);
   const env = { ...process.env, PATH: `${shim}${path.delimiter}${process.env.PATH || ""}` };
+  // GitHub Actions injects empty strings for unset secrets; electron-builder treats
+  // CSC_LINK="" as a cert path and fails with "… not a file". Drop blanks.
+  for (const key of [
+    "CSC_LINK",
+    "CSC_KEY_PASSWORD",
+    "WIN_CSC_LINK",
+    "WIN_CSC_KEY_PASSWORD",
+    "APPLE_ID",
+    "APPLE_APP_SPECIFIC_PASSWORD",
+    "APPLE_TEAM_ID",
+    "CSC_NAME",
+  ]) {
+    if (env[key] === "") delete env[key];
+  }
   requireSigning(env);
-  if (!env.CSC_LINK && !env.CSC_NAME && env.CSC_IDENTITY_AUTO_DISCOVERY == null) {
+  if (!env.CSC_LINK && !env.CSC_NAME) {
     env.CSC_IDENTITY_AUTO_DISCOVERY = "false";
   }
   const args = process.argv.slice(2);

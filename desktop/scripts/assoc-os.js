@@ -1,3 +1,4 @@
+/**
  * Pack-artifact Alternate file-assoc probes.
  * Windows: 手测补 .plugin.json：NSIS 后截该扩展「打开方式」与 OpenWithProgids，对照文档。
  * macOS: 访达补 content type：pack .app 上对插件 JSON 跑 mdls，确认不是 Archive Utility。
