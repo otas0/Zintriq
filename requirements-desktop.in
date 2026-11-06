@@ -1,0 +1,16 @@
+# Desktop frozen server. No psycopg (LGPL) — desktop uses SQLite only.
+Flask>=3.0
+babel>=2.14
+cryptography>=42.0
+qrcode[pil]>=7.4
+waitress==3.0.2
+pyinstaller==6.11.1
+# Pin setuptools so freeze CI does not inherit each runner's preinstalled copy.
+# Newer setuptools pulls jaraco.context, which imports backports on Python <3.12.
+setuptools==75.8.2
+backports.tarfile==1.2.0
+# Windows-only Click dependency; must be pinned for --require-hashes installs.
+colorama==0.4.6
+# Windows-only PyInstaller dependency; pin for --require-hashes.
+pefile==2023.2.7
+pywin32-ctypes==0.2.3

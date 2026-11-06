@@ -56,3 +56,15 @@ jobs:
         run: corepack pnpm exec playwright test
         env:
           CI: "true"
+        continue-on-error: false
+
+      - name: Upload Playwright trace on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-trace-${{ github.run_id }}
+          path: |
+            apps/desktop/test-results/**
+            apps/desktop/playwright-report/**
+          if-no-files-found: ignore
+          retention-days: 7

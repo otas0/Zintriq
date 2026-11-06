@@ -23,7 +23,7 @@ fixtures/boards           esp32, esp32-c3, stm32, stm32f103, rp2040
 fixtures/extensions       sample guest and manifests
 ```
 
-Full local acceptance steps: [`docs/ACCEPTANCE.md`](docs/ACCEPTANCE.md).
+Full local acceptance steps: [`docs/ACCEPTANCE.md`](docs/ACCEPTANCE.md). Required checks for `main` (when the GitHub plan allows): [`docs/BRANCH_PROTECTION.md`](docs/BRANCH_PROTECTION.md).
 
 ## Install
 

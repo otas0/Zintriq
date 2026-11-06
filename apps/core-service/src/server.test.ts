@@ -180,6 +180,9 @@ describe("core-service", () => {
       url: "/audit?export=1&extensionId=fixture-no-fs",
     });
     expect(exported.statusCode).toBe(200);
+    expect(exported.headers["content-disposition"]).toContain(
+      'attachment; filename="zintriq-audit-fixture-no-fs.json"',
+    );
     expect(exported.json()).toMatchObject({
       exported: true,
       extensionId: "fixture-no-fs",

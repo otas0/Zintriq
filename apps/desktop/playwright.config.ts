@@ -3,6 +3,10 @@ import { defineConfig } from "@playwright/test";
 export default defineConfig({
   testDir: "e2e",
   timeout: 90_000,
+  retries: process.env.CI ? 1 : 0,
+  use: {
+    trace: "retain-on-failure",
+  },
   webServer: {
     command: "corepack pnpm exec vite --host localhost --port 5173 --strictPort",
     url: "http://localhost:5173",

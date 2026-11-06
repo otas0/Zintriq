@@ -62,17 +62,8 @@ export type RunExtensionFn = (
 export type BuildAppOptions = {
   compile?: CompileFn;
   runExtension?: RunExtensionFn;
+  extensionsDir?: string;
 };
-
-function loadExtensions(): ExtensionManifest[] {
-  const manifests: ExtensionManifest[] = [];
-  for (const name of readdirSync(EXTENSIONS_DIR)) {
-    if (!name.endsWith(".json")) continue;
-    const raw = JSON.parse(readFileSync(join(EXTENSIONS_DIR, name), "utf8")) as unknown;
-    manifests.push(validateOrThrow(ExtensionManifestSchema, raw, name));
-  }
-  return manifests.sort((a, b) => a.id.localeCompare(b.id));
-}
 
 function fieldPaths(error: ZodError): { path: string; message: string }[] {
   return error.issues.map((issue) => ({
@@ -99,7 +90,18 @@ export async function buildApp(options: BuildAppOptions = {}): Promise<FastifyIn
   const startedAt = Date.now();
   const compile = options.compile ?? compileCheck;
   const runGuest = options.runExtension ?? runExtension;
+  const extensionsDir = options.extensionsDir ?? EXTENSIONS_DIR;
   const app = Fastify({ logger: { level: process.env.LOG_LEVEL ?? "info" } });
+
+  function loadExtensionsFromDir(): ExtensionManifest[] {
+    const manifests: ExtensionManifest[] = [];
+    for (const name of readdirSync(extensionsDir)) {
+      if (!name.endsWith(".json")) continue;
+      const raw = JSON.parse(readFileSync(join(extensionsDir, name), "utf8")) as unknown;
+      manifests.push(validateOrThrow(ExtensionManifestSchema, raw, name));
+    }
+    return manifests.sort((a, b) => a.id.localeCompare(b.id));
+  }
 
   await app.register(cors, {
     origin: ALLOWED_ORIGINS,
@@ -163,8 +165,8 @@ export async function buildApp(options: BuildAppOptions = {}): Promise<FastifyIn
   });
 
   app.get("/extensions", async () => ({
-    extensions: loadExtensions(),
-    extensionsDir: EXTENSIONS_DIR,
+    extensions: loadExtensionsFromDir(),
+    extensionsDir,
   }));
 
   /** SSE: fs.watch on extensionsDir pushes { type: "extensions-changed", added, removed }. */
@@ -180,11 +182,11 @@ export async function buildApp(options: BuildAppOptions = {}): Promise<FastifyIn
       "Access-Control-Allow-Origin": allowOrigin ?? "*",
     });
 
-    let previousIds = new Set(loadExtensions().map((item) => item.id));
+    let previousIds = new Set(loadExtensionsFromDir().map((item) => item.id));
     reply.raw.write(
       `data: ${JSON.stringify({
         type: "connected",
-        extensionsDir: EXTENSIONS_DIR,
+        extensionsDir,
         ids: [...previousIds],
       })}\n\n`,
     );
@@ -192,14 +194,14 @@ export async function buildApp(options: BuildAppOptions = {}): Promise<FastifyIn
     let watcher: FSWatcher | undefined;
     let debounce: ReturnType<typeof setTimeout> | undefined;
     const notify = () => {
-      const nextIds = new Set(loadExtensions().map((item) => item.id));
+      const nextIds = new Set(loadExtensionsFromDir().map((item) => item.id));
       const added = [...nextIds].filter((id) => !previousIds.has(id)).sort();
       const removed = [...previousIds].filter((id) => !nextIds.has(id)).sort();
       previousIds = nextIds;
       reply.raw.write(
         `data: ${JSON.stringify({
           type: "extensions-changed",
-          extensionsDir: EXTENSIONS_DIR,
+          extensionsDir,
           at: new Date().toISOString(),
           added,
           removed,
@@ -208,7 +210,7 @@ export async function buildApp(options: BuildAppOptions = {}): Promise<FastifyIn
       );
     };
     try {
-      watcher = watch(EXTENSIONS_DIR, { persistent: false }, () => {
+      watcher = watch(extensionsDir, { persistent: false }, () => {
         if (debounce) clearTimeout(debounce);
         debounce = setTimeout(notify, 50);
       });
@@ -229,7 +231,7 @@ export async function buildApp(options: BuildAppOptions = {}): Promise<FastifyIn
     });
   });
 
-  app.get("/audit", async (request) => {
+  app.get("/audit", async (request, reply) => {
     const query = request.query as {
       limit?: string;
       offset?: string;
@@ -241,12 +243,15 @@ export async function buildApp(options: BuildAppOptions = {}): Promise<FastifyIn
     const wantExport = query.export === "1" || query.export === "true";
     if (wantExport) {
       const maxExport = 5_000;
+      const filename = extensionId ? `zintriq-audit-${extensionId}.json` : "zintriq-audit.json";
+      reply.header("Content-Disposition", `attachment; filename="${filename}"`);
+      reply.header("Content-Type", "application/json; charset=utf-8");
       return {
         entries: all.slice(-maxExport),
         total: all.length,
         exported: true,
         truncated: all.length > maxExport,
-        extensionsDir: EXTENSIONS_DIR,
+        extensionsDir,
         ...(extensionId ? { extensionId } : {}),
       };
     }
@@ -261,14 +266,14 @@ export async function buildApp(options: BuildAppOptions = {}): Promise<FastifyIn
       total: all.length,
       limit,
       offset,
-      extensionsDir: EXTENSIONS_DIR,
+      extensionsDir,
       ...(extensionId ? { extensionId } : {}),
     };
   });
 
   app.post("/extensions/:id/run", async (request) => {
     const params = request.params as { id: string };
-    const manifest = loadExtensions().find((item) => item.id === params.id);
+    const manifest = loadExtensionsFromDir().find((item) => item.id === params.id);
     if (!manifest) {
       throw new ApiError(404, "EXTENSION_NOT_FOUND", `unknown extension: ${params.id}`);
     }

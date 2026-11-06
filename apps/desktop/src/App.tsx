@@ -81,10 +81,29 @@ export function App() {
     added: [],
     removed: [],
   });
+  const [compileCommandsMissing, setCompileCommandsMissing] = useState(false);
   const auditPageSize = 20;
   const folderHint = folderOpenHint();
 
   const active = files.find((file) => file.path === activePath) ?? files[0];
+
+  useEffect(() => {
+    const w = window as unknown as {
+      __ZINTRIQ_E2E_SEED__?: (payload: {
+        root: ProjectRoot;
+        files: ProjectFile[];
+        activePath?: string;
+      }) => void;
+    };
+    w.__ZINTRIQ_E2E_SEED__ = (payload) => {
+      setRoot(payload.root);
+      setFiles(payload.files);
+      if (payload.activePath) setActivePath(payload.activePath);
+    };
+    return () => {
+      delete w.__ZINTRIQ_E2E_SEED__;
+    };
+  }, []);
 
   useEffect(() => {
     let cancelled = false;
@@ -409,6 +428,7 @@ export function App() {
     if (!session.available || !session.client) {
       setLspStatus(lspStatus === "mock" ? "mock" : "error");
       setLspNote(session.message);
+      setCompileCommandsMissing(false);
       return;
     }
     try {
@@ -425,10 +445,33 @@ export function App() {
       }
       setLspStatus("clangd");
       setLspNote(session.message);
+      setCompileCommandsMissing(!session.compileCommandsDir);
     } catch (err) {
       setLspStatus("error");
       setLspNote(formatApiError(err));
+      setCompileCommandsMissing(false);
     }
+  }
+
+  async function generateCompileCommandsStub() {
+    if (!root.tauriPath) {
+      setLspNote(
+        "未绑定 Tauri 项目目录。请先「打开文件夹」，或本机用 bear/cmake 生成 compile_commands.json 后再点「连接 clangd」。",
+      );
+      return;
+    }
+    const entry = active?.path ?? "main.cpp";
+    const stub = [
+      {
+        directory: root.tauriPath,
+        file: entry,
+        arguments: ["clang++", "-std=c++17", "-c", entry],
+      },
+    ];
+    const { writeTextFile } = await import("@tauri-apps/plugin-fs");
+    await writeTextFile(`${root.tauriPath}/compile_commands.json`, `${JSON.stringify(stub, null, 2)}\n`);
+    setCompileCommandsMissing(false);
+    setLspNote(`已写入 ${root.tauriPath}/compile_commands.json。请再次显式点「连接 clangd」。`);
   }
 
   function isRawDiagnostic(diag: Diagnostic): boolean {
@@ -534,6 +577,15 @@ export function App() {
       {lspNote ? (
         <div className="banner" role="status">
           {lspNote}
+        </div>
+      ) : null}
+      {compileCommandsMissing ? (
+        <div className="banner" role="status" data-testid="compile-commands-hint">
+          未找到 compile_commands.json。
+          <button type="button" data-testid="generate-compile-commands" onClick={() => void generateCompileCommandsStub()}>
+            一键生成 stub
+          </button>
+          （仍需再次显式连接 clangd）
         </div>
       ) : null}
       <div className="body">

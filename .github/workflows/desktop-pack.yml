@@ -69,17 +69,22 @@ jobs:
 
       - name: Install Python deps (Windows)
         if: runner.os == 'Windows'
-        run: .\.venv\Scripts\python.exe -m pip install -r requirements.txt
+        run: |
+          .\.venv\Scripts\python.exe -m pip install -r requirements.txt
+          .\.venv\Scripts\python.exe -m pip install -r requirements-desktop.in
 
       - name: Install Python deps (Unix)
         if: runner.os != 'Windows'
-        run: .venv/bin/python -m pip install -r requirements.txt
+        run: |
+          .venv/bin/python -m pip install -r requirements.txt
+          .venv/bin/python -m pip install -r requirements-desktop.in
 
       - name: License gate and notices
         shell: bash
         run: |
           PY=.venv/bin/python
           if [ "$RUNNER_OS" = "Windows" ]; then PY=.venv/Scripts/python.exe; fi
+          test -f requirements-desktop.lock.txt
           "$PY" desktop/packaging/check_licenses.py license-report.json
           "$PY" desktop/packaging/generate_notices.py desktop/resources/notices
           "$PY" desktop/packaging/sbom.py sbom.cdx.json

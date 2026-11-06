@@ -198,8 +198,25 @@ test("cross-file diagnostic jump and audit filter", async () => {
   await page.reload();
   await expect(page.locator(".monaco-editor")).toBeVisible({ timeout: 20_000 });
 
-  page.once("dialog", (dialog) => void dialog.accept("src/util.cpp"));
-  await page.getByRole("button", { name: "新建文件" }).click();
+  await page.evaluate(() => {
+    const seed = (
+      window as unknown as {
+        __ZINTRIQ_E2E_SEED__?: (payload: {
+          root: { name: string };
+          files: { path: string; content: string; dirty: boolean }[];
+          activePath: string;
+        }) => void;
+      }
+    ).__ZINTRIQ_E2E_SEED__;
+    seed?.({
+      root: { name: "proj" },
+      files: [
+        { path: "main.cpp", content: "int main(){return 0;}\n", dirty: false },
+        { path: "src/util.cpp", content: "int util(){return 1;}\n", dirty: false },
+      ],
+      activePath: "main.cpp",
+    });
+  });
   await expect(page.locator('[data-testid="file-tree-item"][data-path="src/util.cpp"]')).toBeVisible();
   await page.locator('[data-testid="file-tree-item"][data-path="main.cpp"]').click();
 
