@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Zintriq Editor</title>
+  <link rel="stylesheet" href="/static/editor/editor.css" />
+  <link rel="stylesheet" href="/static/editor/vendor/xterm/xterm.css" />
+</head>
+<body>
+  <div id="app" class="shell">
+    <aside class="sidebar" id="sidebar">
+      <div class="sidebar-head">
+        <span class="brand">Zintriq</span>
+        <div class="head-actions">
+          <button type="button" id="btn-onboarding" title="New user guide">?</button>
+          <button type="button" id="btn-toggle-sidebar" title="Hide sidebar">⟨</button>
+          <button type="button" id="btn-refresh" title="Refresh">↻</button>
+        </div>
+      </div>
+      <div class="tree-toolbar">
+        <button type="button" id="btn-new-file" class="tree-btn" title="New file">New File</button>
+        <button type="button" id="btn-new-folder" class="tree-btn" title="New folder">New Folder</button>
+      </div>
+      <ul class="tree" id="tree"></ul>
+      <div class="sidebar-foot">
+        <button type="button" id="btn-panel-changes" class="tool">Changes</button>
+        <button type="button" id="btn-panel-git" class="tool">Git</button>
+        <button type="button" id="btn-panel-search" class="tool">Search</button>
+        <button type="button" id="btn-panel-debug" class="tool">Debug</button>
+        <button type="button" id="btn-panel-ai" class="tool">AI</button>
+        <button type="button" id="btn-panel-perms" class="tool">Perms</button>
+      </div>
+    </aside>
+    <div class="resize-col" id="sidebar-handle" title="Resize sidebar"></div>
+
+    <section class="main" id="main">
+      <div class="tabs-row">
+        <div class="tabs" id="tabs"></div>
+        <div class="view-toggles">
+          <button type="button" id="btn-toggle-bottom" class="tool" title="Toggle terminal">Term</button>
+          <button type="button" id="btn-toggle-panel" class="tool" title="Toggle panel">Panel</button>
+          <button type="button" id="btn-show-sidebar" class="tool hidden" title="Show sidebar">Files</button>
+        </div>
+      </div>
+      <div class="work-area" id="work-area">
+        <div class="editors" id="editors">
+          <div class="pane" id="pane-a">
+            <div class="editor-wrap">
+              <div class="gutter" id="fold-gutter" aria-hidden="true"></div>
+              <pre class="hl" id="hl-a" aria-hidden="true"></pre>
+              <div id="cursor-layer" class="cursor-layer" aria-hidden="true"></div>
+              <div id="inline-values" class="inline-values" aria-hidden="true"></div>
+              <textarea id="editor" class="code" spellcheck="false" autocomplete="off" autocapitalize="off"></textarea>
+              <canvas id="minimap" class="minimap" width="72" height="400" title="Minimap"></canvas>
+              <div id="empty" class="empty">
+                <div class="empty-card">
+                  <h2 class="empty-title">Zintriq</h2>
+                  <p class="empty-lead">Open a file from the sidebar, or create one to start.</p>
+                  <div class="empty-actions">
+                    <button type="button" id="btn-empty-new-file" class="primary-btn">New File</button>
+                    <button type="button" id="btn-empty-open-welcome" class="ghost-btn">Open Welcome</button>
+                    <button type="button" id="btn-empty-guide" class="ghost-btn">Quick guide</button>
+                  </div>
+                </div>
+              </div>
+              <ul id="completion" class="completion hidden"></ul>
+              <div id="hover-tip" class="hover-tip hidden"></div>
+            </div>
+          </div>
+          <div class="split-handle" id="split-handle" title="Drag to resize"></div>
+          <div class="pane pane-b hidden" id="pane-b">
+            <div class="editor-wrap">
+              <pre class="hl" id="hl-b" aria-hidden="true"></pre>
+              <textarea id="editor-b" class="code" spellcheck="false" autocomplete="off" autocapitalize="off"></textarea>
+            </div>
+          </div>
+          <div id="diff-overlay" class="diff-overlay hidden">
+            <div class="diff-toolbar">
+              <button type="button" id="diff-close">Close Diff</button>
+              <span id="diff-title" class="meta"></span>
+            </div>
+            <div class="diff-body">
+              <div class="diff-files" id="diff-files"></div>
+              <div class="diff-pair">
+                <div class="diff-col">
+                  <div class="diff-col-head">Before</div>
+                  <pre id="diff-before" class="diff-pane"></pre>
+                </div>
+                <div class="diff-col">
+                  <div class="diff-col-head">After</div>
+                  <pre id="diff-after" class="diff-pane"></pre>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="resize-row" id="bottom-handle" title="Resize terminal"></div>
+        <div class="bottom-dock hidden" id="bottom-dock">
+          <div class="bottom-head">
+            <span>Terminal</span>
+            <button type="button" id="btn-bottom-close">×</button>
+          </div>
+          <div class="bottom-body" id="bottom-body"></div>
+        </div>
+      </div>
+      <footer class="status" id="status">
+        <span id="status-path">Ready</span>
+        <span id="status-diag"></span>
+        <span id="status-cursors"></span>
+        <span id="status-perf"></span>
+      </footer>
+    </section>
+
+    <div class="resize-col" id="panel-handle" title="Resize panel"></div>
+    <aside class="panel hidden" id="panel">
+      <div class="panel-head">
+        <span id="panel-title">Panel</span>
+        <button type="button" id="btn-panel-close">×</button>
+      </div>
+      <div class="panel-body" id="panel-body"></div>
+    </aside>
+  </div>
+  <div id="find-bar" class="find-bar hidden" role="search">
+    <input id="find-input" type="search" placeholder="Find in file" />
+    <button type="button" id="find-next">Next</button>
+    <button type="button" id="find-close">Close</button>
+  </div>
+  <div id="onboarding" class="onboarding hidden" role="dialog" aria-modal="true" aria-labelledby="onboard-title">
+    <div class="onboarding-card">
+      <h2 id="onboard-title">Welcome to Zintriq</h2>
+      <ol class="onboard-steps">
+        <li><strong>Files</strong> — Use <em>New File</em> / <em>New Folder</em> in the sidebar. Seed files appear on first launch.</li>
+        <li><strong>Edit</strong> — Open a file, type, save with Cmd/Ctrl+S. LSP diagnostics show in the status bar.</li>
+        <li><strong>Term / Debug</strong> — Enable Terminal or Debug under <em>Perms</em>, then use the Term and Debug panels.</li>
+        <li><strong>AI stays off the hot path</strong> — AI only runs when you open the AI panel and allow <em>ai.run</em>.</li>
+      </ol>
+      <p class="onboard-note">Community contributions (HAL packs, diagnostics) are documented in GOVERNANCE.md.</p>
+      <div class="onboard-actions">
+        <button type="button" id="onboard-open-hello" class="primary-btn">Open hello.py</button>
+        <button type="button" id="onboard-dismiss" class="ghost-btn">Got it</button>
+      </div>
+    </div>
+  </div>
+  <script src="/static/editor/vendor/xterm/xterm.js"></script>
+  <script src="/static/editor/vendor/xterm/addon-fit.js"></script>
+  <script src="/static/editor/syntax.js"></script>
+  <script src="/static/editor/fold.js"></script>
+  <script src="/static/editor/editor.js"></script>
+</body>
+</html>
