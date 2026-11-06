@@ -8,17 +8,31 @@ from importlib import metadata
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
-OFL = ROOT / "static" / "fonts" / "geist-sans" / "OFL.txt"
+OFL_CANDIDATES = (
+    ROOT / "static" / "fonts" / "geist-sans" / "OFL.txt",
+    ROOT / "desktop" / "resources" / "notices" / "OFL.txt",
+)
+
+
+def _resolve_ofl() -> Path | None:
+    for path in OFL_CANDIDATES:
+        if path.is_file():
+            return path
+    return None
 
 
 def main() -> int:
     dest_dir = Path(sys.argv[1] if len(sys.argv) > 1 else ROOT / "docs")
     dest_dir.mkdir(parents=True, exist_ok=True)
-    if not OFL.is_file():
-        print("missing OFL.txt", file=sys.stderr)
+    ofl = _resolve_ofl()
+    if ofl is None:
+        print(
+            "missing OFL.txt (looked in static/fonts and desktop/resources/notices)",
+            file=sys.stderr,
+        )
         return 1
     ofl_copy = dest_dir / "OFL.txt"
-    ofl_copy.write_bytes(OFL.read_bytes())
+    ofl_copy.write_bytes(ofl.read_bytes())
     lines = [
         "# Third-party notices",
         "",
@@ -26,7 +40,7 @@ def main() -> int:
         "",
         "## Geist Sans",
         "",
-        OFL.read_text(encoding="utf-8"),
+        ofl.read_text(encoding="utf-8"),
         "",
         "## Python packages",
         "",
