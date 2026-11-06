@@ -1,0 +1,30 @@
+{
+  "name": "@zintriq/core-service",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "main": "./dist/index.js",
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "vitest run",
+    "start": "node dist/index.js",
+    "dev": "tsx src/index.ts",
+    "lint": "tsc -p tsconfig.json --noEmit"
+  },
+  "dependencies": {
+    "@fastify/cors": "^11.0.1",
+    "@zintriq/build-service": "workspace:*",
+    "@zintriq/extension-host": "workspace:*",
+    "@zintriq/hal-registry": "workspace:*",
+    "@zintriq/protocol": "workspace:*",
+    "fastify": "^5.3.3",
+    "zod": "catalog:"
+  },
+  "devDependencies": {
+    "@types/node": "^22.15.21",
+    "tsx": "^4.19.4",
+    "typescript": "catalog:",
+    "vitest": "catalog:"
+  }
+}
