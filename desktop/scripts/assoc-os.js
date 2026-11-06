@@ -1,5 +1,5 @@
  * Pack-artifact Alternate file-assoc probes.
- * Windows: 手测补 .zintriq-plugin.json：NSIS 后截该扩展「打开方式」与 OpenWithProgids，对照文档。
+ * Windows: 手测补 .plugin.json：NSIS 后截该扩展「打开方式」与 OpenWithProgids，对照文档。
  * macOS: 访达补 content type：pack .app 上对插件 JSON 跑 mdls，确认不是 Archive Utility。
  * Linux: mime 补 application/json：用户目录 xdg-mime query default application/json 非 Zintriq，zip 继续 Alternate。
  */
@@ -13,7 +13,7 @@ function run(cmd, args) {
 }
 
 function fixturePlugin() {
-  const dest = path.join(os.tmpdir(), "zintriq-assoc-probe.zintriq-plugin.json");
+  const dest = path.join(os.tmpdir(), "assoc-probe.plugin.json");
   fs.writeFileSync(
     dest,
     JSON.stringify({ id: "assoc-probe", form: "view", document: { form: "atom", type: "string", value: "x" } })
@@ -28,15 +28,15 @@ function probeMac() {
   const tree = run("mdls", ["-raw", "-name", "kMDItemContentTypeTree", file]);
   const treeText = String(tree.stdout || "") + String(tree.stderr || "");
   if (/zip-archive|org\.gnu\.gnu-zip|com\.pkware\.zip/i.test(uti)) {
-    throw new Error("mdls maps .zintriq-plugin.json to zip/unzip UTI: " + uti);
+    throw new Error("mdls maps .plugin.json to zip/unzip UTI: " + uti);
   }
   if (/zip-archive/i.test(treeText) && !/json/i.test(uti + treeText)) {
-    throw new Error("mdls content type tree treats .zintriq-plugin.json as zip");
+    throw new Error("mdls content type tree treats .plugin.json as zip");
   }
   const install = process.env.ZINTRIQ_SMOKE_INSTALL_DIR || "";
   if (install) {
     const plist = fs.readFileSync(path.join(install, "Contents/Info.plist"), "utf8");
-    if (!plist.includes("zintriq-plugin.json")) throw new Error("mac Info.plist missing zintriq-plugin.json");
+    if (!plist.includes("plugin.json")) throw new Error("mac Info.plist missing plugin.json");
     if (!plist.includes("LSHandlerRank") && !plist.includes("Alternate")) {
       throw new Error("mac Info.plist missing Alternate rank");
     }
@@ -94,16 +94,16 @@ function probeLinux() {
 
 function probeWindows() {
   if (process.env.ZINTRIQ_SMOKE_NSIS !== "1") return;
-  const plugin = run("reg", ["query", "HKCU\\Software\\Classes\\.zintriq-plugin.json"]);
+  const plugin = run("reg", ["query", "HKCU\\Software\\Classes\\.plugin.json"]);
   if (plugin.status !== 0) {
-    throw new Error("HKCU missing .zintriq-plugin.json after NSIS");
+    throw new Error("HKCU missing .plugin.json after NSIS");
   }
-  const pluginOpenWith = run("reg", ["query", "HKCU\\Software\\Classes\\.zintriq-plugin.json\\OpenWithProgids"]);
+  const pluginOpenWith = run("reg", ["query", "HKCU\\Software\\Classes\\.plugin.json\\OpenWithProgids"]);
   const openWith = run("reg", ["query", "HKCU\\Software\\Classes\\.zip\\OpenWithProgids"]);
   const zipDefault = run("reg", ["query", "HKCU\\Software\\Classes\\.zip", "/ve"]);
   const zipText = String(openWith.stdout || "") + String(zipDefault.stdout || "");
   if (!/zintriq/i.test(String(plugin.stdout || "") + String(pluginOpenWith.stdout || ""))) {
-    throw new Error("HKCU .zintriq-plugin.json ProgId is not Zintriq");
+    throw new Error("HKCU .plugin.json ProgId is not Zintriq");
   }
   if (/zintriq/i.test(String(zipDefault.stdout || "")) && !/OpenWithProgids/i.test(String(zipDefault.stdout || ""))) {
     const def = String(zipDefault.stdout || "");

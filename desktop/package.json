@@ -1,8 +1,8 @@
 {
-  "name": "zintriq-studio",
-  "productName": "Zintriq Studio",
+  "name": "editor",
+  "productName": "Zintriq Editor",
   "version": "0.1.0",
-  "description": "Zintriq Studio — desktop factory (describe, simulate, instantiate, boundary)",
+  "description": "Zintriq Editor — performance-first local code editor",
   "main": "main.js",
   "author": {
     "name": "Zintriq",
@@ -15,64 +15,21 @@
     "start": "electron .",
     "dev": "electron .",
     "smoke": "node scripts/smoke.js",
+    "rebuild:pty": "node scripts/rebuild-pty.js",
+    "postinstall": "node scripts/rebuild-pty.js",
     "pack": "node packaging/run-builder.js --dir --publish never",
     "dist": "node packaging/run-builder.js --publish never",
     "dist:mac": "node packaging/run-builder.js --mac --publish never",
     "dist:win": "node packaging/run-builder.js --win --publish never",
-    "dist:linux": "node packaging/run-builder.js --linux --publish never",
-    "sign:mac-adhoc": "sh packaging/sign_macos_adhoc.sh"
+    "dist:linux": "node packaging/run-builder.js --linux --publish never"
   },
   "build": {
-    "appId": "com.zintriq.studio",
-    "productName": "Zintriq Studio",
-    "copyright": "Copyright \u00a9 Zintriq",
+    "appId": "com.editor",
+    "productName": "Zintriq Editor",
+    "copyright": "Copyright © Zintriq",
     "asar": true,
-    "afterSign": "packaging/notarize.js",
-    "protocols": [
-      {
-        "name": "Zintriq Studio",
-        "schemes": [
-          "zintriq"
-        ]
-      }
-    ],
-    "fileAssociations": [
-      {
-        "ext": "zintriq.json",
-        "name": "Zintriq description",
-        "role": "Editor"
-      },
-      {
-        "ext": "zintriq-app",
-        "name": "Zintriq app pack",
-        "description": "Local Zintriq app pack. Not a store installer.",
-        "role": "Editor",
-        "mimeType": "application/zip"
-      },
-      {
-        "ext": "json",
-        "name": "Zintriq stamp pack",
-        "description": "Local stamp JSON. Not a third-party JS view.",
-        "role": "Editor",
-        "rank": "Alternate",
-        "mimeType": "application/json"
-      },
-      {
-        "ext": "zintriq-plugin.json",
-        "name": "Zintriq plugin stamp",
-        "description": "Official or reviewed stamp. Open in Studio. Not default unzip.",
-        "role": "Editor",
-        "rank": "Alternate",
-        "mimeType": "application/json"
-      },
-      {
-        "ext": "zip",
-        "name": "Zintriq webpage pack",
-        "description": "Zintriq webpage zip or .zintriq-app.zip. Alternate, not default unzip.",
-        "role": "Editor",
-        "rank": "Alternate",
-        "mimeType": "application/zip"
-      }
+    "asarUnpack": [
+      "**/node_modules/node-pty/**"
     ],
     "directories": {
       "output": "release",
@@ -81,24 +38,19 @@
     "files": [
       "main.js",
       "preload.js",
-      "auth.js",
       "flask_host.js",
       "app_menu.js",
-      "meta_zip_host.js",
-      "meta_http.js",
       "navigation.js",
-      "cloud_host.js",
-      "updater.js",
-      "account_origin.js",
       "host_prefs.js",
+      "pty_host.js",
       "error.html",
-      "login.html",
-      "package.json"
+      "package.json",
+      "node_modules/node-pty/**/*"
     ],
     "extraResources": [
       {
-        "from": "resources/zintriq-server",
-        "to": "zintriq-server"
+        "from": "resources/server",
+        "to": "server"
       },
       {
         "from": "resources/notices",
@@ -121,15 +73,7 @@
         "nsis",
         "portable"
       ],
-      "signAndEditExecutable": true
-    },
-    "nsis": {
-      "oneClick": false,
-      "perMachine": false,
-      "allowElevation": false,
-      "allowToChangeInstallationDirectory": true,
-      "deleteAppDataOnUninstall": false,
-      "include": "packaging/installer.nsh"
+      "signAndEditExecutable": false
     },
     "linux": {
       "target": [
@@ -137,24 +81,18 @@
         "deb"
       ],
       "category": "Development",
-      "mimeTypes": ["application/json", "application/zip"],
-      "synopsis": "Zintriq Studio",
-      "executableArgs": [],
+      "synopsis": "Zintriq Editor",
       "maintainer": "Zintriq <support@zintriq.com>"
-    },
-    "publish": [
-      {
-        "provider": "generic",
-        "url": "https://zintriq.com/desktop/updates"
-      }
-    ]
-  },
-  "dependencies": {
-    "electron-updater": "6.3.9"
+    }
   },
   "devDependencies": {
-    "@electron/notarize": "2.5.0",
+    "@electron/rebuild": "^4.2.1",
     "electron": "33.2.0",
     "electron-builder": "25.1.8"
+  },
+  "dependencies": {
+    "@xterm/addon-fit": "^0.10.0",
+    "@xterm/xterm": "^5.5.0",
+    "node-pty": "^1.0.0"
   }
 }

@@ -9,8 +9,8 @@ import sys
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
-SPEC = Path(__file__).resolve().parent / "zintriq-server.spec"
-DIST = ROOT / "desktop" / "resources" / "zintriq-server"
+SPEC = Path(__file__).resolve().parent / "server.spec"
+DIST = ROOT / "desktop" / "resources" / "server"
 
 
 def main() -> int:

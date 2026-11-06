@@ -1,23 +1,15 @@
 /**
  * Loopback navigation allow-list for the Electron shell.
- * Fetch/XHR is not gated here — only top-level navigations / redirects.
  */
-
-function isAuthPagePath(pathname) {
-  return pathname === "/login" || pathname === "/register" || pathname.startsWith("/login/");
-}
 
 function pathAllowed(pathname) {
   const path = String(pathname || "");
-  if (!path || isAuthPagePath(path)) return false;
+  if (!path) return false;
   if (path === "/") return true;
-  if (path === "/studio" || path.startsWith("/studio/")) return true;
-  if (path === "/app/community" || path.startsWith("/app/community/")) return true;
-  if (path === "/build" || path.startsWith("/build/")) return true;
-  if (path.startsWith("/builder-runtime/")) return true;
+  if (path === "/editor" || path.startsWith("/editor/")) return true;
   if (path.startsWith("/static/")) return true;
-  if (path.startsWith("/api/builder-core/") || path.startsWith("/api/studio/")) return true;
-  if (path === "/healthz" || path === "/favicon.ico" || path === "/logout") return true;
+  if (path.startsWith("/api/")) return true;
+  if (path === "/healthz" || path === "/favicon.ico") return true;
   return false;
 }
 
@@ -35,7 +27,6 @@ function navigationAllowed(url, port) {
 }
 
 module.exports = {
-  isAuthPagePath,
   pathAllowed,
   navigationAllowed,
 };

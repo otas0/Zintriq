@@ -50,8 +50,8 @@ function smokeUserDataDir() {
 function resolvePythonExecutable() {
   if (process.env.ZINTRIQ_PYTHON) return process.env.ZINTRIQ_PYTHON;
   if (process.env.ZINTRIQ_PACKAGED === "1" && process.resourcesPath) {
-    const name = process.platform === "win32" ? "zintriq-server.exe" : "zintriq-server";
-    return path.join(process.resourcesPath, "zintriq-server", name);
+    const name = process.platform === "win32" ? "server.exe" : "server";
+    return path.join(process.resourcesPath, "server", name);
   }
   const root = repoRoot();
   if (process.platform === "win32") return path.join(root, ".venv", "Scripts", "python.exe");
@@ -265,26 +265,6 @@ function stopDaemon() {
   currentDaemon = null;
 }
 
-function spawnCollabDaemon({ pythonPath, userData }) {
-  stopDaemon();
-  if (process.env.ZINTRIQ_SMOKE === "1" || process.env.ZINTRIQ_COLLAB_DAEMON === "0") return null;
-  if (/zintriq-server(\.exe)?$/i.test(pythonPath)) return null;
-  const env = { ...process.env };
-  env.PYTHONUNBUFFERED = "1";
-  env.ZINTRIQ_DATA_DIR = userData;
-  env.ZINTRIQ_COLLAB_INTERVAL = env.ZINTRIQ_COLLAB_INTERVAL || "0.5";
-  const child = spawn(pythonPath, ["-m", "meta.collab.daemon", userData], {
-    cwd: repoRoot(),
-    env,
-    detached: process.platform !== "win32",
-    windowsHide: true,
-    stdio: "ignore",
-  });
-  currentDaemon = child;
-  if (typeof child.unref === "function") child.unref();
-  return child;
-}
-
 function launchRecipePath(userData) {
   const slug = String(process.env.ZINTRIQ_HOST_SLUG || "zintriq").replace(/[^a-z0-9_-]/gi, "") || "zintriq";
   return path.join(userData, "desktop", slug, "launch.json");
@@ -302,13 +282,13 @@ function loadLaunchRecipe(userData) {
   if (!raw || typeof raw !== "object") return null;
   const bind = String(raw.bind || "127.0.0.1");
   if (bind !== "127.0.0.1") return null;
-  const studioRaw = String(raw.studio || "/studio");
-  const studio = studioRaw === "/studio" || studioRaw.startsWith("/studio/") ? studioRaw : "/studio";
-  const editors = Array.isArray(raw.editors) ? raw.editors.map((id) => String(id)) : [];
+  const homeRaw = String(raw.studio || raw.editor || "/editor");
+  const studio =
+    homeRaw === "/editor" || homeRaw.startsWith("/editor/") ? homeRaw : "/editor";
   return {
     bind: "127.0.0.1",
     dataDir: String(raw.data_dir || userData),
-    editors,
+    editors: [],
     env: raw.env && typeof raw.env === "object" ? raw.env : {},
     file,
     loopback: true,
@@ -346,7 +326,7 @@ function spawnFlask({ pythonPath, userData, token, port, appVersion }) {
   delete env.PYTHONPATH;
   delete env.PYTHONHOME;
   delete env.LD_LIBRARY_PATH;
-  const packaged = /zintriq-server(\.exe)?$/i.test(pythonPath);
+  const packaged = /server(\.exe)?$/i.test(pythonPath);
   const args = packaged ? [] : [path.join(repoRoot(), "app.py")];
   return spawn(pythonPath, args, {
     cwd: packaged ? path.dirname(pythonPath) : repoRoot(),
@@ -374,7 +354,6 @@ async function startFlask({ userData, pythonPath, appVersion, token, port }) {
       const ready = await waitForReady(child, usePort, 30000);
       await waitForHealth(usePort, token, child, 15000);
       const info = { port: usePort, token, pid: ready.pid, logPath: log.filePath };
-      if (pythonPath) spawnCollabDaemon({ pythonPath, userData });
       child.once("exit", (code) => {
         lastLaunch.exitCode = code;
         lastLaunch.reason = code ? "flask_exit" : "";

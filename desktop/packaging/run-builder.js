@@ -83,7 +83,7 @@ function main() {
     console.error("No Python interpreter found. Create a venv (see docs/desktop-packaging.md).");
     process.exit(1);
   }
-  const shim = fs.mkdtempSync(path.join(os.tmpdir(), "zintriq-python-shim-"));
+  const shim = fs.mkdtempSync(path.join(os.tmpdir(), "python-shim-"));
   writeShim(python, shim);
   const env = { ...process.env, PATH: `${shim}${path.delimiter}${process.env.PATH || ""}` };
   requireSigning(env);

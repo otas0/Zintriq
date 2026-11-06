@@ -1,1 +1,1 @@
-"""Desktop helpers. Electron lives beside this package; server_mode is the Flask gate."""
+"""Desktop package: Electron shell helpers (JS) live beside this module."""
