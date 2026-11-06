@@ -1,0 +1,17 @@
+# 目标
+Zintriq **代码编辑器**（Electron + 本地 Flask）。公开门户与商家/Meta 旧产品已砍；恢复用 tag `archive/pre-editor-pivot`。
+
+# 规则
+- 一次只做一个步骤。先给计划（列出会改哪些文件），等确认再改代码——用户已明示「做完直接下一步」时可连续做。
+- 不重构与当前步骤无关的代码。
+- 桌面相关代码放在 /desktop；Flask 仅服务编辑器（`ZINTRIQ_DESKTOP=1`）。
+- 数据库路径、工作区、端口都必须可配置，不能写死。
+- 路径处理必须跨平台。
+- 本地服务只监听 127.0.0.1，并校验启动时生成的随机令牌。
+- Electron：contextIsolation 开启、sandbox 开启、nodeIntegration 关闭，CSP，preload 窄接口。
+- 改动前后跑现有测试；新功能要有最小冒烟。
+
+# 产品原则
+- 编辑路径优先（打字/搜索/跳转）性能神圣。
+- AI 默认关；改动可审可回滚。
+- 不做商家 SaaS、Meta 工作台、网页 Publish 主叙事。

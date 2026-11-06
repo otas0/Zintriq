@@ -1,8 +1,0 @@
-{% if can_switch_to_personal|default(false) %}
-<form class="bos-mode-switch" method="post" action="{{ url_for('customer_switch_to_personal') }}">
-  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-  <button type="submit" class="bos-nav__item bos-nav__button bos-mode-switch__btn">
-    <span class="bos-nav__label">Personal mode</span>
-  </button>
-</form>
-{% endif %}

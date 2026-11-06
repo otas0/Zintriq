@@ -1,0 +1,20 @@
+id: stm32f103
+name: STM32F103 Blue Pill
+mcuFamily: stm32
+toolchain:
+  compiler: g++
+  flags:
+    - -std=c++17
+    - -Wall
+    - -fsyntax-only
+pins:
+  LED: PC13
+  BUTTON: PA0
+  UART1_TX: PA9
+  UART1_RX: PA10
+peripherals:
+  - name: uart1
+    kind: uart
+    pins:
+      - UART1_TX
+      - UART1_RX

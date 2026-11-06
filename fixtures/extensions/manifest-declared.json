@@ -1,0 +1,7 @@
+{
+  "id": "fixture-fs-read",
+  "name": "FS read fixture",
+  "version": "0.1.0",
+  "capabilities": ["fs.read"],
+  "entryWasm": "fixture.wasm"
+}

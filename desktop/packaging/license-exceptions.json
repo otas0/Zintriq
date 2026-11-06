@@ -1,0 +1,10 @@
+[
+  {
+    "name": "pyinstaller",
+    "reason": "Build-only. GPL with the PyInstaller bootloader exception. It is not copied into the Electron extraResources server tree as a licensed runtime library beyond the bootloader, which is covered by that exception."
+  },
+  {
+    "name": "pyinstaller-hooks-contrib",
+    "reason": "Build-only hook collection used while freezing; not a shipped application dependency."
+  }
+]

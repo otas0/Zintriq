@@ -1,0 +1,80 @@
+:root {
+  color: #e6e8ee;
+  background: #1a1d23;
+  font-family: "IBM Plex Sans", "Segoe UI", sans-serif;
+}
+* { box-sizing: border-box; }
+html, body, #root { margin: 0; height: 100%; }
+button, select { font: inherit; }
+.app { display: flex; flex-direction: column; height: 100%; }
+.toolbar {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  padding: 8px 12px;
+  background: #12141a;
+  border-bottom: 1px solid #2e3440;
+}
+.toolbar button, .toolbar select {
+  background: #22262e;
+  color: #e6e8ee;
+  border: 1px solid #2e3440;
+  border-radius: 4px;
+  padding: 6px 10px;
+}
+.banner { background: #5c2b2b; color: #ffd2d2; padding: 8px 12px; }
+.banner[role="status"] { background: #2b3a5c; color: #d2e0ff; }
+.meta { font-size: 12px; opacity: 0.75; word-break: break-all; }
+.audit-filter { display: block; margin-bottom: 6px; font-size: 12px; }
+.audit-filter input {
+  width: 100%;
+  background: #22262e;
+  color: inherit;
+  border: 1px solid #2e3440;
+  border-radius: 4px;
+  padding: 4px 6px;
+}
+.audit-panel { font-size: 12px; opacity: 0.9; }
+.body { display: grid; grid-template-columns: 200px 1fr 320px; flex: 1; min-height: 0; }
+.tree, .side {
+  background: #12141a;
+  overflow: auto;
+  padding: 8px;
+}
+.tree { border-right: 1px solid #2e3440; }
+.side { border-left: 1px solid #2e3440; }
+.tree button, .side button {
+  display: block;
+  width: 100%;
+  text-align: left;
+  margin-bottom: 6px;
+  background: transparent;
+  color: inherit;
+  border: 0;
+  cursor: pointer;
+}
+.editor { min-width: 0; min-height: 0; }
+.badge {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 999px;
+  font-size: 12px;
+}
+.badge.success { background: #1e3a2a; color: #98c379; }
+.badge.failed { background: #3a1e22; color: #e06c75; }
+.badge.idle { background: #22262e; color: #8b93a7; }
+.diag {
+  width: 100%;
+  text-align: left;
+  background: transparent;
+  color: inherit;
+  border: 0;
+  padding: 6px 0;
+  cursor: pointer;
+}
+.tree button.active { color: #98c379; }
+.diag-highlight { background: rgba(224, 108, 117, 0.35); }
+.raw { margin: 8px 0; }
+.raw pre { white-space: pre-wrap; }
+.err { color: #e06c75; }
+h2 { font-size: 13px; margin: 12px 0 8px; }

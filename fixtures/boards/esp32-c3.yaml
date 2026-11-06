@@ -1,0 +1,23 @@
+id: esp32-c3
+name: ESP32-C3 DevKit
+mcuFamily: esp32
+toolchain:
+  compiler: g++
+  flags:
+    - -std=c++17
+    - -Wall
+    - -fsyntax-only
+pins:
+  LED: GPIO8
+  BUTTON: GPIO9
+  UART0_TX: GPIO21
+  UART0_RX: GPIO20
+peripherals:
+  - name: uart0
+    kind: uart
+    pins:
+      - UART0_TX
+      - UART0_RX
+  - name: wifi
+    kind: radio
+    pins: []

@@ -1,0 +1,26 @@
+id: rp2040
+name: Raspberry Pi Pico
+mcuFamily: rp2040
+toolchain:
+  compiler: g++
+  flags:
+    - -std=c++17
+    - -Wall
+    - -fsyntax-only
+pins:
+  LED: GP25
+  UART0_TX: GP0
+  UART0_RX: GP1
+  I2C0_SDA: GP4
+  I2C0_SCL: GP5
+peripherals:
+  - name: uart0
+    kind: uart
+    pins:
+      - UART0_TX
+      - UART0_RX
+  - name: i2c0
+    kind: i2c
+    pins:
+      - I2C0_SDA
+      - I2C0_SCL
