@@ -174,5 +174,16 @@ describe("core-service", () => {
       url: "/audit?extensionId=does-not-exist",
     });
     expect(empty.json()).toMatchObject({ total: 0, entries: [] });
+
+    const exported = await app.inject({
+      method: "GET",
+      url: "/audit?export=1&extensionId=fixture-no-fs",
+    });
+    expect(exported.statusCode).toBe(200);
+    expect(exported.json()).toMatchObject({
+      exported: true,
+      extensionId: "fixture-no-fs",
+    });
+    expect((exported.json() as { entries: unknown[] }).entries.length).toBeGreaterThan(0);
   });
 });

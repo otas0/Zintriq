@@ -25,6 +25,12 @@ function tauriBridge(): TauriBridge | undefined {
   return (window as unknown as { __TAURI__?: TauriBridge }).__TAURI__;
 }
 
+function toFileUri(pathOrUri: string): string {
+  if (pathOrUri.startsWith("file:")) return pathOrUri;
+  const normalized = pathOrUri.replace(/\\/g, "/");
+  return normalized.startsWith("/") ? `file://${normalized}` : `file:///${normalized}`;
+}
+
 /** Browser-safe mock LSP. Does not import Node transports or spawn clangd/pylsp. */
 export function connectMockLsp(rootUri: string, languageId: string): Promise<{ client: LspClient }> {
   let handler: Handler | undefined;
@@ -109,13 +115,22 @@ export type ClangdSession = {
   path?: string;
   message: string;
   client?: LspClient;
+  compileCommandsDir?: string;
+};
+
+export type ClangdConnectOptions = {
+  rootUri: string;
+  languageId: string;
+  /** Absolute filesystem path for workspace / compile_commands lookup. */
+  workspaceRoot?: string;
 };
 
 /**
  * Explicit clangd sidecar over Tauri stdio. Spawns clangd, frames JSON-RPC,
  * and never auto-connects on edit.
  */
-export async function connectClangdSidecar(rootUri: string, languageId: string): Promise<ClangdSession> {
+export async function connectClangdSidecar(options: ClangdConnectOptions): Promise<ClangdSession> {
+  const { rootUri, languageId, workspaceRoot } = options;
   const bridge = tauriBridge();
   if (!bridge?.core?.invoke || !bridge.event?.listen) {
     return {
@@ -126,9 +141,13 @@ export async function connectClangdSidecar(rootUri: string, languageId: string):
 
   const invoke = bridge.core.invoke;
   const listen = bridge.event.listen;
+  const fileRoot = toFileUri(workspaceRoot ?? rootUri);
 
   try {
-    const path = String(await invoke("start_clangd"));
+    const started = (await invoke("start_clangd", {
+      workspaceRoot: workspaceRoot ?? null,
+    })) as { path: string; compileCommandsDir?: string | null };
+    const path = started.path;
     let disposed = false;
     const diagnosticHandlers = new Set<(event: DiagnosticEvent) => void>();
     let nextId = 1;
@@ -171,14 +190,32 @@ export async function connectClangdSidecar(rootUri: string, languageId: string):
             method: "initialize",
             params: {
               processId: null,
-              rootUri,
-              capabilities: {},
-              initializationOptions: {},
-              workspaceFolders: null,
+              rootUri: fileRoot,
+              capabilities: {
+                workspace: { workspaceFolders: true },
+              },
+              initializationOptions: started.compileCommandsDir
+                ? { compilationDatabasePath: started.compileCommandsDir }
+                : {},
+              workspaceFolders: [
+                {
+                  uri: fileRoot,
+                  name: (workspaceRoot ?? rootUri).split(/[/\\]/).filter(Boolean).pop() ?? "workspace",
+                },
+              ],
             },
           });
         }).then((result) => {
           sendRaw({ method: "initialized", params: {} });
+          sendRaw({
+            method: "workspace/didChangeWorkspaceFolders",
+            params: {
+              event: {
+                added: [{ uri: fileRoot, name: "workspace" }],
+                removed: [],
+              },
+            },
+          });
           return result;
         });
       },
@@ -206,11 +243,15 @@ export async function connectClangdSidecar(rootUri: string, languageId: string):
     };
 
     await client.initialize();
+    const ccNote = started.compileCommandsDir
+      ? ` compile_commands: ${started.compileCommandsDir}`
+      : "（未找到 compile_commands.json，clangd 将用启发式）";
     return {
       available: true,
       path,
-      message: `已连接 clangd stdio sidecar：${path}。仅在显式连接后收发；编辑不会自动请求。`,
+      message: `已连接 clangd stdio sidecar：${path}。workspaceFolders 已声明。${ccNote} 仅显式连接；编辑不自动请求。`,
       client,
+      ...(started.compileCommandsDir ? { compileCommandsDir: started.compileCommandsDir } : {}),
     };
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
@@ -220,7 +261,7 @@ export async function connectClangdSidecar(rootUri: string, languageId: string):
 
 /** @deprecated use connectClangdSidecar */
 export async function probeClangdSidecar(): Promise<{ available: boolean; path?: string; message: string }> {
-  const session = await connectClangdSidecar("file:///", "cpp");
+  const session = await connectClangdSidecar({ rootUri: "file:///", languageId: "cpp" });
   session.client?.dispose();
   return session.path
     ? { available: session.available, path: session.path, message: session.message }

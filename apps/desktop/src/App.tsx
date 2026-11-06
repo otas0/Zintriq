@@ -77,6 +77,10 @@ export function App() {
   const [auditFilter, setAuditFilter] = useState("");
   const [auditError, setAuditError] = useState("");
   const [auditOffset, setAuditOffset] = useState(0);
+  const [extensionFlash, setExtensionFlash] = useState<{ added: string[]; removed: string[] }>({
+    added: [],
+    removed: [],
+  });
   const auditPageSize = 20;
   const folderHint = folderOpenHint();
 
@@ -85,6 +89,8 @@ export function App() {
   useEffect(() => {
     let cancelled = false;
     let source: EventSource | undefined;
+    let reconnectTimer: ReturnType<typeof setTimeout> | undefined;
+    let backoffMs = 1_000;
 
     async function loadExtensions() {
       const extensionData = await fetchJson<ExtensionsResponse>("/extensions");
@@ -92,6 +98,45 @@ export function App() {
       setExtensions(extensionData.extensions);
       setExtensionsDir(extensionData.extensionsDir);
       setExtensionError("");
+    }
+
+    function connectExtensionEvents() {
+      source?.close();
+      try {
+        source = new EventSource(`${CORE_URL}/extensions/events`);
+        source.onopen = () => {
+          backoffMs = 1_000;
+        };
+        source.onmessage = (event) => {
+          try {
+            const payload = JSON.parse(event.data) as {
+              type?: string;
+              added?: string[];
+              removed?: string[];
+            };
+            if (payload.type === "extensions-changed") {
+              const added = payload.added ?? [];
+              const removed = payload.removed ?? [];
+              setExtensionFlash({ added, removed });
+              window.setTimeout(() => setExtensionFlash({ added: [], removed: [] }), 4_000);
+              void loadExtensions().catch((err) => {
+                if (!cancelled) setExtensionError(formatApiError(err));
+              });
+            }
+          } catch {
+            /* ignore malformed SSE */
+          }
+        };
+        source.onerror = () => {
+          source?.close();
+          if (cancelled) return;
+          const wait = backoffMs;
+          backoffMs = Math.min(backoffMs * 2, 30_000);
+          reconnectTimer = setTimeout(connectExtensionEvents, wait);
+        };
+      } catch {
+        /* EventSource unavailable */
+      }
     }
 
     (async () => {
@@ -129,27 +174,11 @@ export function App() {
       } catch (err) {
         if (!cancelled) setAuditError(formatApiError(err));
       }
-
-      try {
-        source = new EventSource(`${CORE_URL}/extensions/events`);
-        source.onmessage = (event) => {
-          try {
-            const payload = JSON.parse(event.data) as { type?: string };
-            if (payload.type === "extensions-changed") {
-              void loadExtensions().catch((err) => {
-                if (!cancelled) setExtensionError(formatApiError(err));
-              });
-            }
-          } catch {
-            /* ignore malformed SSE */
-          }
-        };
-      } catch {
-        /* EventSource unavailable */
-      }
+      connectExtensionEvents();
     })();
     return () => {
       cancelled = true;
+      if (reconnectTimer) clearTimeout(reconnectTimer);
       source?.close();
       lspRef.current?.dispose();
       lspRef.current = null;
@@ -328,16 +357,24 @@ export function App() {
     }
   }
 
-  function exportAuditJson() {
-    const blob = new Blob([JSON.stringify(audit ?? { entries: [], total: 0 }, null, 2)], {
-      type: "application/json",
-    });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = "zintriq-audit.json";
-    a.click();
-    URL.revokeObjectURL(url);
+  async function exportAuditJson() {
+    try {
+      const q = new URLSearchParams({ export: "1" });
+      if (auditFilter.trim()) q.set("extensionId", auditFilter.trim());
+      const data = await fetchJson<AuditResponse>(`/audit?${q.toString()}`);
+      const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = auditFilter.trim()
+        ? `zintriq-audit-${auditFilter.trim()}.json`
+        : "zintriq-audit.json";
+      a.click();
+      URL.revokeObjectURL(url);
+      setAuditError("");
+    } catch (err) {
+      setAuditError(formatApiError(err));
+    }
   }
 
   async function connectLsp() {
@@ -363,7 +400,12 @@ export function App() {
 
   async function connectClangd() {
     lspRef.current?.dispose();
-    const session = await connectClangdSidecar(`file:///${root.name}`, "cpp");
+    const workspaceRoot = root.tauriPath;
+    const session = await connectClangdSidecar({
+      rootUri: workspaceRoot ? `file://${workspaceRoot}` : `file:///${root.name}`,
+      languageId: "cpp",
+      ...(workspaceRoot ? { workspaceRoot } : {}),
+    });
     if (!session.available || !session.client) {
       setLspStatus(lspStatus === "mock" ? "mock" : "error");
       setLspNote(session.message);
@@ -376,7 +418,10 @@ export function App() {
         setLspDiags(event.diagnostics.map((diag) => `${event.uri}: ${diag.message}`));
       });
       if (active) {
-        session.client.didOpen(`file:///${active.path}`, active.content);
+        const uri = workspaceRoot
+          ? `file://${workspaceRoot}/${active.path}`
+          : `file:///${active.path}`;
+        session.client.didOpen(uri, active.content);
       }
       setLspStatus("clangd");
       setLspNote(session.message);
@@ -577,8 +622,19 @@ export function App() {
             </p>
           ) : null}
           {extensionError ? <p className="err">{extensionError}</p> : null}
+          {extensionFlash.added.length || extensionFlash.removed.length ? (
+            <p data-testid="extension-flash" className="flash">
+              {extensionFlash.added.length ? `+${extensionFlash.added.join(",")}` : ""}
+              {extensionFlash.added.length && extensionFlash.removed.length ? " " : ""}
+              {extensionFlash.removed.length ? `-${extensionFlash.removed.join(",")}` : ""}
+            </p>
+          ) : null}
           {extensions.map((ext) => (
-            <div key={ext.id} data-testid="extension-card">
+            <div
+              key={ext.id}
+              data-testid="extension-card"
+              className={extensionFlash.added.includes(ext.id) ? "ext-added" : undefined}
+            >
               <p>{ext.id}</p>
               <p>{ext.name}</p>
               <p>{ext.capabilities.length > 0 ? ext.capabilities.join(", ") : "无"}</p>
@@ -621,7 +677,7 @@ export function App() {
           >
             更新
           </button>
-          <button type="button" data-testid="export-audit" onClick={exportAuditJson}>
+          <button type="button" data-testid="export-audit" onClick={() => void exportAuditJson()}>
             导出 JSON
           </button>
           <p data-testid="audit-page" className="meta">

@@ -11,8 +11,10 @@
 
 ## HAL board checklist (if applicable)
 
+CI job **HAL boards / board.schema.json** auto-validates YAML on `fixtures/boards/**` changes.
+
 - [ ] New/updated YAML matches `fixtures/boards/board.schema.json` (`mcuFamily` ∈ esp32|stm32|rp2040)
-- [ ] `pnpm --filter @zintriq/hal-registry test` passes
+- [ ] `pnpm --filter @zintriq/hal-registry test` passes (local)
 - [ ] `curl -s http://127.0.0.1:4317/boards` shows the board (paste text or screenshot)
 - [ ] `POST /build` with the new `boardId` is not `BOARD_NOT_FOUND`
 

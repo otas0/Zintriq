@@ -1,6 +1,6 @@
 {
   "identifier": "default",
-  "description": "Default window permissions",
+  "description": "Default window permissions — FS scope starts empty; allow_project_dir adds the opened folder only",
   "windows": ["main"],
   "permissions": [
     "core:default",
@@ -12,7 +12,7 @@
     "fs:allow-mkdir",
     {
       "identifier": "fs:scope",
-      "allow": [{ "path": "$HOME/**" }, { "path": "$DOCUMENT/**" }, { "path": "$DESKTOP/**" }]
+      "allow": []
     }
   ]
 }

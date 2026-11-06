@@ -1,0 +1,38 @@
+name: HAL boards
+
+on:
+  pull_request:
+    paths:
+      - "fixtures/boards/**"
+      - "packages/hal-registry/**"
+      - "packages/protocol/**"
+      - ".github/workflows/hal-boards.yml"
+  push:
+    paths:
+      - "fixtures/boards/**"
+      - "packages/hal-registry/**"
+      - "packages/protocol/**"
+      - ".github/workflows/hal-boards.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  schema:
+    name: board.schema.json
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.15.1
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install
+      - name: Validate boards against Zod + schema fixture
+        run: pnpm --filter @zintriq/hal-registry test
+      - name: Assert board.schema.json present
+        run: test -f fixtures/boards/board.schema.json && python3 -c 'import json; s=json.load(open("fixtures/boards/board.schema.json")); assert "esp32" in s["properties"]["mcuFamily"]["enum"]'

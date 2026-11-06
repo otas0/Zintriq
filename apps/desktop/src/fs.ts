@@ -75,6 +75,11 @@ async function openViaTauriDialog(): Promise<{ root: ProjectRoot; files: Project
   }
   const dirPath = selected;
   const name = dirPath.split(/[/\\]/).filter(Boolean).pop() ?? "project";
+  const bridge = (window as unknown as { __TAURI__?: { core?: { invoke?: (cmd: string, args?: Record<string, unknown>) => Promise<unknown> } } })
+    .__TAURI__;
+  if (bridge?.core?.invoke) {
+    await bridge.core.invoke("allow_project_dir", { path: dirPath });
+  }
   const { readDir, readTextFile: readPath, writeTextFile, mkdir } = await import("@tauri-apps/plugin-fs");
   const files: ProjectFile[] = [];
 

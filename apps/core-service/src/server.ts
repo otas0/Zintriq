@@ -167,7 +167,7 @@ export async function buildApp(options: BuildAppOptions = {}): Promise<FastifyIn
     extensionsDir: EXTENSIONS_DIR,
   }));
 
-  /** SSE: fs.watch on extensionsDir pushes { type: "extensions-changed" }. */
+  /** SSE: fs.watch on extensionsDir pushes { type: "extensions-changed", added, removed }. */
   app.get("/extensions/events", (request, reply) => {
     reply.hijack();
     const origin = request.headers.origin;
@@ -179,16 +179,31 @@ export async function buildApp(options: BuildAppOptions = {}): Promise<FastifyIn
       Connection: "keep-alive",
       "Access-Control-Allow-Origin": allowOrigin ?? "*",
     });
-    reply.raw.write(`data: ${JSON.stringify({ type: "connected", extensionsDir: EXTENSIONS_DIR })}\n\n`);
+
+    let previousIds = new Set(loadExtensions().map((item) => item.id));
+    reply.raw.write(
+      `data: ${JSON.stringify({
+        type: "connected",
+        extensionsDir: EXTENSIONS_DIR,
+        ids: [...previousIds],
+      })}\n\n`,
+    );
 
     let watcher: FSWatcher | undefined;
     let debounce: ReturnType<typeof setTimeout> | undefined;
     const notify = () => {
+      const nextIds = new Set(loadExtensions().map((item) => item.id));
+      const added = [...nextIds].filter((id) => !previousIds.has(id)).sort();
+      const removed = [...previousIds].filter((id) => !nextIds.has(id)).sort();
+      previousIds = nextIds;
       reply.raw.write(
         `data: ${JSON.stringify({
           type: "extensions-changed",
           extensionsDir: EXTENSIONS_DIR,
           at: new Date().toISOString(),
+          added,
+          removed,
+          ids: [...nextIds].sort(),
         })}\n\n`,
       );
     };
@@ -202,6 +217,7 @@ export async function buildApp(options: BuildAppOptions = {}): Promise<FastifyIn
       reply.raw.write(`data: ${JSON.stringify({ type: "error", message })}\n\n`);
     }
 
+    // Comment frames keep intermediaries from idle-closing the stream (~25s).
     const heartbeat = setInterval(() => {
       reply.raw.write(`: ping\n\n`);
     }, 25_000);
@@ -214,13 +230,30 @@ export async function buildApp(options: BuildAppOptions = {}): Promise<FastifyIn
   });
 
   app.get("/audit", async (request) => {
-    const query = request.query as { limit?: string; offset?: string; extensionId?: string };
+    const query = request.query as {
+      limit?: string;
+      offset?: string;
+      extensionId?: string;
+      export?: string;
+    };
+    const extensionId = typeof query.extensionId === "string" ? query.extensionId.trim() : "";
+    const all = getAuditLog().filter((entry) => (extensionId ? entry.extensionId === extensionId : true));
+    const wantExport = query.export === "1" || query.export === "true";
+    if (wantExport) {
+      const maxExport = 5_000;
+      return {
+        entries: all.slice(-maxExport),
+        total: all.length,
+        exported: true,
+        truncated: all.length > maxExport,
+        extensionsDir: EXTENSIONS_DIR,
+        ...(extensionId ? { extensionId } : {}),
+      };
+    }
     const parsedLimit = Number(query.limit ?? 50);
     const limit = Number.isFinite(parsedLimit) ? Math.min(Math.max(Math.trunc(parsedLimit), 1), 500) : 50;
     const parsedOffset = Number(query.offset ?? 0);
     const offset = Number.isFinite(parsedOffset) ? Math.max(Math.trunc(parsedOffset), 0) : 0;
-    const extensionId = typeof query.extensionId === "string" ? query.extensionId.trim() : "";
-    const all = getAuditLog().filter((entry) => (extensionId ? entry.extensionId === extensionId : true));
     const end = Math.max(0, all.length - offset);
     const start = Math.max(0, end - limit);
     return {

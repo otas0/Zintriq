@@ -77,4 +77,11 @@ button, select { font: inherit; }
 .raw { margin: 8px 0; }
 .raw pre { white-space: pre-wrap; }
 .err { color: #e06c75; }
+.flash { color: #98c379; font-size: 12px; }
+.ext-added {
+  outline: 1px solid #98c379;
+  background: rgba(152, 195, 121, 0.12);
+  padding: 4px;
+  margin-bottom: 6px;
+}
 h2 { font-size: 13px; margin: 12px 0 8px; }

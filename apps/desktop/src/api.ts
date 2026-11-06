@@ -50,6 +50,8 @@ export type AuditResponse = {
   total: number;
   limit?: number;
   offset?: number;
+  exported?: boolean;
+  truncated?: boolean;
   extensionsDir: string;
   extensionId?: string;
 };

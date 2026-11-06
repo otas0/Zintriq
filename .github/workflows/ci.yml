@@ -79,3 +79,12 @@ jobs:
       - run: pnpm install
       - run: pnpm --filter @zintriq/protocol build
       - run: pnpm --filter @zintriq/build-service test:integration
+
+  # Single green gate for branch protection when the host plan allows required checks.
+  # Prefer requiring: lint, typecheck, test, build (not integration / pack / smoke).
+  required:
+    name: required (lint typecheck test build)
+    runs-on: ubuntu-latest
+    needs: [lint, typecheck, test, build]
+    steps:
+      - run: echo "typed MVP required checks passed"

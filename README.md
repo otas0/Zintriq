@@ -1,5 +1,7 @@
 # Zintriq
 
+Default branch is **main**. Typed MVP start path: `corepack pnpm install` → `corepack pnpm --filter core-service dev` → `corepack pnpm --filter desktop dev` (UI `http://localhost:5173`, API `127.0.0.1:4317`).
+
 Local editor for software and board-level hardware work. Slow work runs only after an explicit action. There is no proactive assistant in this MVP.
 
 Two hosts live in this repo:
@@ -75,7 +77,7 @@ corepack pnpm --filter core-service dev
 corepack pnpm --filter desktop dev
 ```
 
-In Chromium, use **打开文件夹** / **新建文件** / **保存**（脏标记 `*`）。**连接语言服务** uses an in-app mock transport only; it does not auto-request on every keystroke. Real `clangd` / `pylsp` stay optional in `@zintriq/lsp-client` (`detectLanguageServers()`).
+In Chromium, use **打开文件夹** / **新建文件** / **保存**（脏标记 `*`）。**连接语言服务** uses an in-app mock transport only; it does not auto-request on every keystroke. **连接 clangd** is Tauri-only (stdio sidecar, explicit). Hand smoke without UI: `node scripts/clangd-stdio-smoke.mjs` after `pnpm --filter @zintriq/lsp-client build`.
 
 Tauri shell (requires a local Rust toolchain; no paid cloud account):
 
