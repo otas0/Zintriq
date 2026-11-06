@@ -55,7 +55,7 @@ curl -s -X POST http://127.0.0.1:4317/extensions/fixture-no-fs/run \
   -d '{}'
 ```
 
-`GET /health` returns `{ "status": "ok", "version", "uptimeMs" }`. `GET /boards` returns the board list. `POST /build` returns `{ "status", "diagnostics", "durationMs" }`. `GET /extensions` lists manifests from disk on every request (no restart needed after dropping a JSON). `GET /audit?limit=50` returns the capability-denied audit tail and the active `extensionsDir`. Errors return `{ "code", "message", "details?" }`.
+`GET /health` returns `{ "status": "ok", "version", "uptimeMs" }`. `GET /boards` returns the board list. `POST /build` returns `{ "status", "diagnostics", "durationMs" }`. `GET /extensions` returns `{ "extensions", "extensionsDir" }` and re-reads manifests from disk on every request. `GET /audit?limit=50&extensionId=` returns the capability-denied audit tail (optional `extensionId` filter) plus `extensionsDir`. Errors return `{ "code", "message", "details?" }`.
 
 Extension directory:
 

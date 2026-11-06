@@ -35,7 +35,8 @@ Desktop talks only to these core-service routes:
 - `GET /health`
 - `GET /boards`
 - `POST /build`
-- `GET /extensions`
+- `GET /extensions` → `{ extensions, extensionsDir }`
+- `GET /audit?limit=&extensionId=`
 - `POST /extensions/:id/run`
 
 Errors use `{ "code", "message", "details?" }`.

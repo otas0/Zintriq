@@ -162,17 +162,22 @@ export async function buildApp(options: BuildAppOptions = {}): Promise<FastifyIn
     return compile(parsed.data, board);
   });
 
-  app.get("/extensions", async () => loadExtensions());
+  app.get("/extensions", async () => ({
+    extensions: loadExtensions(),
+    extensionsDir: EXTENSIONS_DIR,
+  }));
 
   app.get("/audit", async (request) => {
-    const query = request.query as { limit?: string };
+    const query = request.query as { limit?: string; extensionId?: string };
     const parsed = Number(query.limit ?? 50);
     const limit = Number.isFinite(parsed) ? Math.min(Math.max(Math.trunc(parsed), 1), 500) : 50;
-    const all = getAuditLog();
+    const extensionId = typeof query.extensionId === "string" ? query.extensionId.trim() : "";
+    const all = getAuditLog().filter((entry) => (extensionId ? entry.extensionId === extensionId : true));
     return {
       entries: all.slice(-limit),
       total: all.length,
       extensionsDir: EXTENSIONS_DIR,
+      ...(extensionId ? { extensionId } : {}),
     };
   });
 

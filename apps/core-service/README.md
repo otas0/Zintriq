@@ -23,7 +23,7 @@ curl -s -X POST http://127.0.0.1:4317/extensions/fixture-no-fs/run \
   -d '{}'
 ```
 
-`GET /health` returns `{ "status": "ok", "version", "uptimeMs" }`. `GET /boards` returns the `BoardConfig` list. `POST /build` returns a `BuildResult`. `GET /extensions` re-reads manifests from `ZINTRIQ_EXTENSIONS_DIR` (default `fixtures/extensions`) on every call. `GET /audit?limit=50` returns recent capability-denied audit entries for troubleshooting. Errors use `{ "code", "message", "details?" }`.
+`GET /health` returns `{ "status": "ok", "version", "uptimeMs" }`. `GET /boards` returns the `BoardConfig` list. `POST /build` returns a `BuildResult`. `GET /extensions` returns `{ extensions, extensionsDir }` and re-reads manifests from `ZINTRIQ_EXTENSIONS_DIR` (default `fixtures/extensions`) on every call. `GET /audit?limit=50&extensionId=` returns recent capability-denied audit entries (optional filter) for troubleshooting. Errors use `{ "code", "message", "details?" }`.
 
 ```bash
 export ZINTRIQ_EXTENSIONS_DIR=$PWD/fixtures/extensions

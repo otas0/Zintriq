@@ -23,6 +23,18 @@ button, select { font: inherit; }
   padding: 6px 10px;
 }
 .banner { background: #5c2b2b; color: #ffd2d2; padding: 8px 12px; }
+.banner[role="status"] { background: #2b3a5c; color: #d2e0ff; }
+.meta { font-size: 12px; opacity: 0.75; word-break: break-all; }
+.audit-filter { display: block; margin-bottom: 6px; font-size: 12px; }
+.audit-filter input {
+  width: 100%;
+  background: #22262e;
+  color: inherit;
+  border: 1px solid #2e3440;
+  border-radius: 4px;
+  padding: 4px 6px;
+}
+.audit-panel { font-size: 12px; opacity: 0.9; }
 .body { display: grid; grid-template-columns: 200px 1fr 320px; flex: 1; min-height: 0; }
 .tree, .side {
   background: #12141a;

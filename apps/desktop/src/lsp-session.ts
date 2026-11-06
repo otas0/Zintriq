@@ -53,7 +53,6 @@ export function connectMockLsp(rootUri: string, languageId: string): Promise<{ c
       const id = nextId++;
       return new Promise((resolve, reject) => {
         pending.set(id, { resolve, reject });
-        // Simulate server reply; no stdio process.
         queueMicrotask(() => {
           handler?.(`{"jsonrpc":"2.0","id":${id},"result":{"capabilities":{"textDocumentSync":1}}}`);
         });
@@ -69,9 +68,7 @@ export function connectMockLsp(rootUri: string, languageId: string): Promise<{ c
       queueMicrotask(() => {
         const event: DiagnosticEvent = {
           uri,
-          diagnostics: bad
-            ? [{ message: "mock: expected expression", severity: 1 }]
-            : [],
+          diagnostics: bad ? [{ message: "mock: expected expression", severity: 1 }] : [],
         };
         for (const fn of diagnosticHandlers) fn(event);
       });
@@ -92,6 +89,38 @@ export function connectMockLsp(rootUri: string, languageId: string): Promise<{ c
 
   handler = onPayload;
   return client.initialize().then(() => ({ client }));
+}
+
+export type ClangdProbe = {
+  available: boolean;
+  path?: string;
+  message: string;
+};
+
+/**
+ * Optional clangd sidecar probe. Only available under Tauri (explicit user action).
+ * Does not auto-connect on edit; returns a path when the binary exists.
+ */
+export async function probeClangdSidecar(): Promise<ClangdProbe> {
+  const tauri = (window as unknown as { __TAURI__?: { core?: { invoke?: (cmd: string) => Promise<string> } } })
+    .__TAURI__;
+  if (!tauri?.core?.invoke) {
+    return {
+      available: false,
+      message: "clangd sidecar 仅在 Tauri 桌面壳可用；浏览器请继续用 mock。",
+    };
+  }
+  try {
+    const path = await tauri.core.invoke("start_clangd");
+    return {
+      available: true,
+      path,
+      message: `已探测 clangd sidecar：${path}。stdio 会话仍需显式连接；当前诊断流继续走 mock。`,
+    };
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    return { available: false, message: `clangd sidecar 不可用：${message}` };
+  }
 }
 
 export type { DiagnosticEvent, LspClient };

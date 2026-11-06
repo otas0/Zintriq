@@ -20,4 +20,14 @@ interface Window {
   showDirectoryPicker(options?: {
     mode?: "read" | "readwrite";
   }): Promise<FileSystemDirectoryHandle>;
+  __TAURI_INTERNALS__?: unknown;
+  __TAURI__?: {
+    core?: {
+      invoke?: (cmd: string, args?: Record<string, unknown>) => Promise<unknown>;
+    };
+  };
+}
+
+interface File {
+  webkitRelativePath: string;
 }

@@ -31,7 +31,7 @@ const boards = [
   { id: "stm32", name: "STM32", mcuFamily: "stm32" },
 ];
 
-test("editor, board select, and build badge", async () => {
+test("editor, board select, LSP mock, and capability deny", async () => {
   const app = await electron.launch({
     executablePath: electronBin,
     args: [path.join(here, "electron-main.cjs")],
@@ -63,7 +63,15 @@ test("editor, board select, and build badge", async () => {
       await route.fulfill({
         status: 200,
         contentType: "application/json",
-        body: JSON.stringify(extensions),
+        body: JSON.stringify({ extensions, extensionsDir: "/tmp/fixtures/extensions" }),
+      });
+      return;
+    }
+    if (route.request().method() === "GET" && url.pathname === "/audit") {
+      await route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify({ entries: [], total: 0, extensionsDir: "/tmp/fixtures/extensions" }),
       });
       return;
     }
@@ -95,7 +103,11 @@ test("editor, board select, and build badge", async () => {
       });
       return;
     }
-    await route.fulfill({ status: 404, contentType: "application/json", body: JSON.stringify({ code: "NOT_FOUND", message: "not found" }) });
+    await route.fulfill({
+      status: 404,
+      contentType: "application/json",
+      body: JSON.stringify({ code: "NOT_FOUND", message: "not found" }),
+    });
   });
   await page.reload();
   await expect(page.locator(".monaco-editor")).toBeVisible({ timeout: 20_000 });
@@ -104,6 +116,12 @@ test("editor, board select, and build badge", async () => {
   await expect(page.getByTestId("build-badge")).toHaveText(/success|failed/);
   await expect(page.getByTestId("build-duration")).toHaveText("12 ms");
   await expect(page.getByTestId("extension-card")).toHaveCount(2);
+  await expect(page.getByTestId("extensions-dir")).toContainText("fixtures/extensions");
+
+  await page.getByTestId("connect-lsp").click();
+  await expect(page.getByTestId("lsp-status")).toHaveText("mock");
+  await expect(page.getByRole("status").filter({ hasText: "mock LSP" })).toBeVisible();
+
   await page.getByRole("button", { name: "运行 Reader" }).click();
   await expect(page.getByTestId("extension-output")).toHaveText("6");
   await page.getByRole("button", { name: "运行 Locked" }).click();

@@ -5,23 +5,28 @@ import {
   ApiError,
   fetchJson,
   formatApiError,
+  type AuditResponse,
   type Board,
   type BuildResponse,
   type Diagnostic,
   type ExtensionInfo,
   type ExtensionRunResponse,
+  type ExtensionsResponse,
   type HealthResponse,
 } from "./api.js";
 import {
   canUseDirectoryPicker,
   createProjectFile,
+  folderOpenHint,
+  importProjectFiles,
+  isTauriRuntime,
   openProjectFolder,
   saveProjectFile,
   type ProjectFile,
   type ProjectRoot,
 } from "./fs.js";
-import { connectMockLsp, type LspClient } from "./lsp-session.js";
-import { badgeLabel } from "./model.js";
+import { connectMockLsp, probeClangdSidecar, type LspClient } from "./lsp-session.js";
+import { badgeLabel, planDiagnosticJump } from "./model.js";
 
 const STARTER = "int main(){return 0;}\n";
 const HEALTH_BANNER = "core-service 未启动，请运行 pnpm --filter core-service dev";
@@ -42,6 +47,7 @@ export function App() {
   const decorationsRef = useRef<MonacoEditor.IEditorDecorationsCollection | null>(null);
   const pendingJump = useRef<Diagnostic | null>(null);
   const lspRef = useRef<LspClient | null>(null);
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
 
   const [root, setRoot] = useState<ProjectRoot>({ name: "memory" });
   const [files, setFiles] = useState<ProjectFile[]>([{ path: "main.cpp", content: STARTER, dirty: false }]);
@@ -58,12 +64,17 @@ export function App() {
   const [requestError, setRequestError] = useState("");
   const [busy, setBusy] = useState(false);
   const [extensions, setExtensions] = useState<ExtensionInfo[]>([]);
+  const [extensionsDir, setExtensionsDir] = useState("");
   const [extensionError, setExtensionError] = useState("");
   const [extensionOutput, setExtensionOutput] = useState("");
   const [runningId, setRunningId] = useState("");
-  const [lspStatus, setLspStatus] = useState<"off" | "mock" | "error">("off");
+  const [lspStatus, setLspStatus] = useState<"off" | "mock" | "clangd" | "error">("off");
   const [lspNote, setLspNote] = useState("");
   const [lspDiags, setLspDiags] = useState<string[]>([]);
+  const [audit, setAudit] = useState<AuditResponse | null>(null);
+  const [auditFilter, setAuditFilter] = useState("");
+  const [auditError, setAuditError] = useState("");
+  const folderHint = folderOpenHint();
 
   const active = files.find((file) => file.path === activePath) ?? files[0];
 
@@ -91,13 +102,23 @@ export function App() {
         if (!cancelled) setBoardError(formatApiError(err));
       }
       try {
-        const extensionData = await fetchJson<ExtensionInfo[]>("/extensions");
+        const extensionData = await fetchJson<ExtensionsResponse>("/extensions");
         if (!cancelled) {
-          setExtensions(extensionData);
+          setExtensions(extensionData.extensions);
+          setExtensionsDir(extensionData.extensionsDir);
           setExtensionError("");
         }
       } catch (err) {
         if (!cancelled) setExtensionError(formatApiError(err));
+      }
+      try {
+        const auditData = await fetchJson<AuditResponse>("/audit?limit=20");
+        if (!cancelled) {
+          setAudit(auditData);
+          setAuditError("");
+        }
+      } catch (err) {
+        if (!cancelled) setAuditError(formatApiError(err));
       }
     })();
     return () => {
@@ -128,15 +149,26 @@ export function App() {
 
   function updateActive(content: string) {
     setFiles((current) =>
-      current.map((file) =>
-        file.path === activePath ? { ...file, content, dirty: true } : file,
-      ),
+      current.map((file) => (file.path === activePath ? { ...file, content, dirty: true } : file)),
     );
   }
 
   async function onOpenFolder() {
     try {
       const opened = await openProjectFolder();
+      setRoot(opened.root);
+      setFiles(opened.files);
+      setActivePath(opened.files[0]?.path ?? "main.cpp");
+      setRequestError("");
+    } catch (err) {
+      setRequestError(formatApiError(err));
+    }
+  }
+
+  async function onImportFiles(list: FileList | null) {
+    if (!list) return;
+    try {
+      const opened = await importProjectFiles(list);
       setRoot(opened.root);
       setFiles(opened.files);
       setActivePath(opened.files[0]?.path ?? "main.cpp");
@@ -209,13 +241,12 @@ export function App() {
   }
 
   function jump(diag: Diagnostic) {
-    const target = files.find((item) => item.path === diag.file);
-    if (target && target.path !== activePath) {
-      pendingJump.current = diag;
-      setActivePath(target.path);
+    const plan = planDiagnosticJump(activePath, files, diag);
+    pendingJump.current = plan.diag;
+    if (plan.kind === "switch") {
+      setActivePath(plan.path);
       return;
     }
-    pendingJump.current = diag;
     const editor = editorRef.current;
     const monaco = monacoRef.current;
     if (!editor || !monaco) return;
@@ -249,6 +280,19 @@ export function App() {
       }
     } finally {
       setRunningId("");
+      void refreshAudit();
+    }
+  }
+
+  async function refreshAudit() {
+    try {
+      const q = new URLSearchParams({ limit: "20" });
+      if (auditFilter.trim()) q.set("extensionId", auditFilter.trim());
+      const data = await fetchJson<AuditResponse>(`/audit?${q.toString()}`);
+      setAudit(data);
+      setAuditError("");
+    } catch (err) {
+      setAuditError(formatApiError(err));
     }
   }
 
@@ -266,7 +310,33 @@ export function App() {
         client.didOpen(`file:///${active.path}`, active.content);
       }
       setLspStatus("mock");
-      setLspNote("已连接 mock LSP。本机 clangd/pylsp 仅通过 packages/lsp-client 探测，CI 与桌面默认不启动真实进程。");
+      setLspNote("已连接 mock LSP。不会在编辑时自动请求；clangd 需另点「连接 clangd」。");
+    } catch (err) {
+      setLspStatus("error");
+      setLspNote(formatApiError(err));
+    }
+  }
+
+  async function connectClangd() {
+    const probe = await probeClangdSidecar();
+    if (!probe.available) {
+      setLspStatus(lspStatus === "mock" ? "mock" : "error");
+      setLspNote(probe.message);
+      return;
+    }
+    try {
+      lspRef.current?.dispose();
+      const session = await connectMockLsp(`file:///${root.name}`, "cpp");
+      lspRef.current = session.client;
+      setLspDiags([]);
+      session.client.onDiagnostics((event) => {
+        setLspDiags(event.diagnostics.map((diag) => `${event.uri}: ${diag.message}`));
+      });
+      if (active) {
+        session.client.didOpen(`file:///${active.path}`, active.content);
+      }
+      setLspStatus("clangd");
+      setLspNote(probe.message);
     } catch (err) {
       setLspStatus("error");
       setLspNote(formatApiError(err));
@@ -282,9 +352,24 @@ export function App() {
       <header className="toolbar">
         <span data-testid="core-status">{healthError ? "offline" : "ok"}</span>
         <span data-testid="project-root">{root.name}</span>
-        <button type="button" onClick={() => void onOpenFolder()} disabled={!canUseDirectoryPicker()}>
+        <button
+          type="button"
+          onClick={() => void onOpenFolder()}
+          disabled={!isTauriRuntime() && !canUseDirectoryPicker()}
+        >
           打开文件夹
         </button>
+        <button type="button" onClick={() => fileInputRef.current?.click()}>
+          导入文件
+        </button>
+        <input
+          ref={fileInputRef}
+          type="file"
+          multiple
+          hidden
+          data-testid="import-files"
+          onChange={(event) => void onImportFiles(event.target.files)}
+        />
         <button type="button" onClick={() => void onNewFile()}>
           新建文件
         </button>
@@ -309,8 +394,11 @@ export function App() {
         <button type="button" onClick={() => void checkBuild()} disabled={busy || Boolean(healthError) || !boardId}>
           {busy ? "检查中" : "构建检查"}
         </button>
-        <button type="button" onClick={() => void connectLsp()}>
+        <button type="button" data-testid="connect-lsp" onClick={() => void connectLsp()}>
           连接语言服务
+        </button>
+        <button type="button" data-testid="connect-clangd" onClick={() => void connectClangd()}>
+          连接 clangd
         </button>
         <span className={`badge ${status}`} data-testid="build-badge">
           {badgeLabel(status)}
@@ -318,6 +406,11 @@ export function App() {
         {durationMs !== null ? <span data-testid="build-duration">{durationMs} ms</span> : null}
         <span data-testid="lsp-status">{lspStatus}</span>
       </header>
+      {folderHint ? (
+        <div className="banner" role="status" data-testid="folder-hint">
+          {folderHint}
+        </div>
+      ) : null}
       {healthError ? (
         <div className="banner" role="alert">
           {healthError}
@@ -415,6 +508,11 @@ export function App() {
             </div>
           ) : null}
           <h2>扩展</h2>
+          {extensionsDir ? (
+            <p data-testid="extensions-dir" className="meta">
+              {extensionsDir}
+            </p>
+          ) : null}
           {extensionError ? <p className="err">{extensionError}</p> : null}
           {extensions.map((ext) => (
             <div key={ext.id} data-testid="extension-card">
@@ -431,6 +529,31 @@ export function App() {
               {extensionOutput}
             </p>
           ) : null}
+          <h2>审计（只读）</h2>
+          <label className="audit-filter">
+            extensionId{" "}
+            <input
+              data-testid="audit-filter"
+              value={auditFilter}
+              onChange={(event) => setAuditFilter(event.target.value)}
+              placeholder="可选过滤"
+            />
+          </label>
+          <button type="button" data-testid="refresh-audit" onClick={() => void refreshAudit()}>
+            刷新审计
+          </button>
+          {auditError ? <p className="err">{auditError}</p> : null}
+          <div data-testid="audit-panel" className="audit-panel">
+            {audit?.entries.length ? (
+              audit.entries.map((entry, index) => (
+                <p key={`${entry.timestamp}:${entry.extensionId}:${index}`}>
+                  {entry.timestamp} {entry.extensionId} {entry.capability} {entry.action}
+                </p>
+              ))
+            ) : (
+              <p>暂无记录</p>
+            )}
+          </div>
         </aside>
       </div>
     </div>

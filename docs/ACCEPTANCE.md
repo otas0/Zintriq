@@ -47,11 +47,12 @@ curl -s -X POST http://127.0.0.1:4317/build \
 ## 3. Desktop 手工验收
 
 1. 顶部状态为 `ok`，开发板下拉有多块板。
-2. **打开文件夹**（Chromium）或使用默认 `main.cpp`；**新建文件**、编辑后出现脏标记 `*`，**保存**清除脏标记。
-3. 改成非法 C++，点 **构建检查**：徽章 `failed`，诊断列表有条目；点击第一条跳到编辑器行列并高亮。
+2. **打开文件夹**（Chromium / Tauri 系统对话框）或 **导入文件**（Firefox/Safari 降级）；**新建文件**、编辑后出现脏标记 `*`，**保存**清除脏标记。
+3. 改成非法 C++，点 **构建检查**：徽章 `failed`，诊断列表有条目；点击第一条跳到编辑器行列并高亮（含跨文件 pendingJump）。
 4. 若诊断含 `BUILD_TIMEOUT` / `COMPILER_NOT_FOUND`，顶部出现对应中文说明。
-5. 扩展面板运行 FS read fixture 得到数字输出；运行 No FS fixture 显示「扩展未声明该能力」。
-6. **连接语言服务** 仅接 mock，不自动在每次按键时请求；状态显示 `mock`。
+5. 扩展面板显示 `extensionsDir`；运行 FS read fixture 得到数字输出；运行 No FS fixture 显示「扩展未声明该能力」。
+6. **连接语言服务** 仅接 mock，不自动在每次按键时请求；状态显示 `mock`。可选 **连接 clangd**（Tauri sidecar 探测，仍显式）。
+7. 审计只读面板可按 `extensionId` 过滤并刷新；`GET /audit?extensionId=` 与 UI 一致。
 
 ## 4. 自动化
 
@@ -70,7 +71,7 @@ Playwright 冒烟默认走本机 Electron（见 `apps/desktop/e2e`）。若本�
 需要本机 Rust + `cargo`。当前 CI / 默认开发路径不依赖付费云账号：
 
 ```bash
-cd apps/desktop/src-tauri && cargo tauri build
+cd apps/desktop && corepack pnpm exec tauri build
 ```
 
-无 `cargo` 时跳过此步，以 Vite + Electron 冒烟为准。
+本机已用 Rust 1.99 + `@tauri-apps/cli` 跑通 release 打包（产出 `Zintriq_*.dmg`）。无 `cargo` 时跳过此步，以 Vite + Electron 冒烟为准。

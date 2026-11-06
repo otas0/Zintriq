@@ -98,12 +98,13 @@ describe("core-service", () => {
     expect(JSON.stringify(body)).not.toContain("stack");
   });
 
-  it("lists installed extension manifests", async () => {
+  it("lists installed extension manifests with extensionsDir", async () => {
     const res = await app.inject({ method: "GET", url: "/extensions" });
     expect(res.statusCode).toBe(200);
-    const manifests = res.json() as ExtensionManifest[];
-    expect(manifests.map((item) => item.id)).toEqual(["fixture-fs-read", "fixture-no-fs"]);
-    expect(manifests[0]?.capabilities).toEqual(["fs.read"]);
+    const body = res.json() as { extensions: ExtensionManifest[]; extensionsDir: string };
+    expect(body.extensions.map((item) => item.id)).toEqual(["fixture-fs-read", "fixture-no-fs"]);
+    expect(body.extensions[0]?.capabilities).toEqual(["fs.read"]);
+    expect(body.extensionsDir).toContain("fixtures");
   });
 
   it("runs a declared extension", async () => {
@@ -145,5 +146,25 @@ describe("core-service", () => {
     expect(payload.total).toBeGreaterThan(0);
     expect(payload.extensionsDir).toBeTruthy();
     expect(payload.entries.some((entry) => entry.extensionId === "fixture-no-fs")).toBe(true);
+
+    const filtered = await app.inject({
+      method: "GET",
+      url: "/audit?limit=10&extensionId=fixture-no-fs",
+    });
+    expect(filtered.statusCode).toBe(200);
+    const filteredBody = filtered.json() as {
+      entries: { extensionId: string }[];
+      total: number;
+      extensionId: string;
+    };
+    expect(filteredBody.extensionId).toBe("fixture-no-fs");
+    expect(filteredBody.entries.every((entry) => entry.extensionId === "fixture-no-fs")).toBe(true);
+    expect(filteredBody.total).toBeGreaterThan(0);
+
+    const empty = await app.inject({
+      method: "GET",
+      url: "/audit?extensionId=does-not-exist",
+    });
+    expect(empty.json()).toMatchObject({ total: 0, entries: [] });
   });
 });

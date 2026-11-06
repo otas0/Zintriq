@@ -50,3 +50,4 @@ apps/**/dist/
 packages/**/dist/
 .venv/
 *.wasm.bak
+apps/desktop/src-tauri/gen/

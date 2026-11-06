@@ -33,6 +33,25 @@ export type ExtensionInfo = {
   capabilities: string[];
 };
 
+export type ExtensionsResponse = {
+  extensions: ExtensionInfo[];
+  extensionsDir: string;
+};
+
+export type AuditEntry = {
+  timestamp: string;
+  extensionId: string;
+  capability: string;
+  action: "denied";
+};
+
+export type AuditResponse = {
+  entries: AuditEntry[];
+  total: number;
+  extensionsDir: string;
+  extensionId?: string;
+};
+
 export type ExtensionRunResponse = {
   ok: boolean;
   output?: unknown;
