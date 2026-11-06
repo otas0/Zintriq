@@ -9,7 +9,7 @@
     "build": "node scripts/run-workspace.mjs build",
     "typecheck": "node scripts/run-workspace.mjs build && node scripts/run-workspace.mjs typecheck",
     "test": "node scripts/run-workspace.mjs build && node scripts/run-workspace.mjs test",
-    "lint": "node scripts/run-workspace.mjs lint"
+    "lint": "node scripts/run-workspace.mjs build && node scripts/run-workspace.mjs lint"
   },
   "pnpm": {
     "onlyBuiltDependencies": ["esbuild"]
