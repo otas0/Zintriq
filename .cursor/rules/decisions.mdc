@@ -1,0 +1,13 @@
+# 已锁决策（编辑器转型后）
+
+- 宿主：Electron + 本地 Flask（`ZINTRIQ_DESKTOP=1`）
+- 定位：性能与可控优先的代码编辑器；AI 可选、默认关
+- 不迁 React/Next/Vite/Tauri；前端桌面走 `window.zintriqDesktop.*`
+- 旧产品（商家/Meta/BOS/门户）已归档：`archive/pre-editor-pivot`
+- 签名公证与自动更新保持停，直到产品完成
+
+# 要做（MVP）
+1. 核心编辑 + 性能基线
+2. Diff 审阅与变更回滚
+3. AI 旁路（显式 + 隔离进程）
+4. 工具权限模型草案

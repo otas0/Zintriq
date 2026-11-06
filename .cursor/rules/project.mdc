@@ -1,0 +1,31 @@
+---
+description: Zintriq editor product boundaries and coding rules
+alwaysApply: true
+---
+
+# Zintriq project rules
+
+## Host (do not replace)
+
+- The existing Electron shell stays in `desktop/`. The existing Flask host stays `app.py`.
+- The typed MVP UI is `apps/desktop` (Tauri + React). The typed MVP API is `apps/core-service` (Fastify on 127.0.0.1:4317). Do not fold those into the Electron main process.
+- New domain code lives in `packages/*` (TypeScript, strict). Flask or Electron may call those packages; do not fold extension execution into the UI process.
+
+## Product boundaries
+
+- No proactive AI suggestions. No AI completion and no automatic code generation in this MVP. Slow work runs only after an explicit user action.
+- Language support goes through an LSP/DAP client. Do not write a full language server. First clients are C/C++ and Python. A mock server is allowed if the client interface stays stable.
+- Extensions run in a WASM sandbox. Each extension manifest declares capabilities (`fs.read`, `fs.write`, `net`, `serial`, `process`). Undeclared capabilities are unavailable. No unsandboxed process escape hatch.
+- Keep UI, core service, and extension execution in separate processes.
+- Boards come from declarative HAL YAML: MCU family, toolchain command, pins, peripherals. Ship ESP32, STM32, and RP2040 fixtures.
+- Build check runs only when the user asks. It calls local g++/gcc and returns diagnostics. No flashing and no hardware-in-the-loop run in this MVP.
+- TypeScript is strict. Validate boundaries with Zod. Return errors explicitly; do not swallow exceptions. Core modules need Vitest tests.
+- Do not add a source-to-target language converter, its routes, buttons, types, or docs that promise it. A later ADR can decide; this MVP does not stub that feature.
+
+## Coding
+
+- Do not auto-build on save. Do not build when a file changes.
+- `apps/desktop` calls only the core-service HTTP API. It does not import extension-host, build-service, or hal-registry.
+- Do not put extension execution inside the Electron main process or the React UI.
+- Offline mocks must pass tests. Do not require a paid cloud account to run.
+- Prefer the existing editor UI over a second React app.
