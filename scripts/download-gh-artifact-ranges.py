@@ -62,10 +62,20 @@ def content_length(url: str) -> int:
         return int(resp.headers["Content-Length"])
 
 
-def fetch_range(url: str, start: int, end: int) -> bytes:
-    req = urllib.request.Request(url, headers={"Range": f"bytes={start}-{end}"})
-    with urllib.request.urlopen(req, timeout=300) as resp:
-        return resp.read()
+def fetch_range(url: str, start: int, end: int, attempts: int = 4) -> bytes:
+    last: BaseException | None = None
+    for i in range(attempts):
+        try:
+            req = urllib.request.Request(url, headers={"Range": f"bytes={start}-{end}"})
+            with urllib.request.urlopen(req, timeout=300) as resp:
+                return resp.read()
+        except (TimeoutError, http.client.IncompleteRead, OSError) as err:
+            last = err
+            wait = 2 ** i
+            print(f"  retry range {start}-{end} after {err!r} (sleep {wait}s)", flush=True)
+            time.sleep(wait)
+    assert last is not None
+    raise last
 
 
 def download(url: str, out: Path, parts: int) -> None:
