@@ -10,7 +10,7 @@ export default defineConfig({
   webServer: {
     command: "corepack pnpm exec vite --host localhost --port 5173 --strictPort",
     url: "http://localhost:5173",
-    reuseExistingServer: false,
+    reuseExistingServer: !process.env.CI,
     timeout: 60_000,
   },
 });

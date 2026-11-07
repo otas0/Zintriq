@@ -175,13 +175,16 @@ jobs:
           test -n "$app"
           sh desktop/packaging/sign_macos_adhoc.sh "$app"
           echo "APP_PATH=$app" >> "$GITHUB_ENV"
-          echo "APP_BIN=$app/Contents/MacOS/Zintriq Editor" >> "$GITHUB_ENV"
+          # executableName is ZintriqEditor; fall back to productName binary if present.
+          bin="$app/Contents/MacOS/ZintriqEditor"
+          if [ ! -x "$bin" ]; then bin="$app/Contents/MacOS/Zintriq Editor"; fi
+          echo "APP_BIN=$bin" >> "$GITHUB_ENV"
 
       - name: Locate Windows unpacked app
         if: runner.os == 'Windows'
         shell: bash
         run: |
-          exe=$(find "$GITHUB_WORKSPACE/desktop/release/win-unpacked" -name 'Zintriq Editor.exe' | head -n 1)
+          exe=$(find "$GITHUB_WORKSPACE/desktop/release/win-unpacked" \( -name 'ZintriqEditor.exe' -o -name 'Zintriq Editor.exe' \) | head -n 1)
           test -n "$exe"
           echo "APP_BIN=$exe" >> "$GITHUB_ENV"
           echo "APP_PATH=$(dirname "$exe")" >> "$GITHUB_ENV"
@@ -189,7 +192,7 @@ jobs:
       - name: Locate Linux unpacked app
         if: runner.os == 'Linux'
         run: |
-          bin=$(find "$GITHUB_WORKSPACE/desktop/release" \( -path '*unpacked/zintriq-editor' -o -path '*unpacked/Zintriq Editor' \) | head -n 1)
+          bin=$(find "$GITHUB_WORKSPACE/desktop/release" \( -path '*unpacked/zintriq-editor' -o -path '*unpacked/ZintriqEditor' -o -path '*unpacked/Zintriq Editor' \) | head -n 1)
           if [ -z "$bin" ]; then
             bin=$(find "$GITHUB_WORKSPACE/desktop/release" -type f -perm -111 ! -name '*.so' | awk '/unpacked/ {print; exit}')
           fi
@@ -213,10 +216,12 @@ jobs:
           rm -rf "$smoke_root"
           mkdir -p "$smoke_root"
           if [ "$RUNNER_OS" = "macOS" ]; then
-            cp -R "$APP_PATH" "$smoke_root/Zintriq Editor.app"
-            chmod -R a-w "$smoke_root/Zintriq Editor.app" || true
-            export ZINTRIQ_SMOKE_APP="$smoke_root/Zintriq Editor.app/Contents/MacOS/Zintriq Editor"
-            export ZINTRIQ_SMOKE_INSTALL_DIR="$smoke_root/Zintriq Editor.app"
+            cp -R "$APP_PATH" "$smoke_root/app.app"
+            chmod -R a-w "$smoke_root/app.app" || true
+            smoke_bin="$smoke_root/app.app/Contents/MacOS/ZintriqEditor"
+            if [ ! -x "$smoke_bin" ]; then smoke_bin="$smoke_root/app.app/Contents/MacOS/Zintriq Editor"; fi
+            export ZINTRIQ_SMOKE_APP="$smoke_bin"
+            export ZINTRIQ_SMOKE_INSTALL_DIR="$smoke_root/app.app"
           else
             cp -R "$APP_PATH" "$smoke_root/app"
             chmod -R a-w "$smoke_root/app" || true
@@ -258,7 +263,9 @@ jobs:
             Write-Host "install dir write denied as expected"
           }
           if ($stillWritable) { throw "install dir still writable after icacls RX+deny W" }
-          $env:ZINTRIQ_SMOKE_APP = Join-Path $app "Zintriq Editor.exe"
+          $exe = Join-Path $app "ZintriqEditor.exe"
+          if (-not (Test-Path $exe)) { $exe = Join-Path $app "Zintriq Editor.exe" }
+          $env:ZINTRIQ_SMOKE_APP = $exe
           $env:ZINTRIQ_SMOKE_INSTALL_DIR = $app
           npm run smoke *>&1 | Tee-Object -FilePath $env:SMOKE_LOG
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
@@ -275,10 +282,11 @@ jobs:
           New-Item -ItemType Directory -Path $dest | Out-Null
           Start-Process -FilePath $setup.FullName -ArgumentList "/S","/D=$dest" -Wait
           $env:ZINTRIQ_SMOKE_NSIS = "1"
-          $env:ZINTRIQ_SMOKE_APP = Join-Path $dest "Zintriq Editor.exe"
+          $env:ZINTRIQ_SMOKE_APP = Join-Path $dest "ZintriqEditor.exe"
           if (-not (Test-Path $env:ZINTRIQ_SMOKE_APP)) {
-            $found = Get-ChildItem -Recurse $dest -Filter "Zintriq Editor.exe" | Select-Object -First 1
-            if (-not $found) { throw "NSIS install missing Zintriq Editor.exe" }
+            $found = Get-ChildItem -Recurse $dest -Filter "ZintriqEditor.exe" | Select-Object -First 1
+            if (-not $found) { $found = Get-ChildItem -Recurse $dest -Filter "Zintriq Editor.exe" | Select-Object -First 1 }
+            if (-not $found) { throw "NSIS install missing ZintriqEditor.exe" }
             $env:ZINTRIQ_SMOKE_APP = $found.FullName
           }
           $env:ZINTRIQ_SMOKE_INSTALL_DIR = Split-Path $env:ZINTRIQ_SMOKE_APP

@@ -31,3 +31,5 @@ Repo Actions secrets for a signed tag build (none are set yet — unsigned pack 
 - `APPLE_ID` / `APPLE_APP_SPECIFIC_PASSWORD` / `APPLE_TEAM_ID` (notarize)
 
 After secrets exist, tag with `ZINTRIQ_SIGN=1` documented in `desktop/packaging/run-builder.js`, or rely on non-empty `CSC_*` during `Desktop pack`. Daily tags use a **slim** OS matrix; full matrix: tag `v*-release` or `workflow_dispatch` with `full_matrix=true`. Successful tag packs also publish a GitHub Release with installer artifacts.
+
+When Pro/public is available, open a no-op PR against `main` and confirm the four required checks appear and block merge until green. See also `docs/desktop-packaging.md` for Electron ≥ 33.4.3 / NOMINMAX notes.

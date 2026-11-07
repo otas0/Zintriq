@@ -26,9 +26,11 @@
   "build": {
     "appId": "com.editor",
     "productName": "Zintriq Editor",
+    "executableName": "ZintriqEditor",
     "copyright": "Copyright © Zintriq",
     "asar": true,
     "npmRebuild": false,
+    "artifactName": "ZintriqEditor-${version}-${os}-${arch}.${ext}",
     "asarUnpack": [
       "**/node_modules/node-pty/**"
     ],
@@ -100,7 +102,14 @@
         "nsis",
         "portable"
       ],
-      "signAndEditExecutable": false
+      "signAndEditExecutable": false,
+      "artifactName": "ZintriqEditor-${version}-${arch}-setup.${ext}"
+    },
+    "nsis": {
+      "artifactName": "ZintriqEditor-${version}-Setup.${ext}"
+    },
+    "portable": {
+      "artifactName": "ZintriqEditor-${version}-portable.${ext}"
     },
     "linux": {
       "target": [
@@ -119,12 +128,12 @@
   },
   "devDependencies": {
     "@electron/rebuild": "^4.2.1",
-    "electron": "33.2.0",
+    "electron": "33.4.11",
     "electron-builder": "25.1.8"
   },
   "dependencies": {
     "@xterm/addon-fit": "^0.10.0",
     "@xterm/xterm": "^5.5.0",
-    "node-pty": "^1.0.0"
+    "node-pty": "1.1.0"
   }
 }
