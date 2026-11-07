@@ -100,5 +100,6 @@ await withCoreService(async () => {
   console.log(`core-service /boards count=${list.length}`);
 });
 
+run("sha256sums unit tests", "python3", ["-m", "unittest", "desktop.packaging.test_sha256sums"]);
 run("clangd stdio smoke", "node", ["scripts/clangd-stdio-smoke.mjs"]);
 console.log("\nverify:local ok");

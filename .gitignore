@@ -23,6 +23,7 @@ static/uploads/*
 .tmp_i18n_gen/
 .tmp-smoke/
 .tmp-remote-tip/
+.tmp-verify-*/
 tmp-shots/
 audit/
 scripts/.cache/
