@@ -1,5 +1,5 @@
 import { defineConfig } from "@playwright/test";
-import { E2E_UI_PORT, E2E_UI_URL } from "./e2e/ui-url.mjs";
+import { E2E_UI_PORT, E2E_UI_URL } from "./e2e/ui-url";
 
 export default defineConfig({
   testDir: "e2e",

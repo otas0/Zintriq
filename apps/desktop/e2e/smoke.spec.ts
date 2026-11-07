@@ -1,7 +1,7 @@
 import { _electron as electron, expect, test, type Page } from "@playwright/test";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { E2E_UI_URL } from "./ui-url.mjs";
+import { E2E_UI_URL } from "./ui-url";
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const electronBin = path.resolve(
