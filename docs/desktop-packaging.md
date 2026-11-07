@@ -38,6 +38,6 @@ electron-builder 生成 Linux `.desktop` / deb / AppImage 时，会把 **每个*
 
 - 日常 `v*`：slim（macos-latest + windows + ubuntu）
 - 全量：`v*-release` 或 `workflow_dispatch` + `full_matrix=true`（另加 macos-15-intel）
-- **当前以最新成功 Release 为准：`v0.1.10`**（slim matrix 已绿：macos/windows/ubuntu + publish）。全量矩阵（含 macos-15-intel）走 `v0.1.10-release`。`v0.1.7`–`v0.1.9` pack 因 Linux zip/json MimeType 红（fileAssociations mime 并入 `.desktop`），仅作排障历史；不必强删旧 tag
+- **当前成功 Release：slim=`v0.1.10`，全量=`v0.1.10-release`**。slim 已绿（macos/windows/ubuntu + publish）。**`v0.1.10-release` 全量矩阵已绿**（macos-latest、macos-15-intel、windows、ubuntu + publish），资产名为 `ZintriqEditor-…`（含 mac-x64）。全量矩阵以 `v0.1.10-release` 为准；slim 仍以 `v0.1.10` 为准。`v0.1.7`–`v0.1.9` pack 因 Linux zip/json MimeType 红（fileAssociations mime 并入 `.desktop`），仅作排障历史；不必强删旧 tag
 
 旧产品树：`git checkout archive/pre-editor-pivot`。
