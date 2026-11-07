@@ -30,6 +30,16 @@ jobs:
         continue-on-error: true
         run: |
           # Surface spending-limit failures early in the run summary (job may still start).
+          {
+            echo "## Actions billing / spending limit"
+            echo
+            echo "If later jobs fail in ~seconds with **empty steps** or *payments have failed* / *spending limit*:"
+            echo
+            echo "1. Fix GitHub **Billing & plans** / Actions spending limit for this account/org."
+            echo "2. Pack OS artifacts are retained ~7 days — recover via \`docs/desktop-packaging.md\` (manual Release)."
+            echo "3. Prefer a **draft** Release with assets over a missing Release; promote with \`gh release edit <tag> --draft=false\`."
+            echo "4. **Do not cut new \`-release\` tags** until billing is healthy (avoids green pack + dead publish)."
+          } >> "$GITHUB_STEP_SUMMARY"
           echo "::warning title=Actions billing::If later jobs fail instantly with empty steps / payments-failed, fix GitHub Actions spending limit. Pack artifacts (7d) + docs/desktop-packaging.md manual recover still apply. Prefer draft Release assets over a missing Release."
 
       - id: set

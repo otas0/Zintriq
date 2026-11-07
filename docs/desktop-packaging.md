@@ -85,4 +85,11 @@ electron-builder 生成 Linux `.desktop` / deb / AppImage 时，会把 **每个*
 本机同步：优先 `git fetch origin && git reset --hard origin/main`；HTTPS 挂起/代理 403 时用  
 `scripts/git-fetch-tokenized.sh`（`gh auth token` 写入一次性 remote URL）。仅在仍失败时才用 Contents / Git Data API 补文件。
 
+## 本机校验脚本
+
+- `pnpm verify:local` — build / unit / cargo check / core-service / `test:sha256sums` / clangd（**不含** Electron e2e）
+- `pnpm verify:electron` — Electron Playwright（固定 Vite **:5175**，`reuseExistingServer: false`，避免误连占用 :5173 的其他应用）。退出码：`2`=启动失败，`3`=UI 断言超时
+- `pnpm smoke:tauri-four-step` — stub + 实机 clangd；开文件夹 / allow / 保存仍需 `tauri dev` 手测
+- CI `test` job 已跑 `pnpm test:sha256sums`
+
 旧产品树：`git checkout archive/pre-editor-pivot`。

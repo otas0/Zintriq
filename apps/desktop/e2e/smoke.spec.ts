@@ -1,6 +1,7 @@
 import { _electron as electron, expect, test, type Page } from "@playwright/test";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import { E2E_UI_URL } from "./ui-url.mjs";
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const electronBin = path.resolve(
@@ -162,17 +163,26 @@ async function launchUi() {
     args: [path.join(here, "electron-main.cjs")],
     env: {
       ...process.env,
-      ZINTRIQ_UI_URL: "http://localhost:5173",
+      ZINTRIQ_UI_URL: E2E_UI_URL,
     },
   });
   const page = await app.firstWindow();
+  await page.waitForLoadState("domcontentloaded");
+  // Fail fast if Vite reused / pointed at the wrong app (e.g. another project on :5173).
+  await expect(page).toHaveTitle(/Zintriq/i, { timeout: 15_000 });
   return { app, page };
+}
+
+/** Register core mocks, then navigate so the first painted document uses them. */
+async function readyUi(page: Page, opts?: { failBuild?: boolean }) {
+  await mockCore(page, opts);
+  await page.goto(E2E_UI_URL, { waitUntil: "domcontentloaded" });
+  await expect(page).toHaveTitle(/Zintriq/i, { timeout: 15_000 });
 }
 
 test("editor, board select, LSP mock, and capability deny", async () => {
   const { app, page } = await launchUi();
-  await mockCore(page);
-  await page.reload();
+  await readyUi(page);
   await expect(page.locator(".monaco-editor")).toBeVisible({ timeout: 20_000 });
   await expect(page.getByLabel("开发板").locator("option")).toHaveCount(3);
   await page.getByRole("button", { name: "构建检查" }).click();
@@ -194,8 +204,7 @@ test("editor, board select, LSP mock, and capability deny", async () => {
 
 test("cross-file diagnostic jump and audit filter", async () => {
   const { app, page } = await launchUi();
-  await mockCore(page, { failBuild: true });
-  await page.reload();
+  await readyUi(page, { failBuild: true });
   await expect(page.locator(".monaco-editor")).toBeVisible({ timeout: 20_000 });
 
   await page.evaluate(() => {
@@ -235,8 +244,7 @@ test("cross-file diagnostic jump and audit filter", async () => {
 
 test("compile_commands stub hint stays explicit", async () => {
   const { app, page } = await launchUi();
-  await mockCore(page);
-  await page.reload();
+  await readyUi(page);
   await expect(page.locator(".monaco-editor")).toBeVisible({ timeout: 20_000 });
 
   await page.evaluate(() => {

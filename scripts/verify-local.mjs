@@ -1,7 +1,8 @@
 #!/usr/bin/env node
 /**
- * Local gate: workspace build/test slice + desktop e2e + Tauri cargo check
- * + core-service /health + real clangd stdio smoke.
+ * Local gate without Electron e2e: workspace build/test + Tauri cargo check
+ * + core-service /health + sha256sums + real clangd stdio smoke.
+ * Electron Playwright lives in `pnpm verify:electron` (exit 2 = launch, 3 = UI).
  * Usage: corepack pnpm verify:local
  */
 import { spawnSync } from "node:child_process";
@@ -79,7 +80,6 @@ async function withCoreService(fn) {
 
 run("workspace build", "corepack", ["pnpm", "run", "build"]);
 run("desktop unit tests", "corepack", ["pnpm", "--filter", "@zintriq/desktop", "test"]);
-run("desktop e2e", "corepack", ["pnpm", "--filter", "@zintriq/desktop", "exec", "playwright", "test", "--reporter=line"]);
 run("tauri cargo check", "cargo", ["check"], {
   cwd: path.join(root, "apps/desktop/src-tauri"),
 });
@@ -102,4 +102,4 @@ await withCoreService(async () => {
 
 run("sha256sums unit tests", "python3", ["-m", "unittest", "desktop.packaging.test_sha256sums"]);
 run("clangd stdio smoke", "node", ["scripts/clangd-stdio-smoke.mjs"]);
-console.log("\nverify:local ok");
+console.log("\nverify:local ok (Electron e2e: pnpm verify:electron)");

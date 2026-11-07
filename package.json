@@ -11,6 +11,7 @@
     "test": "node scripts/run-workspace.mjs build && node scripts/run-workspace.mjs test",
     "lint": "node scripts/run-workspace.mjs build && node scripts/run-workspace.mjs lint",
     "verify:local": "node scripts/verify-local.mjs",
+    "verify:electron": "node scripts/verify-electron.mjs",
     "smoke:clangd": "node scripts/clangd-stdio-smoke.mjs",
     "smoke:tauri-four-step": "node scripts/tauri-four-step-smoke.mjs",
     "test:sha256sums": "python3 -m unittest desktop.packaging.test_sha256sums"
