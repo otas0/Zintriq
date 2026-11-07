@@ -22,7 +22,8 @@ while read -r _digest name; do
     echo "keep $name"
     continue
   fi
-  id="$(gh release view "$TAG" -R otas0/Zintriq --json assets --jq ".assets[]|select(.name==\"$name\")|.id")"
+  # Prefer REST numeric asset ids — `gh release view --json` may return GraphQL node ids (RA_…).
+  id="$(gh api "repos/otas0/Zintriq/releases/tags/${TAG}" --jq ".assets[]|select(.name==\"$name\")|.id")"
   if [ -z "$id" ] || [ "$id" = "null" ]; then
     echo "missing asset id for $name" >&2
     exit 1
