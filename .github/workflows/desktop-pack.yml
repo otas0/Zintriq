@@ -156,7 +156,13 @@ jobs:
         if: runner.os == 'Windows'
         working-directory: desktop
         continue-on-error: true
-        run: npm run rebuild:pty
+        env:
+          # Electron 33 headers use std::min/max; MSVC windows.h macros break the build without NOMINMAX.
+          CL: /DNOMINMAX
+        run: |
+          echo "MSVC=$(cl 2>&1 | head -n 1 || true)"
+          echo "Electron ABI target from package.json electron field"
+          npm run rebuild:pty
 
       - name: Build installers
         working-directory: desktop
@@ -370,7 +376,7 @@ jobs:
           path: dist
 
       - name: Publish release assets
-        uses: softprops/action-gh-release@v2
+        uses: softprops/action-gh-release@6cbd405e2c4e67a21c47fa9e383d020e4e28b836 # v2.3.3
         with:
           files: |
             dist/**

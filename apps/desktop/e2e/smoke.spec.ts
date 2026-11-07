@@ -262,6 +262,8 @@ test("compile_commands stub hint stays explicit", async () => {
   await expect(page.getByTestId("generate-compile-commands")).toBeVisible();
   await page.getByTestId("generate-compile-commands").click();
   // Electron e2e has no Tauri project dir — stub stays explicit (open folder / bear first).
-  await expect(page.getByRole("status").filter({ hasText: /未绑定 Tauri|compile_commands/ })).toBeVisible();
+  // Hint banner also matches "compile_commands"; assert the dedicated lsp note only.
+  await expect(page.getByRole("status").filter({ hasText: "未绑定 Tauri" })).toBeVisible();
+  await expect(page.getByTestId("compile-commands-hint")).toBeVisible();
   await app.close();
 });
