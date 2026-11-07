@@ -463,13 +463,26 @@ jobs:
           } > release-body.md
           cat release-body.md
 
-      - name: Publish release assets
+      # Always land assets as a draft first so a later billing/quota failure
+      # (or promote flake) does not leave pack-green tags with zero Release files.
+      - name: Publish release assets (draft)
         uses: softprops/action-gh-release@6cbd405e2c4e67a21c47fa9e383d020e4e28b836 # v2.3.3
         with:
           files: |
             dist/**
           body_path: release-body.md
+          draft: true
           generate_release_notes: true
           fail_on_unmatched_files: false
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Promote draft Release
+        continue-on-error: true
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          tag="${GITHUB_REF_NAME}"
+          gh release edit "$tag" --repo "${{ github.repository }}" --draft=false
+          echo "promoted $tag out of draft"
