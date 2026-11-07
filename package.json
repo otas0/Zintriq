@@ -9,7 +9,10 @@
     "build": "node scripts/run-workspace.mjs build",
     "typecheck": "node scripts/run-workspace.mjs build && node scripts/run-workspace.mjs typecheck",
     "test": "node scripts/run-workspace.mjs build && node scripts/run-workspace.mjs test",
-    "lint": "node scripts/run-workspace.mjs build && node scripts/run-workspace.mjs lint"
+    "lint": "node scripts/run-workspace.mjs build && node scripts/run-workspace.mjs lint",
+    "verify:local": "node scripts/verify-local.mjs",
+    "smoke:clangd": "node scripts/clangd-stdio-smoke.mjs",
+    "smoke:tauri-four-step": "node scripts/tauri-four-step-smoke.mjs"
   },
   "pnpm": {
     "onlyBuiltDependencies": ["esbuild"]

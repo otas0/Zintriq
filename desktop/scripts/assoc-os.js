@@ -73,12 +73,32 @@ function probeLinux() {
   walk(homeApps, 0);
   const text = desktopFiles.map((file) => fs.readFileSync(file, "utf8")).join("\n");
   // Linux .desktop only claims the plugin MIME (not application/zip|json defaults).
-  // afterPack strips fileAssociations zip/json that electron-builder would otherwise merge in.
+  // zip/json associations omit mimeType so electron-builder does not merge them here.
   if (text && !/x-zintriq-plugin|plugin\.json/i.test(text)) {
     throw new Error("linux .desktop missing plugin mime");
   }
   if (text && (/MimeType=.*application\/zip/i.test(text) || /MimeType=.*application\/json(?!\+)/i.test(text))) {
     throw new Error("linux MimeType must not claim application/zip or application/json defaults");
+  }
+  for (const file of desktopFiles) {
+    const body = fs.readFileSync(file, "utf8");
+    const match = body.match(/^MimeType=(.*)$/im);
+    if (!match) continue;
+    const entries = match[1]
+      .split(";")
+      .map((item) => item.trim())
+      .filter(Boolean);
+    const unique = new Set(entries);
+    if (unique.size !== entries.length) {
+      throw new Error(
+        "linux MimeType has duplicate entries (merge mimeTypes+desktop+fileAssociations?): " + match[1]
+      );
+    }
+    if (entries.length !== 1 || entries[0] !== "application/x-zintriq-plugin+json") {
+      throw new Error(
+        "linux MimeType must be exactly application/x-zintriq-plugin+json once, got: " + match[1]
+      );
+    }
   }
   const zipDefault = String(run("xdg-mime", ["query", "default", "application/zip"]).stdout || "").trim();
   const jsonDefault = String(run("xdg-mime", ["query", "default", "application/json"]).stdout || "").trim();

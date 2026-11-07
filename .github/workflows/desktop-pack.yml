@@ -164,6 +164,29 @@ jobs:
           echo "Electron ABI target from package.json electron field"
           npm run rebuild:pty
 
+      - name: Align desktop version with tag
+        if: startsWith(github.ref, 'refs/tags/v')
+        working-directory: desktop
+        shell: bash
+        run: |
+          raw="${GITHUB_REF_NAME#v}"
+          # v0.1.10-release → 0.1.10 (artifact version matches release family)
+          ver="${raw%-release}"
+          export ZINTRIQ_PACK_VERSION="$ver"
+          node <<'NODE'
+          const fs = require("fs");
+          const ver = process.env.ZINTRIQ_PACK_VERSION;
+          if (!/^\d+\.\d+\.\d+/.test(ver)) {
+            console.error("refusing non-semver pack version:", ver);
+            process.exit(1);
+          }
+          const pkgPath = "package.json";
+          const pkg = JSON.parse(fs.readFileSync(pkgPath, "utf8"));
+          pkg.version = ver;
+          fs.writeFileSync(pkgPath, JSON.stringify(pkg, null, 2) + "\n");
+          console.log("desktop package.json version →", ver);
+          NODE
+
       - name: Build installers
         working-directory: desktop
         run: npm run dist
@@ -384,11 +407,45 @@ jobs:
           merge-multiple: true
           path: dist
 
+      - name: Build OS × asset checklist
+        id: checklist
+        shell: bash
+        run: |
+          set -euo pipefail
+          {
+            echo "## Pack assets"
+            echo
+            echo "| OS hint | Asset |"
+            echo "|---|---|"
+            if [ ! -d dist ]; then
+              echo "| (none) | _no dist/_ |"
+            else
+              find dist -type f ! -name '*.blockmap' | sort | while read -r f; do
+                base=$(basename "$f")
+                case "$base" in
+                  *mac-arm64*|*arm64-mac*|*arm64.dmg*|*arm64.zip*) os="macOS arm64" ;;
+                  *mac-x64*|*x64.dmg*|*x64.zip*|*mac.zip) os="macOS x64" ;;
+                  *.dmg|*-mac.*) os="macOS" ;;
+                  *Setup.exe|*portable.exe|*.exe) os="Windows" ;;
+                  *.AppImage|*amd64.deb|*.deb) os="Linux" ;;
+                  SHA256SUMS|sbom*|OFL*|THIRD*|license*) os="meta" ;;
+                  *) os="other" ;;
+                esac
+                echo "| $os | \`$base\` |"
+              done
+            fi
+            echo
+            echo "- Artifact names must be \`ZintriqEditor-…\` (no spaces)."
+            echo "- Unsigned unless repo has CSC_*/Apple secrets."
+          } > release-body.md
+          cat release-body.md
+
       - name: Publish release assets
         uses: softprops/action-gh-release@6cbd405e2c4e67a21c47fa9e383d020e4e28b836 # v2.3.3
         with:
           files: |
             dist/**
+          body_path: release-body.md
           generate_release_notes: true
           fail_on_unmatched_files: false
         env:
