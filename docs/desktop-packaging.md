@@ -47,6 +47,6 @@ electron-builder 生成 Linux `.desktop` / deb / AppImage 时，会把 **每个*
 
 - 日常 `v*`：slim（macos-latest + windows + ubuntu）
 - 全量：`v*-release` 或 `workflow_dispatch` + `full_matrix=true`（另加 macos-15-intel）
-- **当前成功 Release：slim=`v0.1.11`**（MimeType 单条 + tag→version 对齐为 `ZintriqEditor-0.1.11-…`）。全量矩阵最近绿的是 `v0.1.10-release`（含 macos-15-intel）；下一刀全量验证 SUMS 合并用 `v0.1.12-release`（制品版本仍为 `0.1.12`）。publish 会在合并全 OS 安装包后重写一份 `SHA256SUMS`，并断言覆盖每个非 blockmap 安装包（不再被单平台 SUMS 覆盖）。`v0.1.7`–`v0.1.9` 为 Linux MIME 排障历史；不必强删旧 tag
+- **当前成功 Release：slim=`v0.1.11` + 全量=`v0.1.12-release`（SUMS 合并）**（MimeType 单条 + tag→version 对齐；`v0.1.12-release` 含 macos-15-intel，合并后 `SHA256SUMS` 覆盖 mac-arm64/mac-x64/win Setup+portable/linux deb+AppImage）。Actions publish 因 billing/spending-limit 未启动，Release 由 pack 制品手工上传。CI publish 逻辑仍会在合并全 OS 安装包后重写 `SHA256SUMS` 并断言覆盖每个非 blockmap 安装包。`v0.1.7`–`v0.1.9` 为 Linux MIME 排障历史；不必强删旧 tag
 
 旧产品树：`git checkout archive/pre-editor-pivot`。
