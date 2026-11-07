@@ -27,6 +27,15 @@ function walkDesktop(dir, out, depth) {
 exports.default = async function afterPack(context) {
   if (context.electronPlatformName !== "linux") return;
   const files = walkDesktop(context.appOutDir, [], 0);
+  // Deb/AppImage regenerate .desktop later from fileAssociations; this only
+  // patches linux-unpacked if a desktop file already exists. Real fix: omit
+  // zip/json mimeType from fileAssociations (see package.json + docs).
+  if (files.length === 0) {
+    console.log(
+      "after-pack-linux-mime: no .desktop in appOutDir yet (expected); Linux MimeType must stay plugin-only via fileAssociations without zip/json mimeType"
+    );
+    return;
+  }
   for (const file of files) {
     const text = fs.readFileSync(file, "utf8");
     if (!/MimeType=/i.test(text)) continue;

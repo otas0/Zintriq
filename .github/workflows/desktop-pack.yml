@@ -309,7 +309,8 @@ jobs:
           mkdir -p "$extract"
           dpkg-deb -x "$deb" "$extract"
           mkdir -p "$HOME/.local/share/applications"
-          find "$extract" -name '*.desktop' -exec cp {} "$HOME/.local/share/applications/" \;
+          find "$extract" -name '*.desktop' -print -exec cp {} "$HOME/.local/share/applications/" \;
+          find "$extract" "$HOME/.local/share/applications" -name '*.desktop' -exec grep -H '^MimeType=' {} \;
           update-desktop-database "$HOME/.local/share/applications" || true
           export ZINTRIQ_SMOKE_LINUX_MIME=1
           export ZINTRIQ_SMOKE_INSTALL_DIR="$extract"

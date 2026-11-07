@@ -73,16 +73,14 @@
       {
         "ext": "json",
         "name": "JSON Document",
-        "description": "JSON (Alternate — do not own default)",
-        "mimeType": "application/json",
+        "description": "JSON (Alternate — do not own default; no mimeType so Linux .desktop stays plugin-only)",
         "role": "Viewer",
         "rank": "Alternate"
       },
       {
         "ext": "zip",
         "name": "ZIP Archive",
-        "description": "ZIP (Alternate — do not own default)",
-        "mimeType": "application/zip",
+        "description": "ZIP (Alternate — do not own default; no mimeType so Linux .desktop stays plugin-only)",
         "role": "Viewer",
         "rank": "Alternate"
       }

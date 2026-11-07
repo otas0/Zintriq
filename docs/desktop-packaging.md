@@ -26,16 +26,18 @@ Electron **33.2.x** headers 与 MSVC `windows.h` 的 `min`/`max` 宏冲突（`er
 
 ## Linux MIME（仅 plugin）
 
-`fileAssociations` 仍可为 Windows/macOS 注册 zip/json 的 Alternate；electron-builder 会把这些 mime 合并进 Linux `.desktop` 的 `MimeType=`，从而在无其他默认时让 `xdg-mime` 把 Zintriq 设成 `application/zip` 默认。因此：
+electron-builder 生成 Linux `.desktop` / deb / AppImage 时，会把 **每个** `fileAssociations[].mimeType` 并进 `MimeType=`（在 `afterPack` **之后**）。因此 zip/json 不能带 `mimeType` 字段——否则 CI 上 `xdg-mime` 会把 Zintriq 设成 `application/zip` 默认。Windows/macOS 仍靠 `ext` + `rank: Alternate` 做打开方式。
 
-- `linux.mimeTypes` / `linux.desktop.MimeType` 只声明 `application/x-zintriq-plugin+json`
-- `afterPack`（`packaging/after-pack-linux-mime.js`）在打包前把 `.desktop` 的 MimeType 剥成 plugin-only
-- pack CI 的 `assoc-os.js` 断言：`.desktop` 不含 zip/json，且 `xdg-mime` 默认不是 Zintriq
+- `plugin.json` 保留 `mimeType: application/x-zintriq-plugin+json`
+- `json` / `zip` 协会项：**无** `mimeType`（仅 Alternate 扩展名）
+- `linux.mimeTypes` / `linux.desktop.MimeType` 只声明 plugin MIME
+- `afterPack` 仅作 linux-unpacked 兜底；真正约束在配置层
+- pack CI `assoc-os.js`：`.desktop` 不含 zip/json，且 `xdg-mime` 默认不是 Zintriq
 
 ## Tag / Release 矩阵
 
 - 日常 `v*`：slim（macos-latest + windows + ubuntu）
 - 全量：`v*-release` 或 `workflow_dispatch` + `full_matrix=true`（另加 macos-15-intel）
-- **当前以最新成功 Release 为准：`v0.1.6-release`**（4 OS + intel + 已发布资产）。`v0.1.7` / `v0.1.8` pack 因 Linux zip MIME 红，仅作排障历史；修好后以更新 tag / Release 取代说明，不必强删旧 tag
+- **当前以最新成功 Release 为准：`v0.1.6-release`**（4 OS + intel + 已发布资产）。`v0.1.7`–`v0.1.9` pack 因 Linux zip/json MimeType 红（fileAssociations mime 并入 `.desktop`），仅作排障历史；`v0.1.10+` 去掉 zip/json 的 `mimeType` 字段后应转绿，不必强删旧 tag
 
 旧产品树：`git checkout archive/pre-editor-pivot`。
