@@ -2,7 +2,7 @@
   "name": "editor",
   "productName": "Zintriq Editor",
   "version": "0.1.0",
-  "description": "Zintriq Editor — performance-first local code editor",
+  "description": "Zintriq Editor \u2014 performance-first local code editor",
   "main": "main.js",
   "author": {
     "name": "Zintriq",
@@ -27,7 +27,7 @@
     "appId": "com.editor",
     "productName": "Zintriq Editor",
     "executableName": "ZintriqEditor",
-    "copyright": "Copyright © Zintriq",
+    "copyright": "Copyright \u00a9 Zintriq",
     "asar": true,
     "npmRebuild": false,
     "afterPack": "./packaging/after-pack-linux-mime.js",
@@ -73,14 +73,14 @@
       {
         "ext": "json",
         "name": "JSON Document",
-        "description": "JSON (Alternate — do not own default; no mimeType so Linux .desktop stays plugin-only)",
+        "description": "JSON (Alternate \u2014 do not own default; no mimeType so Linux .desktop stays plugin-only)",
         "role": "Viewer",
         "rank": "Alternate"
       },
       {
         "ext": "zip",
         "name": "ZIP Archive",
-        "description": "ZIP (Alternate — do not own default; no mimeType so Linux .desktop stays plugin-only)",
+        "description": "ZIP (Alternate \u2014 do not own default; no mimeType so Linux .desktop stays plugin-only)",
         "role": "Viewer",
         "rank": "Alternate"
       }
@@ -117,13 +117,7 @@
       ],
       "category": "Development",
       "synopsis": "Zintriq Editor",
-      "maintainer": "Zintriq <support@zintriq.com>",
-      "mimeTypes": [
-        "application/x-zintriq-plugin+json"
-      ],
-      "desktop": {
-        "MimeType": "application/x-zintriq-plugin+json;"
-      }
+      "maintainer": "Zintriq <support@zintriq.com>"
     }
   },
   "devDependencies": {

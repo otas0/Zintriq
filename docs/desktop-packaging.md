@@ -30,7 +30,7 @@ electron-builder 生成 Linux `.desktop` / deb / AppImage 时，会把 **每个*
 
 - `plugin.json` 保留 `mimeType: application/x-zintriq-plugin+json`
 - `json` / `zip` 协会项：**无** `mimeType`（仅 Alternate 扩展名）
-- `linux.mimeTypes` / `linux.desktop.MimeType` 只声明 plugin MIME
+- Linux plugin MIME **仅**来自 `fileAssociations[plugin].mimeType`（勿再设 `linux.mimeTypes` / `linux.desktop.MimeType`，否则 `.desktop` 会重复三次）
 - `afterPack` 仅作 linux-unpacked 兜底；真正约束在配置层
 - pack CI `assoc-os.js`：`.desktop` 不含 zip/json，且 `xdg-mime` 默认不是 Zintriq
 
