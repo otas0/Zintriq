@@ -68,10 +68,21 @@ electron-builder 生成 Linux `.desktop` / deb / AppImage 时，会把 **每个*
    # 或：gh release upload vX.Y.Z-release … --clobber
    ```
 5. 对照：合并后的 `SHA256SUMS` 行数应等于安装包数（slim≈6，全量含 intel≈8）；与手工/CI 发版互相 `diff`。
-6. 额度恢复后：重跑失败的 publish job，或再打 `v*-release` tag；CI 会先写 **draft** 再 `gh release edit --draft=false`（promote 失败时 draft 资产仍在）。
+6. **一键校验已发布的 8 包（或 slim 全量）**：  
+   `scripts/verify-release-installers.sh v0.1.12-release`  
+   （下载 `SHA256SUMS` → 对每个安装包走 Azure Range → `shasum -a 256 -c`）
+7. 额度恢复后：重跑失败的 publish job，或再打 `v*-release` tag；CI 会先写 **draft**（并确认 draft 资产数 ≥1）再 `gh release edit --draft=false`。promote 失败时 **draft 资产保留**，annotation 会提示不要删 draft。
+
+### draft → promote（额度抖动）
+
+- publish job：`softprops` 以 `draft: true` 上传全部安装包 + 合并 `SHA256SUMS`。
+- 随后 `Confirm draft still has assets`：若 draft 资产为 0 则失败且不 promote。
+- `Promote draft Release`：`continue-on-error: true`；失败时打 warning，**不删除** draft。
+- 人工补救：`gh release edit <tag> --draft=false`（额度恢复后）。
 
 签名：仓库无 `CSC_*` / Apple secrets 前不要打「已签名」tag。私有仓无 Pro 时 branch protection API 为 403，公开或升 Pro 后再开 PR 验 `lint`/`typecheck`/`test`/`build`。
 
-本机同步：优先 `git fetch origin && git reset --hard origin/main`；仅在 `github.com:443` 长期挂起时才用 Contents / Git Data API 补文件。
+本机同步：优先 `git fetch origin && git reset --hard origin/main`；HTTPS 挂起/代理 403 时用  
+`scripts/git-fetch-tokenized.sh`（`gh auth token` 写入一次性 remote URL）。仅在仍失败时才用 Contents / Git Data API 补文件。
 
 旧产品树：`git checkout archive/pre-editor-pivot`。

@@ -26,6 +26,12 @@ jobs:
     outputs:
       matrix: ${{ steps.set.outputs.matrix }}
     steps:
+      - name: Annotate if Actions billing may block later jobs
+        continue-on-error: true
+        run: |
+          # Surface spending-limit failures early in the run summary (job may still start).
+          echo "::warning title=Actions billing::If later jobs fail instantly with empty steps / payments-failed, fix GitHub Actions spending limit. Pack artifacts (7d) + docs/desktop-packaging.md manual recover still apply. Prefer draft Release assets over a missing Release."
+
       - id: set
         run: |
           set -euo pipefail
@@ -477,7 +483,27 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
+      - name: Confirm draft still has assets (pre-promote)
+        id: draft_assets
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          tag="${GITHUB_REF_NAME}"
+          count="$(gh release view "$tag" --repo "${{ github.repository }}" --json isDraft,assets --jq '.assets|length')"
+          draft="$(gh release view "$tag" --repo "${{ github.repository }}" --json isDraft --jq .isDraft)"
+          echo "draft=$draft assets=$count"
+          echo "count=$count" >> "$GITHUB_OUTPUT"
+          if [ "$count" -lt 1 ]; then
+            echo "::error title=Draft Release empty::Draft has zero assets; refuse promote. Re-upload or run manual recover."
+            exit 1
+          fi
+          if [ "$draft" != "true" ]; then
+            echo "::warning title=Not draft::Release is already published; promote step will no-op."
+          fi
+
       - name: Promote draft Release
+        id: promote
         continue-on-error: true
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -486,3 +512,12 @@ jobs:
           tag="${GITHUB_REF_NAME}"
           gh release edit "$tag" --repo "${{ github.repository }}" --draft=false
           echo "promoted $tag out of draft"
+
+      - name: Annotate if promote failed (draft assets retained)
+        if: steps.promote.outcome == 'failure'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          tag="${GITHUB_REF_NAME}"
+          meta="$(gh release view "$tag" --repo "${{ github.repository }}" --json isDraft,assets --jq '{draft:.isDraft,n:(.assets|length)}')"
+          echo "::warning title=Promote failed — draft kept::tag=$tag $meta — assets remain on the draft Release; fix billing/quota then: gh release edit $tag --draft=false"

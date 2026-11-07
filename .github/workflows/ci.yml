@@ -47,6 +47,8 @@ jobs:
           cache: pnpm
       - run: pnpm install
       - run: pnpm test
+      # Packaging SUMS coverage (missing/extra/digest) — also on every PR via this job.
+      - run: pnpm test:sha256sums
 
   build:
     runs-on: ubuntu-latest
