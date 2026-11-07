@@ -1,8 +1,14 @@
 name: Desktop pack
 
 # Opt-in / release only: do not auto-run on every main push (typed merges would otherwise trip desktop/**).
+# Daily tags (v*): slim matrix. Full matrix when tag ends with -release or workflow_dispatch full_matrix=true.
 on:
   workflow_dispatch:
+    inputs:
+      full_matrix:
+        description: "Full OS matrix (adds macos-15-intel). Default slim for daily tags."
+        type: boolean
+        default: false
   push:
     tags: ["v*"]
 
@@ -14,8 +20,33 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  decide-matrix:
+    name: decide pack matrix
+    runs-on: ubuntu-latest
+    outputs:
+      matrix: ${{ steps.set.outputs.matrix }}
+    steps:
+      - id: set
+        run: |
+          set -euo pipefail
+          FULL=false
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ] && [ "${{ inputs.full_matrix }}" = "true" ]; then
+            FULL=true
+          fi
+          case "${{ github.ref_name }}" in
+            *-release) FULL=true ;;
+          esac
+          if [ "$FULL" = true ]; then
+            echo 'matrix=[{"os":"macos-latest","python":"3.11"},{"os":"macos-15-intel","python":"3.11"},{"os":"windows-latest","python":"3.11"},{"os":"ubuntu-24.04","python":"3.11"}]' >> "$GITHUB_OUTPUT"
+            echo "Using FULL pack matrix"
+          else
+            echo 'matrix=[{"os":"macos-latest","python":"3.11"},{"os":"windows-latest","python":"3.11"},{"os":"ubuntu-24.04","python":"3.11"}]' >> "$GITHUB_OUTPUT"
+            echo "Using SLIM pack matrix (daily tag)"
+          fi
+
   pack:
     name: "pack / ${{ matrix.os }}"
+    needs: decide-matrix
     runs-on: ${{ matrix.os }}
     timeout-minutes: 90
     env:
@@ -38,15 +69,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        include:
-          - os: macos-latest
-            python: "3.11"
-          - os: macos-15-intel
-            python: "3.11"
-          - os: windows-latest
-            python: "3.11"
-          - os: ubuntu-24.04
-            python: "3.11"
+        include: ${{ fromJSON(needs.decide-matrix.outputs.matrix) }}
     steps:
       - name: Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -121,9 +144,19 @@ jobs:
           fi
           sudo apt-get install -y $pkgs
 
+      - name: Setup MSVC (Windows)
+        if: runner.os == 'Windows'
+        uses: ilammy/msvc-dev-cmd@v1
+
       - name: Install desktop npm dependencies
         working-directory: desktop
         run: npm ci
+
+      - name: Optional node-pty rebuild (Windows MSVC)
+        if: runner.os == 'Windows'
+        working-directory: desktop
+        continue-on-error: true
+        run: npm run rebuild:pty
 
       - name: Build installers
         working-directory: desktop
@@ -226,7 +259,6 @@ jobs:
 
       - name: NSIS HKCU Alternate assoc
         if: runner.os == 'Windows'
-        continue-on-error: true
         shell: pwsh
         run: |
           $ErrorActionPreference = "Stop"
@@ -267,8 +299,7 @@ jobs:
           update-desktop-database "$HOME/.local/share/applications" || true
           export ZINTRIQ_SMOKE_LINUX_MIME=1
           export ZINTRIQ_SMOKE_INSTALL_DIR="$extract"
-          # Mime Alternate probes stay soft until fileAssociations ship in package.json.
-          node desktop/scripts/assoc-os.js || echo "assoc-os soft-fail (no json/zip MimeType yet)"
+          node desktop/scripts/assoc-os.js
           xdg-mime query default application/json || true
           xdg-mime query default application/zip || true
 
@@ -322,3 +353,28 @@ jobs:
           path: |
             smoke.txt
             ci-logs/
+
+  publish-release:
+    name: publish GitHub Release
+    if: startsWith(github.ref, 'refs/tags/v')
+    needs: pack
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Download installer artifacts
+        uses: actions/download-artifact@v4
+        with:
+          pattern: zintriq-installers-*
+          merge-multiple: true
+          path: dist
+
+      - name: Publish release assets
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            dist/**
+          generate_release_notes: true
+          fail_on_unmatched_files: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

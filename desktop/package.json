@@ -58,6 +58,32 @@
         "to": "notices"
       }
     ],
+    "fileAssociations": [
+      {
+        "ext": "plugin.json",
+        "name": "Zintriq Plugin Manifest",
+        "description": "Zintriq plugin manifest (Alternate)",
+        "mimeType": "application/x-zintriq-plugin+json",
+        "role": "Viewer",
+        "rank": "Alternate"
+      },
+      {
+        "ext": "json",
+        "name": "JSON Document",
+        "description": "JSON (Alternate — do not own default)",
+        "mimeType": "application/json",
+        "role": "Viewer",
+        "rank": "Alternate"
+      },
+      {
+        "ext": "zip",
+        "name": "ZIP Archive",
+        "description": "ZIP (Alternate — do not own default)",
+        "mimeType": "application/zip",
+        "role": "Viewer",
+        "rank": "Alternate"
+      }
+    ],
     "mac": {
       "category": "public.app-category.developer-tools",
       "hardenedRuntime": true,
@@ -83,7 +109,12 @@
       ],
       "category": "Development",
       "synopsis": "Zintriq Editor",
-      "maintainer": "Zintriq <support@zintriq.com>"
+      "maintainer": "Zintriq <support@zintriq.com>",
+      "mimeTypes": [
+        "application/x-zintriq-plugin+json",
+        "application/json",
+        "application/zip"
+      ]
     }
   },
   "devDependencies": {

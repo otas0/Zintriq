@@ -19,7 +19,7 @@ packages/extension-host   WASM guest worker
 packages/lsp-client       LSP client, DAP placeholder
 apps/core-service         Fastify API
 apps/desktop              Tauri + React + Monaco
-fixtures/boards           esp32, esp32-c3, stm32, stm32f103, rp2040
+fixtures/boards           esp32, esp32-c3, esp32-s3, stm32, stm32f103, rp2040
 fixtures/extensions       sample guest and manifests
 ```
 
@@ -55,9 +55,12 @@ curl -s -X POST http://127.0.0.1:4317/extensions/fixture-fs-read/run \
 curl -s -X POST http://127.0.0.1:4317/extensions/fixture-no-fs/run \
   -H 'content-type: application/json' \
   -d '{}'
+# Capability-denied audit export (Content-Disposition: attachment → curl -OJ 落盘)
+curl -sOJ 'http://127.0.0.1:4317/audit?export=1'
+curl -sOJ 'http://127.0.0.1:4317/audit?export=1&extensionId=fixture-no-fs'
 ```
 
-`GET /health` returns `{ "status": "ok", "version", "uptimeMs" }`. `GET /boards` returns the board list. `POST /build` returns `{ "status", "diagnostics", "durationMs" }`. `GET /extensions` returns `{ "extensions", "extensionsDir" }` (not a bare array — see `docs/ADR/0005-extensions-list-shape.md`) and re-reads manifests from disk on every request. `GET /extensions/events` is an SSE stream that pushes when `fs.watch` sees directory changes. `GET /audit?limit=50&offset=0&extensionId=` returns the capability-denied audit page plus `extensionsDir`. Errors return `{ "code", "message", "details?" }`.
+`GET /health` returns `{ "status": "ok", "version", "uptimeMs" }`. `GET /boards` returns the board list. `POST /build` returns `{ "status", "diagnostics", "durationMs" }`. `GET /extensions` returns `{ "extensions", "extensionsDir" }` (not a bare array — see `docs/ADR/0005-extensions-list-shape.md`) and re-reads manifests from disk on every request. `GET /extensions/events` is an SSE stream that pushes when `fs.watch` sees directory changes. `GET /audit?limit=50&offset=0&extensionId=` returns the capability-denied audit page plus `extensionsDir`. `GET /audit?export=1` returns up to 5000 entries with `Content-Disposition: attachment; filename="zintriq-audit.json"` (or `zintriq-audit-<extensionId>.json`) so `curl -OJ` writes a file. Errors return `{ "code", "message", "details?" }`.
 
 Extension directory:
 

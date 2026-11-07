@@ -93,12 +93,14 @@ export function App() {
         root: ProjectRoot;
         files: ProjectFile[];
         activePath?: string;
+        compileCommandsMissing?: boolean;
       }) => void;
     };
     w.__ZINTRIQ_E2E_SEED__ = (payload) => {
       setRoot(payload.root);
       setFiles(payload.files);
       if (payload.activePath) setActivePath(payload.activePath);
+      if (payload.compileCommandsMissing) setCompileCommandsMissing(true);
     };
     return () => {
       delete w.__ZINTRIQ_E2E_SEED__;

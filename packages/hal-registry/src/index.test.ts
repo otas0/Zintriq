@@ -26,7 +26,7 @@ describe("hal-registry", () => {
   it("loads the three fixture boards", () => {
     const registry = HalRegistry.fromDir();
     const ids = registry.listBoards().map((b) => b.id);
-    expect(ids).toEqual(["esp32", "esp32-c3", "rp2040", "stm32", "stm32f103"]);
+    expect(ids).toEqual(["esp32", "esp32-c3", "esp32-s3", "rp2040", "stm32", "stm32f103"]);
     expect(registry.getBoard("stm32").mcuFamily).toBe("stm32");
   });
 

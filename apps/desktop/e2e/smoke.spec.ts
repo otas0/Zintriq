@@ -232,3 +232,36 @@ test("cross-file diagnostic jump and audit filter", async () => {
   await expect(page.getByTestId("audit-panel")).not.toContainText(" other ");
   await app.close();
 });
+
+test("compile_commands stub hint stays explicit", async () => {
+  const { app, page } = await launchUi();
+  await mockCore(page);
+  await page.reload();
+  await expect(page.locator(".monaco-editor")).toBeVisible({ timeout: 20_000 });
+
+  await page.evaluate(() => {
+    const seed = (
+      window as unknown as {
+        __ZINTRIQ_E2E_SEED__?: (payload: {
+          root: { name: string };
+          files: { path: string; content: string; dirty: boolean }[];
+          activePath: string;
+          compileCommandsMissing?: boolean;
+        }) => void;
+      }
+    ).__ZINTRIQ_E2E_SEED__;
+    seed?.({
+      root: { name: "proj" },
+      files: [{ path: "main.cpp", content: "int main(){return 0;}\n", dirty: false }],
+      activePath: "main.cpp",
+      compileCommandsMissing: true,
+    });
+  });
+
+  await expect(page.getByTestId("compile-commands-hint")).toBeVisible();
+  await expect(page.getByTestId("generate-compile-commands")).toBeVisible();
+  await page.getByTestId("generate-compile-commands").click();
+  // Electron e2e has no Tauri project dir — stub stays explicit (open folder / bear first).
+  await expect(page.getByRole("status").filter({ hasText: /未绑定 Tauri|compile_commands/ })).toBeVisible();
+  await app.close();
+});

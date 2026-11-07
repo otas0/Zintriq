@@ -25,4 +25,37 @@ describe("HAL board JSON Schema alignment", () => {
       expect(() => parseBoardConfig(raw), name).not.toThrow();
     }
   });
+
+  it("rejects schema negatives: unknown mcuFamily, empty id, extra top-level field", () => {
+    expect(() =>
+      parseBoardConfig({
+        id: "bad-mcu",
+        name: "Bad",
+        mcuFamily: "nrf52",
+        toolchain: { compiler: "g++", flags: [] },
+        pins: { LED: "P0" },
+      }),
+    ).toThrow();
+
+    expect(() =>
+      parseBoardConfig({
+        id: "",
+        name: "Empty id",
+        mcuFamily: "esp32",
+        toolchain: { compiler: "g++", flags: [] },
+        pins: { LED: "GPIO2" },
+      }),
+    ).toThrow();
+
+    expect(() =>
+      parseBoardConfig({
+        id: "extra",
+        name: "Extra",
+        mcuFamily: "stm32",
+        toolchain: { compiler: "g++", flags: [] },
+        pins: { LED: "PA5" },
+        flashKb: 128,
+      }),
+    ).toThrow();
+  });
 });

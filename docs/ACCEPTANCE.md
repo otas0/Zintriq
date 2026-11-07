@@ -75,3 +75,10 @@ cd apps/desktop && corepack pnpm exec tauri build
 ```
 
 本机已用 Rust 1.99 + `@tauri-apps/cli` 跑通 release 打包（产出 `Zintriq_*.dmg`）。无 `cargo` 时跳过此步，以 Vite + Electron 冒烟为准。
+
+### Tauri GUI 手测（显式动作）
+
+1. `corepack pnpm --filter core-service dev` 与 `corepack pnpm --filter desktop tauri dev`（或已打包 app）。
+2. **打开文件夹** → 确认 `allow_project_dir` / 项目根显示。
+3. 编辑文件 → **保存**（脏标记消失）。
+4. 若无 `compile_commands.json`，点 **一键生成 stub**，再显式 **连接 clangd**，确认诊断出现（非自动连接）。

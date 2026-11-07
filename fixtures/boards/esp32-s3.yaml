@@ -1,0 +1,30 @@
+id: esp32-s3
+name: ESP32-S3 DevKitC
+mcuFamily: esp32
+toolchain:
+  compiler: g++
+  flags:
+    - -std=c++17
+    - -Wall
+    - -fsyntax-only
+pins:
+  LED: GPIO2
+  BUTTON: GPIO0
+  UART0_TX: GPIO43
+  UART0_RX: GPIO44
+  I2C0_SDA: GPIO8
+  I2C0_SCL: GPIO9
+peripherals:
+  - name: uart0
+    kind: uart
+    pins:
+      - UART0_TX
+      - UART0_RX
+  - name: i2c0
+    kind: i2c
+    pins:
+      - I2C0_SDA
+      - I2C0_SCL
+  - name: wifi
+    kind: radio
+    pins: []
