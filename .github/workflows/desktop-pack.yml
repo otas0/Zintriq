@@ -354,6 +354,13 @@ jobs:
         if: always()
         run: python desktop/scripts/check_log_artifact.py
 
+      - name: Rename per-OS SHA256SUMS (avoid publish overwrite)
+        shell: bash
+        run: |
+          if [ -f desktop/release/SHA256SUMS ]; then
+            mv desktop/release/SHA256SUMS "desktop/release/SHA256SUMS-${{ matrix.os }}"
+          fi
+
       - name: Upload installers
         if: success()
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
@@ -369,7 +376,7 @@ jobs:
             desktop/release/*.deb
             desktop/release/latest*.yml
             desktop/release/*.blockmap
-            desktop/release/SHA256SUMS
+            desktop/release/SHA256SUMS-*
             desktop/release/sbom.cdx.json
             desktop/resources/notices/**
             license-report.json
@@ -400,12 +407,27 @@ jobs:
     permissions:
       contents: write
     steps:
+      - name: Checkout (sha256sums merge)
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+
       - name: Download installer artifacts
         uses: actions/download-artifact@v4
         with:
           pattern: zintriq-installers-*
           merge-multiple: true
           path: dist
+
+      - name: Merge SHA256SUMS for all OS installers
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 desktop/packaging/sha256sums.py dist --write --verify
+          echo "--- merged SHA256SUMS ---"
+          cat dist/SHA256SUMS
+          # Keep per-OS SUMS out of the Release upload to avoid confusion.
+          rm -f dist/SHA256SUMS-*
 
       - name: Build OS × asset checklist
         id: checklist
@@ -420,7 +442,7 @@ jobs:
             if [ ! -d dist ]; then
               echo "| (none) | _no dist/_ |"
             else
-              find dist -type f ! -name '*.blockmap' | sort | while read -r f; do
+              find dist -type f ! -name '*.blockmap' ! -name 'SHA256SUMS-*' | sort | while read -r f; do
                 base=$(basename "$f")
                 case "$base" in
                   *mac-arm64*|*arm64-mac*|*arm64.dmg*|*arm64.zip*) os="macOS arm64" ;;
@@ -436,6 +458,7 @@ jobs:
             fi
             echo
             echo "- Artifact names must be \`ZintriqEditor-…\` (no spaces)."
+            echo "- \`SHA256SUMS\` lists every non-blockmap installer across the matrix."
             echo "- Unsigned unless repo has CSC_*/Apple secrets."
           } > release-body.md
           cat release-body.md

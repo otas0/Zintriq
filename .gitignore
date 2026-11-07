@@ -21,6 +21,7 @@ static/uploads/*
 
 .tmp_logo_fix/
 .tmp_i18n_gen/
+.tmp-smoke/
 tmp-shots/
 audit/
 scripts/.cache/
