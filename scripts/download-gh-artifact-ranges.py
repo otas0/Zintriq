@@ -67,7 +67,8 @@ def fetch_range(url: str, start: int, end: int, attempts: int = 4) -> bytes:
     for i in range(attempts):
         try:
             req = urllib.request.Request(url, headers={"Range": f"bytes={start}-{end}"})
-            with urllib.request.urlopen(req, timeout=300) as resp:
+            # Slow links (~30–50KB/s) need long per-range budgets for ~8–17MB chunks.
+            with urllib.request.urlopen(req, timeout=900) as resp:
                 return resp.read()
         except (TimeoutError, http.client.IncompleteRead, OSError) as err:
             last = err
