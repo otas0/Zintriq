@@ -72,8 +72,9 @@ function probeLinux() {
   const homeApps = path.join(os.homedir(), ".local/share/applications");
   walk(homeApps, 0);
   const text = desktopFiles.map((file) => fs.readFileSync(file, "utf8")).join("\n");
-  if (text && !/json|zip|x-zintriq/i.test(text)) {
-    throw new Error("linux .desktop missing json/zip mime");
+  // Linux .desktop only claims the plugin MIME (not application/zip|json defaults).
+  if (text && !/x-zintriq-plugin|plugin\.json/i.test(text)) {
+    throw new Error("linux .desktop missing plugin mime");
   }
   const zipDefault = String(run("xdg-mime", ["query", "default", "application/zip"]).stdout || "").trim();
   const jsonDefault = String(run("xdg-mime", ["query", "default", "application/json"]).stdout || "").trim();
@@ -85,10 +86,12 @@ function probeLinux() {
   }
   if (process.env.ZINTRIQ_SMOKE_LINUX_MIME === "1") {
     if (!text) throw new Error("linux mime probe found no .desktop in install or ~/.local/share/applications");
-    if (!/MimeType=.*json/i.test(text) && !/application\/json/i.test(text)) {
-      throw new Error("linux MimeType missing json");
+    if (!/x-zintriq-plugin|MimeType=.*plugin/i.test(text)) {
+      throw new Error("linux MimeType missing application/x-zintriq-plugin+json");
     }
-    if (!/zip/i.test(text)) throw new Error("linux MimeType missing zip Alternate");
+    if (/MimeType=.*application\/zip/i.test(text) || /MimeType=.*application\/json(?!\+)/i.test(text)) {
+      throw new Error("linux MimeType must not claim application/zip or application/json defaults");
+    }
   }
   return { zipDefault: zipDefault, jsonDefault: jsonDefault };
 }

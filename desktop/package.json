@@ -120,9 +120,7 @@
       "synopsis": "Zintriq Editor",
       "maintainer": "Zintriq <support@zintriq.com>",
       "mimeTypes": [
-        "application/x-zintriq-plugin+json",
-        "application/json",
-        "application/zip"
+        "application/x-zintriq-plugin+json"
       ]
     }
   },
