@@ -73,8 +73,12 @@ function probeLinux() {
   walk(homeApps, 0);
   const text = desktopFiles.map((file) => fs.readFileSync(file, "utf8")).join("\n");
   // Linux .desktop only claims the plugin MIME (not application/zip|json defaults).
+  // afterPack strips fileAssociations zip/json that electron-builder would otherwise merge in.
   if (text && !/x-zintriq-plugin|plugin\.json/i.test(text)) {
     throw new Error("linux .desktop missing plugin mime");
+  }
+  if (text && (/MimeType=.*application\/zip/i.test(text) || /MimeType=.*application\/json(?!\+)/i.test(text))) {
+    throw new Error("linux MimeType must not claim application/zip or application/json defaults");
   }
   const zipDefault = String(run("xdg-mime", ["query", "default", "application/zip"]).stdout || "").trim();
   const jsonDefault = String(run("xdg-mime", ["query", "default", "application/json"]).stdout || "").trim();
@@ -88,9 +92,6 @@ function probeLinux() {
     if (!text) throw new Error("linux mime probe found no .desktop in install or ~/.local/share/applications");
     if (!/x-zintriq-plugin|MimeType=.*plugin/i.test(text)) {
       throw new Error("linux MimeType missing application/x-zintriq-plugin+json");
-    }
-    if (/MimeType=.*application\/zip/i.test(text) || /MimeType=.*application\/json(?!\+)/i.test(text)) {
-      throw new Error("linux MimeType must not claim application/zip or application/json defaults");
     }
   }
   return { zipDefault: zipDefault, jsonDefault: jsonDefault };

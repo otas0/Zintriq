@@ -30,6 +30,7 @@
     "copyright": "Copyright © Zintriq",
     "asar": true,
     "npmRebuild": false,
+    "afterPack": "./packaging/after-pack-linux-mime.js",
     "artifactName": "ZintriqEditor-${version}-${os}-${arch}.${ext}",
     "asarUnpack": [
       "**/node_modules/node-pty/**"
@@ -121,7 +122,10 @@
       "maintainer": "Zintriq <support@zintriq.com>",
       "mimeTypes": [
         "application/x-zintriq-plugin+json"
-      ]
+      ],
+      "desktop": {
+        "MimeType": "application/x-zintriq-plugin+json;"
+      }
     }
   },
   "devDependencies": {
