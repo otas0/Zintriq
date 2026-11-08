@@ -106,3 +106,5 @@ electron-builder 生成 Linux `.desktop` / deb / AppImage 时，会把 **每个*
 - CI `test` job：`test:sha256sums` + `test:size-guard`；`runners-ok` + `required` summary 区分计费/真失败；Linux `tauri-e2e.yml`（continue-on-error）跑真 `tauri-driver`
 
 旧产品树：`git checkout archive/pre-editor-pivot`。
+
+<!-- required-checks probe 20261108T071603Z -->
