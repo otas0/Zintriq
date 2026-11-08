@@ -18,15 +18,22 @@ count=0
 while read -r _digest name; do
   [ -n "${name:-}" ] || continue
   count=$((count + 1))
-  if [ -f "$name" ]; then
-    echo "keep $name"
-    continue
-  fi
   # Prefer REST numeric asset ids — `gh release view --json` may return GraphQL node ids (RA_…).
-  id="$(gh api "repos/otas0/Zintriq/releases/tags/${TAG}" --jq ".assets[]|select(.name==\"$name\")|.id")"
+  meta="$(gh api "repos/otas0/Zintriq/releases/tags/${TAG}" --jq ".assets[]|select(.name==\"$name\")|{id,size}")"
+  id="$(printf '%s' "$meta" | jq -r .id)"
+  expected_size="$(printf '%s' "$meta" | jq -r .size)"
   if [ -z "$id" ] || [ "$id" = "null" ]; then
     echo "missing asset id for $name" >&2
     exit 1
+  fi
+  if [ -f "$name" ]; then
+    local_size="$(wc -c < "$name" | tr -d ' ')"
+    if [ "$local_size" = "$expected_size" ]; then
+      echo "keep $name ($local_size bytes)"
+      continue
+    fi
+    echo "re-download $name (local $local_size != remote $expected_size)"
+    rm -f "$name"
   fi
   echo "==> download $name (asset $id)"
   python3 "$ROOT/scripts/download-gh-artifact-ranges.py" --release-asset-id "$id" -o "$name"
