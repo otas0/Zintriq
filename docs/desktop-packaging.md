@@ -79,17 +79,30 @@ electron-builder 生成 Linux `.desktop` / deb / AppImage 时，会把 **每个*
 - 随后 `Confirm draft still has assets`：若 draft 资产为 0 则失败且不 promote。
 - `Promote draft Release`：`continue-on-error: true`；失败时打 warning，**不删除** draft。
 - 人工补救：`gh release edit <tag> --draft=false`（额度恢复后）。
+- **额度恢复前勿打新 `-release` tag**；先修 Billing，再 `gh run rerun` / 再 tag。
 
-签名：仓库无 `CSC_*` / Apple secrets 前不要打「已签名」tag。私有仓无 Pro 时 branch protection API 为 403，公开或升 Pro 后再开 PR 验 `lint`/`typecheck`/`test`/`build`。
+### 计费空步骤 vs 真失败（summary）
 
-本机同步：优先 `git fetch origin && git reset --hard origin/main`；HTTPS 挂起/代理 403 时用  
-`scripts/git-fetch-tokenized.sh`（`gh auth token` 写入一次性 remote URL）。仅在仍失败时才用 Contents / Git Data API 补文件。
+| 信号 | 含义 |
+|---|---|
+| 全部 job ~数秒红、**steps=[]** | **BILLING / spending-limit**，不是测试回归 |
+| `runners-ok (billing probe)` 绿，lint/test 等中途红 | **REAL_FAILURE**，看该 job 日志 |
+| `required` summary 写 `VERDICT: BILLING_OR_QUOTA` | 同上，先修计费再重跑 |
+
+本机分类：`scripts/classify-ci-run.sh <run_id>` → `BILLING_OR_QUOTA`（exit 10）或 `REAL_FAILURE`（exit 1）。
+
+签名：仓库无 `CSC_*` / Apple secrets 前不要打「已签名」tag。私有仓无 Pro 时 branch protection API 为 403，公开或升 Pro 后再开 PR 验 `lint`/`typecheck`/`test`/`build`（required 聚合 job）。
+
+本机同步：优先 `git fetch origin`（`gh auth setup-git` + HTTP/1.1）。443/代理抖动时用  
+`scripts/git-fetch-tokenized.sh`（ASKPASS + `gh auth token`，不把 token 写进 remote URL；会清临时 `git replace`）。本机可配 **Zintriq deploy key**（`~/.ssh/zintriq_ed25519` + `core.sshCommand`）走 `git@github.com:otas0/Zintriq.git`；其他仓的 deploy key 会报 `Repository not found`。截断缓存：`verify-release-installers.sh` 在 size 不符时 Range 重下；离线 fixture：`pnpm test:size-guard`（CI `test` 已跑）。
 
 ## 本机校验脚本
 
 - `pnpm verify:local` — build / unit / cargo check / core-service / `test:sha256sums` / clangd（**不含** Electron e2e）
-- `pnpm verify:electron` — Electron Playwright（固定 Vite **:5175**，`reuseExistingServer: false`，避免误连占用 :5173 的其他应用）。退出码：`2`=启动失败，`3`=UI 断言超时
+- `pnpm verify:electron` — Electron Playwright，**固定 Vite `:5175`**（`apps/desktop/e2e/ui-url.ts`，`reuseExistingServer: false`）。**不要**用 `:5173`（`tauri dev` / 其他应用常用）。退出码：`2`=启动失败，`3`=UI 断言超时
 - `pnpm smoke:tauri-four-step` — stub + 实机 clangd；开文件夹 / allow / 保存仍需 `tauri dev` 手测
-- CI `test` job 已跑 `pnpm test:sha256sums`
+- `pnpm e2e:tauri-webdriver` — Tauri 四步：Linux/Win 用 `tauri-driver`；macOS 用 `ZINTRIQ_E2E_PROJECT_DIR` + `.zintriq-e2e-autosave` host 路径（`tauri-driver` 不支持 Darwin）。见 `apps/desktop/e2e/tauri-four-step.md`
+- `pnpm test:size-guard` — 截断缓存 → 重下 size 对齐（离线 fixture）
+- CI `test` job：`test:sha256sums` + `test:size-guard`；`runners-ok` + `required` summary 区分计费/真失败；Linux `tauri-e2e.yml`（continue-on-error）跑真 `tauri-driver`
 
 旧产品树：`git checkout archive/pre-editor-pivot`。

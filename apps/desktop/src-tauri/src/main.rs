@@ -40,6 +40,15 @@ fn allow_project_dir(app: AppHandle, path: String) -> Result<(), String> {
     Ok(())
 }
 
+/// WebDriver / macOS four-step: expose `ZINTRIQ_E2E_PROJECT_DIR` so the UI can
+/// auto open+allow without a native folder dialog (`tauri-driver` is Linux/Windows only).
+#[tauri::command]
+fn e2e_project_dir() -> Option<String> {
+    std::env::var("ZINTRIQ_E2E_PROJECT_DIR")
+        .ok()
+        .filter(|s| !s.is_empty())
+}
+
 #[tauri::command]
 fn start_clangd(
     app: AppHandle,
@@ -166,7 +175,27 @@ fn stop_clangd_inner(state: &State<'_, LspState>) -> Result<(), String> {
     Ok(())
 }
 
+/// Host-side four-step when `.zintriq-e2e-autosave` is present (macOS / no WebDriver).
+fn e2e_host_four_step(app: &AppHandle, dir: &Path) -> Result<(), String> {
+    let scope = app.fs_scope();
+    scope
+        .allow_directory(dir, true)
+        .map_err(|err| format!("e2e allow: {err}"))?;
+    let main_cpp = dir.join("main.cpp");
+    std::fs::write(&main_cpp, b"int main(){return 1;}\n")
+        .map_err(|err| format!("e2e save: {err}"))?;
+    std::fs::write(dir.join(".zintriq-e2e-done"), b"open-allow-edit-save\n")
+        .map_err(|err| format!("e2e done: {err}"))?;
+    Ok(())
+}
+
 fn main() {
+    if let Ok(dir) = std::env::var("ZINTRIQ_E2E_PROJECT_DIR") {
+        if !dir.is_empty() {
+            let marker = PathBuf::from(&dir).join(".zintriq-e2e-rust");
+            let _ = std::fs::write(&marker, b"rust-seen\n");
+        }
+    }
     tauri::Builder::default()
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_fs::init())
@@ -176,10 +205,26 @@ fn main() {
         })
         .invoke_handler(tauri::generate_handler![
             allow_project_dir,
+            e2e_project_dir,
             start_clangd,
             lsp_send,
             stop_clangd
         ])
+        .setup(|app| {
+            if let Ok(dir) = std::env::var("ZINTRIQ_E2E_PROJECT_DIR") {
+                if !dir.is_empty() {
+                    let path = PathBuf::from(&dir);
+                    let _ = app.emit("e2e-project-dir", dir.clone());
+                    // Reliable macOS path: host completes four-step when autosave marker exists.
+                    if path.join(".zintriq-e2e-autosave").is_file() {
+                        if let Err(err) = e2e_host_four_step(app.handle(), &path) {
+                            eprintln!("e2e host four-step: {err}");
+                        }
+                    }
+                }
+            }
+            Ok(())
+        })
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
 }

@@ -22,6 +22,7 @@ import {
   importProjectFiles,
   isTauriRuntime,
   openProjectFolder,
+  openViaTauriPath,
   saveProjectFile,
   type ProjectFile,
   type ProjectRoot,
@@ -104,6 +105,83 @@ export function App() {
     };
     return () => {
       delete w.__ZINTRIQ_E2E_SEED__;
+    };
+  }, []);
+
+  // Four-step e2e: ZINTRIQ_E2E_PROJECT_DIR (invoke or event) → open+allow; marker → edit+save.
+  useEffect(() => {
+    if (!isTauriRuntime()) return;
+    let cancelled = false;
+    let unlisten: (() => void) | undefined;
+
+    async function runE2e(dir: string) {
+      if (cancelled || !dir) return;
+      const opened = await openViaTauriPath(dir);
+      if (cancelled) return;
+      setRoot(opened.root);
+      setFiles(opened.files);
+      setActivePath(opened.files[0]?.path ?? "main.cpp");
+      (window as unknown as { __ZINTRIQ_E2E_OPENED__?: boolean }).__ZINTRIQ_E2E_OPENED__ = true;
+      const { exists, writeTextFile } = await import("@tauri-apps/plugin-fs");
+      const autosaveFlag = `${dir}/.zintriq-e2e-autosave`;
+      let doAutosave = false;
+      try {
+        doAutosave = await exists(autosaveFlag);
+      } catch {
+        doAutosave = false;
+      }
+      if (doAutosave) {
+        const path = opened.files[0]?.path ?? "main.cpp";
+        const edited = {
+          ...(opened.files[0] ?? { path, content: "", dirty: true }),
+          content: "int main(){return 1;}\n",
+          dirty: true,
+        };
+        const saved = await saveProjectFile(edited, opened.root);
+        if (cancelled) return;
+        setFiles((cur) => cur.map((f) => (f.path === saved.path ? saved : f)));
+        await writeTextFile(`${dir}/.zintriq-e2e-done`, "open-allow-edit-save\n");
+      } else {
+        await writeTextFile(`${dir}/.zintriq-e2e-opened`, "open-allow\n");
+      }
+    }
+
+    void (async () => {
+      try {
+        const bridge = (
+          window as unknown as {
+            __TAURI__?: {
+              core?: { invoke?: (cmd: string) => Promise<unknown> };
+              event?: { listen?: (ev: string, cb: (e: { payload: string }) => void) => Promise<() => void> };
+            };
+          }
+        ).__TAURI__;
+        const fromInvoke = (await bridge?.core?.invoke?.("e2e_project_dir")) as string | null | undefined;
+        if (fromInvoke) {
+          await runE2e(fromInvoke);
+          return;
+        }
+        // Race: setup emit may fire before listen — also poll invoke a few times.
+        if (bridge?.event?.listen) {
+          unlisten = await bridge.event.listen("e2e-project-dir", (e) => {
+            void runE2e(e.payload);
+          });
+        }
+        for (let i = 0; i < 10 && !cancelled; i++) {
+          await new Promise((r) => setTimeout(r, 200));
+          const again = (await bridge?.core?.invoke?.("e2e_project_dir")) as string | null | undefined;
+          if (again) {
+            await runE2e(again);
+            return;
+          }
+        }
+      } catch (err) {
+        console.error("e2e four-step failed", err);
+      }
+    })();
+    return () => {
+      cancelled = true;
+      unlisten?.();
     };
   }, []);
 
@@ -487,6 +565,7 @@ export function App() {
         <span data-testid="project-root">{root.name}</span>
         <button
           type="button"
+          data-testid="open-folder"
           onClick={() => void onOpenFolder()}
           disabled={!isTauriRuntime() && !canUseDirectoryPicker()}
         >
@@ -523,7 +602,7 @@ export function App() {
         <button type="button" onClick={() => void onNewFile()}>
           新建文件
         </button>
-        <button type="button" onClick={() => void onSave()} disabled={!active}>
+        <button type="button" data-testid="save-file" onClick={() => void onSave()} disabled={!active}>
           保存{active?.dirty ? " *" : ""}
         </button>
         <label>

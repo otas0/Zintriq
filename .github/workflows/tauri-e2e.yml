@@ -1,0 +1,82 @@
+name: tauri-e2e
+
+# Linux-only real tauri-driver four-step. macOS uses host marker path locally
+# (tauri-driver unsupported on Darwin). Not a required check.
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - "apps/desktop/**"
+      - "scripts/tauri-webdriver-four-step.mjs"
+      - ".github/workflows/tauri-e2e.yml"
+  pull_request:
+    paths:
+      - "apps/desktop/**"
+      - "scripts/tauri-webdriver-four-step.mjs"
+      - ".github/workflows/tauri-e2e.yml"
+
+concurrency:
+  group: tauri-e2e-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  tauri-webdriver:
+    name: tauri-webdriver four-step (linux)
+    runs-on: ubuntu-24.04
+    # Billing empty-step or missing WebKit deps must not block typed MVP merge.
+    continue-on-error: true
+    steps:
+      - name: Annotate billing vs real
+        run: |
+          {
+            echo "## tauri-e2e"
+            echo
+            echo "If this job fails in ~seconds with **empty steps** → **BILLING_OR_QUOTA**."
+            echo "If steps ran and failed → WebKit / tauri-driver / app regression."
+            echo "Classifier: \`scripts/classify-ci-run.sh ${{ github.run_id }}\`"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.15.1
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: Install Linux WebKit / Tauri deps
+        run: |
+          set -euo pipefail
+          sudo apt-get update
+          sudo apt-get install -y \
+            build-essential curl wget file libxdo-dev \
+            libwebkit2gtk-4.1-dev libayatana-appindicator3-dev \
+            librsvg2-dev patchelf xvfb
+
+      - uses: dtolnay/rust-toolchain@stable
+
+      - name: Install tauri-driver
+        run: cargo install tauri-driver --locked
+
+      - run: pnpm install
+
+      - name: Build Tauri debug binary
+        working-directory: apps/desktop
+        run: corepack pnpm exec tauri build --debug --no-bundle
+
+      - name: Four-step WebDriver under xvfb
+        env:
+          ZINTRIQ_TAURI_BIN: ${{ github.workspace }}/apps/desktop/src-tauri/target/debug/zintriq-desktop
+        run: |
+          set -euo pipefail
+          if [ ! -x "$ZINTRIQ_TAURI_BIN" ]; then
+            # cargo target dir may differ
+            ZINTRIQ_TAURI_BIN="$(find apps/desktop/src-tauri/target -type f -name zintriq-desktop -perm -111 | head -1)"
+          fi
+          export ZINTRIQ_TAURI_BIN
+          echo "bin=$ZINTRIQ_TAURI_BIN"
+          xvfb-run -a pnpm e2e:tauri-webdriver

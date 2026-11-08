@@ -31,16 +31,21 @@ jobs:
         run: |
           # Surface spending-limit failures early in the run summary (job may still start).
           {
-            echo "## Actions billing / spending limit"
+            echo "## Pack failure mode (billing vs real)"
             echo
-            echo "If later jobs fail in ~seconds with **empty steps** or *payments have failed* / *spending limit*:"
+            echo "| Signal | Meaning |"
+            echo "|---|---|"
+            echo "| This job **green**, later pack OS job fails mid-step | **REAL** pack/build failure |"
+            echo "| Later jobs fail in ~seconds with **empty steps** / *payments have failed* / *spending limit* | **BILLING_OR_QUOTA** — not a packaging regression |"
             echo
-            echo "1. Fix GitHub **Billing & plans** / Actions spending limit for this account/org."
+            echo "Classifier: \`scripts/classify-ci-run.sh <run_id>\`."
+            echo
+            echo "1. Fix GitHub **Billing & plans** / Actions spending limit."
             echo "2. Pack OS artifacts are retained ~7 days — recover via \`docs/desktop-packaging.md\` (manual Release)."
-            echo "3. Prefer a **draft** Release with assets over a missing Release; promote with \`gh release edit <tag> --draft=false\`."
-            echo "4. **Do not cut new \`-release\` tags** until billing is healthy (avoids green pack + dead publish)."
+            echo "3. Prefer a **draft** Release with assets; promote with \`gh release edit <tag> --draft=false\`."
+            echo "4. **Do not cut new \`-release\` tags** until billing is healthy."
           } >> "$GITHUB_STEP_SUMMARY"
-          echo "::warning title=Actions billing::If later jobs fail instantly with empty steps / payments-failed, fix GitHub Actions spending limit. Pack artifacts (7d) + docs/desktop-packaging.md manual recover still apply. Prefer draft Release assets over a missing Release."
+          echo "::warning title=Actions billing::Empty-step / payments-failed ⇒ BILLING_OR_QUOTA (not a pack regression). Mid-step red ⇒ REAL. See STEP_SUMMARY table + scripts/classify-ci-run.sh."
 
       - id: set
         run: |

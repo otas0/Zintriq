@@ -63,22 +63,17 @@ async function walkDir(
   }
 }
 
-async function openViaTauriDialog(): Promise<{ root: ProjectRoot; files: ProjectFile[] }> {
-  const dialog = await import("@tauri-apps/plugin-dialog");
-  const selected = await dialog.open({
-    directory: true,
-    multiple: false,
-    title: "打开项目文件夹",
-  });
-  if (selected == null || Array.isArray(selected)) {
-    throw new Error("已取消打开文件夹");
-  }
-  const dirPath = selected;
+type TauriBridge = {
+  __TAURI__?: { core?: { invoke?: (cmd: string, args?: Record<string, unknown>) => Promise<unknown> } };
+  __ZINTRIQ_E2E_PROJECT__?: string;
+};
+
+/** Open a known absolute path (WebDriver / e2e). Invokes allow_project_dir then walks files. */
+export async function openViaTauriPath(dirPath: string): Promise<{ root: ProjectRoot; files: ProjectFile[] }> {
   const name = dirPath.split(/[/\\]/).filter(Boolean).pop() ?? "project";
-  const bridge = (window as unknown as { __TAURI__?: { core?: { invoke?: (cmd: string, args?: Record<string, unknown>) => Promise<unknown> } } })
-    .__TAURI__;
-  if (bridge?.core?.invoke) {
-    await bridge.core.invoke("allow_project_dir", { path: dirPath });
+  const bridge = window as unknown as TauriBridge;
+  if (bridge.__TAURI__?.core?.invoke) {
+    await bridge.__TAURI__.core.invoke("allow_project_dir", { path: dirPath });
   }
   const { readDir, readTextFile: readPath, writeTextFile, mkdir } = await import("@tauri-apps/plugin-fs");
   const files: ProjectFile[] = [];
@@ -112,6 +107,24 @@ async function openViaTauriDialog(): Promise<{ root: ProjectRoot; files: Project
     files.push({ path: "main.cpp", content, dirty: false });
   }
   return { root: { name, tauriPath: dirPath }, files };
+}
+
+async function openViaTauriDialog(): Promise<{ root: ProjectRoot; files: ProjectFile[] }> {
+  // WebDriver path: skip native folder dialog when e2e injects an absolute project dir.
+  const e2e = (window as unknown as TauriBridge).__ZINTRIQ_E2E_PROJECT__;
+  if (e2e && e2e.length > 0) {
+    return openViaTauriPath(e2e);
+  }
+  const dialog = await import("@tauri-apps/plugin-dialog");
+  const selected = await dialog.open({
+    directory: true,
+    multiple: false,
+    title: "打开项目文件夹",
+  });
+  if (selected == null || Array.isArray(selected)) {
+    throw new Error("已取消打开文件夹");
+  }
+  return openViaTauriPath(selected);
 }
 
 export async function openProjectFolder(): Promise<{ root: ProjectRoot; files: ProjectFile[] }> {
